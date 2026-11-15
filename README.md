@@ -14,9 +14,11 @@ Both versions carry identical content. The canonical specification ([docs/aos-sp
 **Quick start** (source tree only — see the [engineering boundaries](docs/README.md#runtime-shape-and-engineering-boundaries-read-first-to-avoid-misjudgement))
 
 ```powershell
-pip install -e .
-python -m src.cli.main verify
-python -m src.cli.main init my-org-system
+pip install -e .                    # installs pyyaml + pytest (runtime deps for aos test / release)
+aos verify
+aos init my-org-system
 ```
+
+`aos` and `python -m src.cli.main` are equivalent entry points.
 
 **What this template does not provide**: proof of compliance. Mandatory clauses require human execution on a running system; legitimacy (steward, founding appointment) is a world event that the template records, never manufactures (GOV-1). See the [honest boundary](docs/README.md#what-this-template-provides--and-what-it-does-not-read-this-first).

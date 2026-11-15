@@ -170,11 +170,21 @@ def cmd_test(suite: str | None) -> int:
         return 1
     if not ready:
         return 0 if unwired else 1
+    try:
+        wiring.require_pytest()      # 执行引擎缺失 → 明确拒绝，不把 ImportError 当成套件失败
+    except wiring.WiringError as e:
+        print(str(e)); return 1
     paths = list(dict.fromkeys(p for _, p in ready))
     return subprocess.call([sys.executable, "-m", "pytest", "-q"] + paths, cwd=ROOT)
 
 
-def main(argv: list[str]) -> int:
+def main(argv: list[str] | None = None) -> int:
+    """两种入口共用：console script 固定调用 main()，python -m 亦走同一路径。
+
+    [project.scripts] 生成的 aos.exe/__main__.py 是 `sys.exit(main())`（不带参数），
+    因此 argv 必须可省略；显式传参仍保留给嵌入式调用与回归测试。
+    """
+    argv = list(sys.argv[1:]) if argv is None else argv
     if not argv or argv[0] in ("-h", "--help"): print(USAGE); return 0
     unavailable = _require_source_tree()
     if unavailable is not None: return unavailable
@@ -247,4 +257,4 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    sys.exit(main())          # 与 console script 完全同构，避免两条入口再次分叉

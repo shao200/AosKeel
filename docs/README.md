@@ -19,7 +19,7 @@ Canonical specification: *AOS: Ontology-Based Agent System Development Specifica
 ## Quick start (0 → 1)
 
 ```powershell
-pip install -e .                              # or run python -m src.cli.main directly
+pip install -e .                              # installs pyyaml + pytest; or use python -m src.cli.main
 aos init my-org-system                        # instantiate (refuses to overwrite an existing target)
 cd my-org-system
 aos bootstrap --stage 0                       # BOOT-0: artifact hash registration + first three-gate run
@@ -35,6 +35,8 @@ aos release                                   # release gate (fail-closed) -> di
 ```
 
 Subsequent BOOT-2/3 (governance workflow, Identity Context acceptance) and business-model changes (via the GOV-3 version channel, see [docs/RUNBOOK.md](RUNBOOK.md)) belong to instance-side governance work — the template supplies declaration slots, the compiler, the gates and the acceptance checklists; it does not simulate governance (honest boundary; the Makefile never synthesizes founding-appointment credentials). CI gates are in `.github/workflows/ci.yml` (pytest → three gates → release gate).
+
+The `aos` console script and `python -m src.cli.main` are equivalent: both dispatch through `main()` with `argv` defaulting to `sys.argv[1:]`. `pytest` is a declared runtime dependency because `aos test` and `aos release` execute the wired suites; if it is missing, they refuse explicitly with `PYTEST-MISSING` instead of reporting a suite failure.
 
 ## Template tree (v0.1 → v0.3)
 
@@ -109,7 +111,7 @@ Guardrail 2: an instance carries a specification copy + registry entry ID; copy 
 
 | Boundary | Fact | Cost / instance-side duty |
 |---|---|---|
-| Delivery shape | The template ships as a **source tree**: `pip install -e .` or `python -m src.cli.main`. The wheel contains no `docs/spec/config`, and the startup self-check explicitly refuses it — **it is not an installable artifact** | Making the wheel installable requires reworking ROOT resolution and data-file packaging (P2, not done in this version) |
+| Delivery shape | The template ships as a **source tree**: `pip install -e .` (then `aos ...`) or `python -m src.cli.main`. The wheel contains no `docs/spec/config`, and the startup self-check explicitly refuses it — **it is not an installable artifact** | Making the wheel installable requires reworking ROOT resolution and data-file packaging (P2, not done in this version) |
 | Event store | `EventStore` is an **in-memory** dict; state is lost on process exit, no persistence | Production instances must connect a database and prove append-only semantics and audit durability themselves |
 | Structural fingerprint | Checks "clause count + first anchor + last anchor" and **does not verify intermediate clause content**; the strong guarantee comes from the full-text hash of the cryptographic layer (GOV-2.3) | Changing a middle clause while keeping both anchors → structural layer passes, hash layer catches it; this is the trade-off defined by the Appendix F manifest |
 | BOOT-2/3 | The template supplies only scaffolding and checklists; `bootstrap --stage 2/3` returns a refusal | Governance workflow and Identity Context acceptance are instance-side world events (GOV-1) |

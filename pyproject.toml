@@ -3,7 +3,9 @@ name = "aos-keel"
 version = "0.3.0"
 description = "AOS 模板生成系统 —— 基于本体论的 Agent 系统企业级模板（对应规范 v2.0.0）"
 requires-python = ">=3.11"
-dependencies = ["pyyaml>=6.0"]
+# pytest 是 aos test / aos release 的执行引擎（一等命令，不是可选开发依赖）：
+# 原先只有 CI 手工安装，纯净 pip install -e . 的 venv 会直接 No module named pytest。
+dependencies = ["pyyaml>=6.0", "pytest>=8.0"]
 
 [project.scripts]
 aos = "src.cli.main:main"

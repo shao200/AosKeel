@@ -8,9 +8,14 @@
 
 不新增 VER 条款：v2.0.0 的 VER-1..33 是冻结条款集；`integrity_paths` 段只登记
 回归补充测试的执行路径，不构成条款，也不改指纹清单。
+
+另提供 `require_pytest()`：`aos test` 与发布闸门共同的执行前置。pytest 是布线
+测试的执行引擎（已在 pyproject 声明为运行时依赖），缺失时 fail-closed 明确
+拒绝，不把 ImportError 伪装成"套件失败"。
 """
 from __future__ import annotations
 from pathlib import Path
+import importlib.util
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -70,3 +75,16 @@ def suites(root: Path | None = None) -> dict:
     raw = load(root).get("suites", {}) or {}
     return {k: str(v.get("gate", "")).lower() if isinstance(v, dict) else str(v).lower()
             for k, v in raw.items()}
+
+
+def require_pytest(probe=None) -> None:
+    """执行前置：pytest 必须可导入，否则 WiringError（fail-closed，不静默降级）。
+
+    `probe` 仅用于注入可探测函数（回归测试模拟缺失环境），生产路径恒用
+    importlib.util.find_spec —— 不导入 pytest 本体，避免把异常藏进模块加载。
+    """
+    find = probe if probe is not None else importlib.util.find_spec
+    if find("pytest") is None:
+        raise WiringError(
+            "PYTEST-MISSING: 缺少 pytest —— 执行 pip install -e . 重新安装依赖"
+            "（pytest 是 aos test / aos release 声明的运行时依赖）")

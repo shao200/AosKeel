@@ -18,7 +18,7 @@
 ## 快速开始（0 → 1）
 
 ```powershell
-pip install -e .                              # 或直接 python -m src.cli.main
+pip install -e .                              # 安装 pyyaml + pytest；或直接 python -m src.cli.main
 aos init my-org-system                        # 实例化（拒绝覆盖已存在目标）
 cd my-org-system
 aos bootstrap --stage 0                       # BOOT-0：工件哈希登记 + 三关首跑
@@ -34,6 +34,8 @@ aos release                                   # 发布闸门（fail-closed）→
 ```
 
 之后的 BOOT-2/3（治理工作流、Identity Context 验收）与业务建模变更（走 GOV-3 版本通道，见 [docs/RUNBOOK.md](RUNBOOK.md)）属实例侧治理工作——模板提供声明位、编译器、闸门与验收清单，不模拟治理（诚实边界；Makefile 不合成创制任命凭据）。CI 门禁见 `.github/workflows/ci.yml`（pytest → 三关 → 发布闸门）。
+
+`aos` 控制台脚本与 `python -m src.cli.main` 等价：两者都经 `main()` 分发，argv 缺省取 `sys.argv[1:]`。`pytest` 是声明的运行时依赖（`aos test` / `aos release` 要执行布线套件）；缺失时明确报 `PYTEST-MISSING` 拒绝，不伪装成"套件失败"。
 
 ## 模板树（v0.1 → v0.3）
 
@@ -108,7 +110,7 @@ bootstrap/checklists/          _schema + VER-20/24/26/27/28/29（P-14 证据留�
 
 | 边界 | 事实 | 代价 / 实例侧职责 |
 |---|---|---|
-| 交付形态 | 模板以**源码树**交付：`pip install -e .` 或 `python -m src.cli.main`。wheel 不含 `docs/spec/config`，启动自检明确拒绝，**不是可安装制品** | 若要 wheel 可安装，须重构 ROOT 解析与数据文件打包（P2，本版未做） |
+| 交付形态 | 模板以**源码树**交付：`pip install -e .`（之后用 `aos ...`）或 `python -m src.cli.main`。wheel 不含 `docs/spec/config`，启动自检明确拒绝，**不是可安装制品** | 若要 wheel 可安装，须重构 ROOT 解析与数据文件打包（P2，本版未做） |
 | 事件存储 | `EventStore` 为**纯内存** dict，进程退出即失，无持久化 | 生产实例须自接数据库并自行证明 append-only 与审计持久性 |
 | 结构层指纹 | 核对"条数 + 首锚 + 末锚"，**不校验中间条款内容**；强保证来自密码学层全文哈希（GOV-2.3） | 中间条款被改而首尾不变 → 结构层 PASS，靠哈希层拦截；这是附录 F 清单定义的取舍 |
 | BOOT-2/3 | 模板只给脚手架与检查表，`bootstrap --stage 2/3` 返回拒绝 | 治理工作流与 Identity Context 验收属实例侧世界事件（GOV-1） |

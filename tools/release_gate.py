@@ -25,6 +25,8 @@ from kernel import registration
 def _default_tests() -> str:
     # 承重件统一解析（tools/wiring.py）：正则抠 path 会在合法 YAML 格式微调时
     # 静默丢项，使"全绿"变成少跑一条 VER 的假绿 —— 缺路径一律阻断。
+    # 执行引擎缺失同样 fail-closed：明确报 PYTEST-MISSING，不伪装成"套件失败"。
+    wiring.require_pytest()
     paths = [p for _, p in wiring.wired_paths()]
     r = subprocess.run([sys.executable, "-m", "pytest", "-q"] + list(dict.fromkeys(paths)),
                        cwd=ROOT, capture_output=True, text=True)

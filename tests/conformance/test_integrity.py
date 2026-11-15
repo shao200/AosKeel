@@ -9,7 +9,9 @@
 4. 承重件：verification.yaml 用真 YAML 解析，格式微调不丢项、缺路径即阻断；
 5. 能力清单：带逗号/引号的值不被拆键；
 6. CLI：参数缺失返回明确 REFUSED，不丢裸 traceback；
-7. GOV-2.2：两份配置的 spec_ref 与登记表最新条目一致。
+7. GOV-2.2：两份配置的 spec_ref 与登记表最新条目一致；
+8. 控制台入口：`[project.scripts]` 生成的 aos.exe 固定调用无参 main()，argv 必须可省略；
+9. 运行环境：pytest 为声明的运行时依赖，缺失时 aos test 报 PYTEST-MISSING 阻断。
 """
 import re
 import subprocess
@@ -218,3 +220,43 @@ def test_cli_missing_args_refused_cleanly(args):
     assert r.returncode == 1
     assert "Traceback" not in r.stderr, f"{args} 抛了裸异常: {r.stderr[:200]}"
     assert "REFUSED" in r.stdout or "用法" in r.stdout
+
+
+# ---------- 8. 控制台脚本入口：main() 必须可无参调用 ----------
+def test_console_script_calls_main_without_args():
+    """复现 aos.exe/__main__.py 的 `sys.exit(main())`；python -m 路径测不到这条。"""
+    import tomllib
+    meta = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    assert meta["project"]["scripts"]["aos"] == "src.cli.main:main"
+    r = subprocess.run(
+        [sys.executable, "-c",
+         "from src.cli.main import main; raise SystemExit(main())", "--help"],
+        cwd=ROOT, capture_output=True, text=True)
+    assert r.returncode == 0, f"console script 形态失败: {r.stderr[:300]}"
+    assert "TypeError" not in r.stderr
+    assert "用法" in r.stdout, "无参入口未落到 USAGE 分派"
+
+
+def test_pytest_is_declared_runtime_dependency():
+    """CI 曾手工装 pytest，纯净 venv 里 python -m pytest 直接 No module named pytest。"""
+    import tomllib
+    from tools import wiring
+    meta = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    deps = " ".join(meta["project"]["dependencies"])
+    assert re.search(r"pytest\s*>=", deps), "pytest 未声明为运行时依赖"
+    assert wiring.require_pytest() is None, "当前环境应能探测到 pytest"
+
+
+def test_missing_pytest_blocks_cmd_test(monkeypatch, capsys):
+    """执行引擎缺失 = fail-closed 明确拒绝，且不把 ImportError 当成套件失败。"""
+    import importlib
+    from tools import wiring
+    cli = importlib.import_module("src.cli.main")
+
+    def missing():
+        raise wiring.WiringError("PYTEST-MISSING: 缺少 pytest —— 执行 pip install -e .")
+
+    monkeypatch.setattr(wiring, "require_pytest", missing)
+    monkeypatch.setattr(cli.subprocess, "call", lambda *a, **k: 999)
+    assert cli.cmd_test(None) == 1
+    assert "PYTEST-MISSING" in capsys.readouterr().out
