@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AosKeel 理论与实操指南 · 总览</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#ffffff; --ink:#1c2230; --muted:#5c6678;
+    --line:#e2e6ee; --accent:#2557a7; --accent-soft:#eaf1fb;
+    --warn:#8a5a00; --warn-soft:#fff6e3; --ok:#1b6e4a; --ok-soft:#eaf7f0;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+       line-height:1.65;font-size:15px}
+  .wrap{max-width:1040px;margin:0 auto;padding:36px 22px 64px}
+  header{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:26px}
+  h1{font-size:27px;margin:0 0 8px;letter-spacing:-.3px}
+  h2{font-size:19px;margin:34px 0 14px;padding-left:10px;border-left:3px solid var(--accent)}
+  p{margin:8px 0}
+  .lead{font-size:16px;color:var(--muted);max-width:820px}
+  .tag{display:inline-block;padding:3px 9px;border-radius:999px;background:var(--accent-soft);
+       color:var(--accent);font-size:12px;font-weight:600;margin-right:6px}
+  .tag.soft{background:#eef0f4;color:var(--muted)}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin:14px 0}
+  .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+  .card b{display:block;color:var(--accent);margin-bottom:4px}
+  .card span{color:var(--muted);font-size:13.5px}
+  table{width:100%;border-collapse:collapse;background:var(--panel);
+        border:1px solid var(--line);border-radius:8px;overflow:hidden;font-size:14px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:#f0f3f8;font-weight:600;color:#33405a}
+  tr:last-child td{border-bottom:none}
+  code{background:#eef1f6;border-radius:4px;padding:1px 5px;font-size:13px;color:#243a63}
+  pre{background:#1f2735;color:#e7edf7;border-radius:8px;padding:14px 16px;overflow:auto;font-size:13px}
+  pre code{background:none;color:inherit;padding:0}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  ul{margin:8px 0;padding-left:20px}
+  .note{background:var(--warn-soft);border:1px solid #f0dfb8;color:var(--warn);
+        border-radius:8px;padding:12px 16px}
+  .ok{background:var(--ok-soft);border:1px solid #cfe9da;color:var(--ok);
+      border-radius:8px;padding:12px 16px}
+  .foot{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);margin-top:36px;padding-top:14px}
+  svg{width:100%;height:auto;display:block}
+  @media (max-width:720px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>AosKeel 理论与实操指南</h1>
+  <p class="lead">从"AI 为什么需要本体论"到"如何用它生成一个可校验的 Agent 系统脚手架"。五篇正文 + 一份索引，中文撰写，与冻结正典同语言；本页只做导航与概念地图。</p>
+  <span class="tag">v0.3.0</span><span class="tag soft">规范 v2.0.0（冻结）</span>
+  <span class="tag soft">信息性文档 · 不产生规范条款</span>
+</header>
+
+<h2>按身份选一条路径</h2>
+<div class="grid">
+  <div class="card"><b>概念入门 → 01</b><span>搞懂 TBox/ABox、蓝图-建筑、Palantir 风格对照，以及 AOS 为什么多了 ActionType。</span></div>
+  <div class="card"><b>选型评估 → 02</b><span>读七段推导链与适用边界，判断"错误代价 &gt; 建模成本"是否在你的领域成立。</span></div>
+  <div class="card"><b>二次开发 → 02 → 03</b><span>把公理、条款、模式映射到具体模块，知道失败发生在哪一步、哪个文件。</span></div>
+  <div class="card"><b>立刻上手 → 04 → 05</b><span>按实测命令走完 install → init → BOOT-0 → 建模 → 发布，再随手查速查表。</span></div>
+</div>
+
+<h2>概念地图：通用本体论 → AOS 条款 → 代码构件</h2>
+<div class="panel">
+<svg viewBox="0 0 1000 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="通用本体论概念到 AOS 条款与代码构件的映射图">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#9aa6ba"/>
+    </marker>
+    <style>
+      .coltitle{font:600 15px -apple-system,'PingFang SC',sans-serif;fill:#33405a}
+      .box{fill:#ffffff;stroke:#e2e6ee;stroke-width:1.2}
+      .lbl{font:13px -apple-system,'PingFang SC',sans-serif;fill:#1c2230}
+      .lblb{font:600 13px -apple-system,'PingFang SC',sans-serif;fill:#2557a7}
+      .edge{stroke:#9aa6ba;stroke-width:1.4;fill:none;marker-end:url(#arr)}
+      .cap{font:12px -apple-system,'PingFang SC',sans-serif;fill:#5c6678}
+    </style>
+  </defs>
+
+  <text x="30" y="30" class="coltitle">① 通用本体论 / 知识图谱</text>
+  <text x="385" y="30" class="coltitle">② AOS 条款（正典）</text>
+  <text x="730" y="30" class="coltitle">③ 代码构件</text>
+
+  <!-- column 1 -->
+  <g class="box"><rect x="30" y="46" width="270" height="54" rx="8"/><text x="44" y="69" class="lblb">类 / 属性 / 关系</text><text x="44" y="88" class="cap">Class · Property · Relation</text></g>
+  <g class="box"><rect x="30" y="114" width="270" height="54" rx="8"/><text x="44" y="137" class="lblb">公理 / 规则</text><text x="44" y="156" class="cap">Axiom · Rule</text></g>
+  <g class="box"><rect x="30" y="182" width="270" height="54" rx="8"/><text x="44" y="205" class="lblb">TBox 模式层 / ABox 数据层</text><text x="44" y="224" class="cap">蓝图 / 按蓝图盖好的大楼</text></g>
+  <g class="box"><rect x="30" y="250" width="270" height="54" rx="8"/><text x="44" y="273" class="lblb">三元组断言 (S, P, O)</text><text x="44" y="292" class="cap">个体事实的最小表达</text></g>
+  <g class="box"><rect x="30" y="318" width="270" height="54" rx="8"/><text x="44" y="341" class="lblb">推理 / 校验</text><text x="44" y="360" class="cap">规则生效的机制</text></g>
+  <g class="box"><rect x="30" y="386" width="270" height="54" rx="8"/><text x="44" y="409" class="lblb">（无对应：变更如何被治理）</text><text x="44" y="428" class="cap">经典本体不处理写路径</text></g>
+
+  <!-- column 2 -->
+  <g class="box"><rect x="385" y="46" width="270" height="54" rx="8"/><text x="399" y="69" class="lblb">T01 四元组（含 ActionType）</text><text x="399" y="88" class="cap">ObjectType / Property / LinkType / ActionType</text></g>
+  <g class="box"><rect x="385" y="114" width="270" height="54" rx="8"/><text x="399" y="137" class="lblb">T10 不变量三元组</text><text x="399" y="156" class="cap">声明 + 违规语义 + 修复绑定</text></g>
+  <g class="box"><rect x="385" y="182" width="270" height="54" rx="8"/><text x="399" y="205" class="lblb">声明层 / 事实层 + 观测层</text><text x="399" y="224" class="cap">八类声明 / 事件日志 / 会话流</text></g>
+  <g class="box"><rect x="385" y="250" width="270" height="54" rx="8"/><text x="399" y="273" class="lblb">KS-1 事件（九字段）</text><text x="399" y="292" class="cap">append-only，非 RDF 三元组</text></g>
+  <g class="box"><rect x="385" y="318" width="270" height="54" rx="8"/><text x="399" y="341" class="lblb">KS-3 受限解释器 R1–R11</text><text x="399" y="360" class="cap">布尔档 / 映射档 + 审计</text></g>
+  <g class="box"><rect x="385" y="386" width="270" height="54" rx="8"/><text x="399" y="409" class="lblb">INV-1 / INV-13 + GOV-2 三关</text><text x="399" y="428" class="cap">写路径唯一 + 能力清单前置</text></g>
+
+  <!-- column 3 -->
+  <g class="box"><rect x="730" y="46" width="240" height="54" rx="8"/><text x="744" y="69" class="lbl">spec/ontology/objects/</text><text x="744" y="88" class="cap">+ actions/ + links/</text></g>
+  <g class="box"><rect x="730" y="114" width="240" height="54" rx="8"/><text x="744" y="137" class="lbl">spec/invariants/</text><text x="744" y="156" class="cap">registration 第 3 步校验</text></g>
+  <g class="box"><rect x="730" y="182" width="240" height="54" rx="8"/><text x="744" y="205" class="lbl">spec/ · store.py · session.py</text><text x="744" y="224" class="cap">物理分离的两种流</text></g>
+  <g class="box"><rect x="730" y="250" width="240" height="54" rx="8"/><text x="744" y="273" class="lbl">kernel/store.py</text><text x="744" y="292" class="cap">无 update / delete 路径</text></g>
+  <g class="box"><rect x="730" y="318" width="240" height="54" rx="8"/><text x="744" y="341" class="lbl">src/interpreter/</text><text x="744" y="360" class="cap">白名单 AST + 审计留档</text></g>
+  <g class="box"><rect x="730" y="386" width="240" height="54" rx="8"/><text x="744" y="409" class="lbl">pipeline.py · fingerprint.py</text><text x="744" y="428" class="cap">hash_spec.py · release_gate.py</text></g>
+
+  <!-- edges -->
+  <path class="edge" d="M300 73 H381"/>
+  <path class="edge" d="M300 141 H381"/>
+  <path class="edge" d="M300 209 H381"/>
+  <path class="edge" d="M300 277 H381"/>
+  <path class="edge" d="M300 345 H381"/>
+  <path class="edge" d="M300 413 H381"/>
+  <path class="edge" d="M655 73 H726"/>
+  <path class="edge" d="M655 141 H726"/>
+  <path class="edge" d="M655 209 H726"/>
+  <path class="edge" d="M655 277 H726"/>
+  <path class="edge" d="M655 345 H726"/>
+  <path class="edge" d="M655 413 H726"/>
+  <text x="455" y="462" class="cap">读法：左列是通用教材里的概念，中列是它在 AOS 中的真实对应物，右列是你可以打开看的代码。TBox/ABox 只是教学类比，不是项目术语。</text>
+</svg>
+</div>
+
+<h2>文档清单</h2>
+<table>
+  <thead><tr><th style="width:62px">序号</th><th style="width:210px">文档</th><th>覆盖</th></tr></thead>
+  <tbody>
+    <tr><td>01</td><td><a href="01-foundations.md">基础概念</a></td><td>本体论定义、TBox/ABox、蓝图-建筑、Palantir 风格对照、LLM 的结构缺陷、四元组/四构造</td></tr>
+    <tr><td>02</td><td><a href="02-architecture.md">体系逻辑与架构模型</a></td><td>AX→KS→P→INV→BOOT→GOV→VER 推导链、三层数据+治理层、四条流、事故反证、适用边界</td></tr>
+    <tr><td>03</td><td><a href="03-implementation.md">实现方法</a></td><td>注册五步、SC 编译、提交管线、受限解释器、事件日志/upcasting、三关与闸门、反模式</td></tr>
+    <tr><td>04</td><td><a href="04-tutorial.md">实操教程</a></td><td>安装 → 实例化 → BOOT-0 → 建模/草案/晋升 → 生成 → 运行内核 → 测试发布 → 排错</td></tr>
+    <tr><td>05</td><td><a href="05-reference.md">速查手册</a></td><td>CLI ×11、文件地图、术语 T01–T26、VER-1..33 布线、异常索引、FAQ</td></tr>
+  </tbody>
+</table>
+
+<h2>三条诚实边界</h2>
+<div class="note">
+  <b>① AOS 不是知识图谱系统。</b>事实不是 RDF 三元组，读路径不是 SPARQL，而是 append-only 事件流 + 可重建的只读投影。TBox/ABox 是教学类比。<br>
+  <b>② 模板不制造治理世界事件。</b>创制任命、steward 资格、审批与红队属现实世界事件，模板只记录引用；<code>bootstrap --stage 2/3</code> 返回拒绝。<br>
+  <b>③ 事件存储是纯内存。</b>进程退出即失；生产实例须自接持久化并自行证明 append-only 与审计持久性。wheel 也不是可安装交付物。
+</div>
+
+<h2>最短入口（模板根）</h2>
+<pre><code>pip install -e .        # pyyaml + pytest
+aos verify              # 结构 → 哈希 → 注册
+aos test                # 28 条布线路径
+aos init my-org-system  # 之后在实例内用 python src/cli/main.py ...</code></pre>
+<div class="ok">核对口径：以上命令与输出在 v0.3.0 源码树及新建实例中实测通过。<code>docs/guide/</code> 随 <code>aos init</code> 复制到实例；本页与指南均不在哈希覆盖域，改动不影响签发摘要。</div>
+
+<div class="foot">
+  AosKeel Guide · 信息性文档 · 规范性效力以 <a href="../aos-spec.md">docs/aos-spec.md v2.0.0</a> 为准 · 条款冲突以 INV 裁决
+</div>
+
+</div>
+</body>
+</html>

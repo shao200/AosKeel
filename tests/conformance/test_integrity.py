@@ -197,12 +197,21 @@ def test_load_caps_parses_quoted_comma_value(tmp_path, monkeypatch):
 
 
 def test_spec_ref_consistent_across_configs():
+    """两份配置必须一致（所有环境）；登记条目只在实例已 BOOT-0 登记后比对。
+
+    aos init 故意不复制 ARTIFACT-REGISTRY.md（实例自行登记，GOV-2.3），
+    因此未登记的实例仍应能通过配置间一致性守卫，不把正常启动序列误判为漂移。
+    """
     caps = yaml.safe_load((ROOT / "config/capabilities.yaml").read_text(encoding="utf-8"))
     ver = yaml.safe_load((ROOT / "config/verification.yaml").read_text(encoding="utf-8"))
-    rows = [l for l in (ROOT / "docs/ARTIFACT-REGISTRY.md")
-            .read_text(encoding="utf-8").splitlines() if l.startswith("| AOS-ART-")]
-    latest = rows[-1].split("|")[1].strip()
-    assert caps["spec_ref"] == ver["spec_ref"] == latest, "spec_ref 漂移（GOV-2.2）"
+    assert caps["spec_ref"] == ver["spec_ref"], "两份配置 spec_ref 漂移（GOV-2.2）"
+    registry = ROOT / "docs/ARTIFACT-REGISTRY.md"
+    if registry.exists():
+        rows = [l for l in registry.read_text(encoding="utf-8").splitlines()
+                if l.startswith("| AOS-ART-")]
+        if rows:
+            latest = rows[-1].split("|")[1].strip()
+            assert caps["spec_ref"] == latest, "配置与登记条目漂移（GOV-2.2）"
 
 
 # ---------- 4. CLI 失败形态 ----------
@@ -224,10 +233,16 @@ def test_cli_missing_args_refused_cleanly(args):
 
 # ---------- 8. 控制台脚本入口：main() 必须可无参调用 ----------
 def test_console_script_calls_main_without_args():
-    """复现 aos.exe/__main__.py 的 `sys.exit(main())`；python -m 路径测不到这条。"""
-    import tomllib
-    meta = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
-    assert meta["project"]["scripts"]["aos"] == "src.cli.main:main"
+    """复现 aos.exe/__main__.py 的 `sys.exit(main())`；python -m 路径测不到这条。
+
+    元数据断言只在模板根执行：aos init 只复制八个目录，实例侧没有 pyproject.toml，
+    但无参调用这一行为在模板与实例中都必须成立（VER-27 前置不能被环境差异击穿）。
+    """
+    pyproject = ROOT / "pyproject.toml"
+    if pyproject.exists():
+        import tomllib
+        meta = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+        assert meta["project"]["scripts"]["aos"] == "src.cli.main:main"
     r = subprocess.run(
         [sys.executable, "-c",
          "from src.cli.main import main; raise SystemExit(main())", "--help"],
@@ -238,12 +253,17 @@ def test_console_script_calls_main_without_args():
 
 
 def test_pytest_is_declared_runtime_dependency():
-    """CI 曾手工装 pytest，纯净 venv 里 python -m pytest 直接 No module named pytest。"""
-    import tomllib
+    """CI 曾手工装 pytest，纯净 venv 里 python -m pytest 直接 No module named pytest。
+
+    声明断言只在模板根执行（实例无 pyproject.toml）；可探测性守卫两边都跑。
+    """
     from tools import wiring
-    meta = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
-    deps = " ".join(meta["project"]["dependencies"])
-    assert re.search(r"pytest\s*>=", deps), "pytest 未声明为运行时依赖"
+    pyproject = ROOT / "pyproject.toml"
+    if pyproject.exists():
+        import tomllib
+        meta = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+        deps = " ".join(meta["project"]["dependencies"])
+        assert re.search(r"pytest\s*>=", deps), "pytest 未声明为运行时依赖"
     assert wiring.require_pytest() is None, "当前环境应能探测到 pytest"
 
 
