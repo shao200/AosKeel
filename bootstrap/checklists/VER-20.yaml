@@ -1,0 +1,13 @@
+checklist: VER-20
+clause: KS-8.4/8.5（创世闭合与 TTL）
+kind: mandatory
+preconditions: [BOOT-1 完成, 创制任命记录为审计日志第一条, 创世窗口 TTL 已声明]
+items:
+  - { id: 1, check: 谓词先于每次 GenesisWrite 求值, evidence: 谓词求值自动记录,
+      judge: 每次创世写入前均存在"治理工作流尚未闭环"谓词求值记录（VER-19）, signer: steward }
+  - { id: 2, check: 创世窗口闭合/冻结/熄灭时间戳三项在案, evidence: 审计事件时间戳,
+      judge: 三项齐备且时序一致（闭合 ≤ 冻结/熄灭）, signer: steward }
+  - { id: 3, check: TTL 与创制任命记录一致, evidence: TTL 声明与任命记录比对表,
+      judge: 一致；到期未完成进入创世冻结，再启用由创制任命主体再授权并记为新审计事件, signer: steward }
+postconditions: [闭合时间戳入审计, 偏差 → GOV-3 通道]
+retention: docs/RUNBOOK.md#mandatory-records

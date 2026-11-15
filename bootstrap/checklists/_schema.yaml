@@ -1,0 +1,11 @@
+# bootstrap/checklists/_schema.yaml —— 〔强〕项检查表 schema（P-14 证据留档）
+# 字段契约：check=做什么 / evidence=留档什么 / judge=通过判据 / signer=谁签
+# retention 位置随工件哈希入审计（P-15）
+checklist: VER-NN
+clause: <条款>
+kind: mandatory
+preconditions: []
+items:
+  - { id: 1, check: <做什么>, evidence: <留档什么>, judge: <通过判据>, signer: <谁签> }
+postconditions: []
+retention: docs/RUNBOOK.md#mandatory-records

@@ -1,0 +1,16 @@
+action_type: ApproveContract
+provenance: SPEC-2026-014             # 治理提案产物（KS-8.2：创世熄灭后 MUST 带 SPEC 出处）
+aggregate: ContractAggregate          # P-1：一 Action 一聚合
+params:
+  contract_id:      { type: ref, required: true }
+  approver_comment: { type: string, required: false, max_len: 2000 }
+submission_criteria:
+  structural:                          # 声明式子语言（注册期编译为 Check AST，KS-7.1）
+    - "exists contract_id"
+    - "max_len approver_comment 2000"
+  conditional:                         # 受限布尔 Function（R10；快照一次捕获 R2）
+    expression: "snapshot.status == 'pending' and snapshot.amount < 10**6"
+    snapshot_inputs: [status, amount, principal.role]
+permissions: { roles: [contract_steward], contexts: [ContractContext] }   # P-10
+audit: required
+dry_run: required                     # P-12：高风险 Action 须演练

@@ -1,0 +1,26 @@
+# CI 门禁：模板验收 → 三关 → 发布闸门（fail-closed，VER-27 前置）。
+# 语义与 docs/RUNBOOK.md BOOT-2 第 4 步一致；任何一关失败 → 不出制品。
+name: aos-gate
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml pytest && pip install -e .
+      - name: 模板验收（一致性 + forbidden 双射 + 解释器负向集）
+        run: python -m pytest -q tests
+      - name: 三关（结构指纹 → 密码学哈希 → declared==registered）
+        run: python -m src.cli.main verify
+      - name: 发布闸门（全绿才出制品；RELEASE-MANIFEST 落 dist/）
+        run: python -m src.cli.main release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-manifest
+          path: dist/RELEASE-MANIFEST.json

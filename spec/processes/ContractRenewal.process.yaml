@@ -1,0 +1,5 @@
+process: ContractRenewal              # P-9：跨聚合编排唯一合法出口 = Process
+steps:
+  - { action: ApproveContract, aggregate: ContractAggregate }
+compensations:                        # 补偿 = 追加补偿事件；每个补偿本身是 Action（幂等）
+  - { for: ApproveContract, action: VoidContract, idempotent: true }

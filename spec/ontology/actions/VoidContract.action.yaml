@@ -1,0 +1,14 @@
+action_type: VoidContract
+provenance: SPEC-2026-014             # 治理提案产物（KS-8.2）
+aggregate: ContractAggregate
+params:
+  contract_id:  { type: ref, required: true }
+  void_reason:  { type: string, required: false, max_len: 500 }
+submission_criteria:
+  structural:
+    - "exists contract_id"
+    - "max_len void_reason 500"
+permissions: { roles: [contract_steward], contexts: [ContractContext] }   # P-10
+audit: required
+compensation: true                    # P-9：补偿 = 追加补偿事件；补偿本身是 Action
+idempotent: true                      # 幂等（P-9 补偿要求）

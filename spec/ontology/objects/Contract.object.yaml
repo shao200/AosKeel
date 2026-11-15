@@ -1,0 +1,6 @@
+object_type: Contract
+identity: contract_id                 # P-13：决策依据属性双时态
+properties:
+  status:      { type: enum, values: [draft, pending, approved, void] }
+  amount:      { type: decimal, decision_relevant: true }   # INV-8：决策依据 MUST 声明
+  party_refs:  { type: list, decision_relevant: true }

@@ -1,0 +1,13 @@
+checklist: VER-26
+clause: P-16（投影可重建）
+kind: mandatory
+preconditions: [至少一个物化投影在运行, 本体事件日志可读]
+items:
+  - { id: 1, check: 删除任一物化投影, evidence: 删除操作审计记录,
+      judge: 删除成功且不影响本体事件日志, signer: 平台 owner }
+  - { id: 2, check: 全量重放重建, evidence: 重放日志,
+      judge: 投影从本体事件日志全量重放恢复，内容逐属性一致, signer: 平台 owner }
+  - { id: 3, check: 双引用可解析, evidence: 解析检查记录,
+      judge: 全部决策事件的（投影标识, transaction_time）与（会话事件引用）双引用可解析, signer: 平台 owner }
+postconditions: [演练记录入 RUNBOOK 留档区, 失败 → GOV-3 通道]
+retention: docs/RUNBOOK.md#mandatory-records

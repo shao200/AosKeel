@@ -1,0 +1,11 @@
+checklist: VER-24
+clause: P-8（归并史可重放）
+kind: mandatory
+preconditions: [BOOT-3 完成, Identity Context 完整实例化, 在案历史归并 ≥ 3 组]
+items:
+  - { id: 1, check: ≥3 组历史归并全量重放, evidence: 重放日志与输入事件快照,
+      judge: 终态与当前投影逐属性一致, signer: identity steward }
+  - { id: 2, check: 归并史重放路径纯度, evidence: 调用图静态检查记录（VER-10）,
+      judge: 仅受限解释器映射型 Function 进入重放路径，无宿主函数, signer: identity steward }
+postconditions: [重放结果入 RUNBOOK 留档区, 不一致 → GOV-3 通道]
+retention: docs/RUNBOOK.md#mandatory-records

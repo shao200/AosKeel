@@ -1,0 +1,33 @@
+{
+  "released_at": "2026-11-15T14:56:29+00:00",
+  "spec_ref": "AOS-ART-001",
+  "digest": "sha256:e6884aedc60e171ea7e5e72b8033518026b6933153126e3fdbb51998b82724d6",
+  "registry_entry": "AOS-ART-001",
+  "steps": [
+    {
+      "step": "structural",
+      "ok": true,
+      "detail": "PASS"
+    },
+    {
+      "step": "cryptographic",
+      "ok": true,
+      "detail": "PASS"
+    },
+    {
+      "step": "registered",
+      "ok": true,
+      "detail": "declared==registered · 5 能力"
+    },
+    {
+      "step": "tests",
+      "ok": true,
+      "detail": "27 条布线路径全部通过"
+    },
+    {
+      "step": "codegen",
+      "ok": true,
+      "detail": "骨架零漂移 · True"
+    }
+  ]
+}

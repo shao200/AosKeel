@@ -1,0 +1,15 @@
+checklist: VER-28
+clause: INV-6（基座能力缺失）
+kind: mandatory
+preconditions: [BOOT-0 完成, capabilities.yaml 已登记, forbidden 四项在位]
+items:
+  - { id: 1, check: 宿主代码直调事件存储写接口绕过 Action, evidence: 调用栈+拒绝日志,
+      judge: 写被拒（INV-1 运行时）且产生 structurally-rejected 审计记录, signer: 红队执行者 }
+  - { id: 2, check: 尝试修改已追加事件, evidence: 尝试日志,
+      judge: 存储层无更新路径（append-only 断言通过）, signer: 红队执行者 }
+  - { id: 3, check: 运维例程触达基座三项, evidence: 运维手册走查记录,
+      judge: 无对应 API/例程（与 forbidden 交叉核对）, signer: 内核 owner }
+  - { id: 4, check: 创世熄灭后重放再授权凭据, evidence: 凭据重放日志,
+      judge: GenesisWrite 谓词永久为假（VER-19 记录引用）, signer: steward }
+postconditions: [结果入 RUNBOOK 留档区, 缺陷 → GOV-3 通道]
+retention: docs/RUNBOOK.md#mandatory-records

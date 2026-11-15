@@ -1,0 +1,11 @@
+mapping: CRMContract
+source_context: CrmContext
+target_context: ContractContext
+anchor: crm_contract_id               # P-5：锚点解析
+transform:                            # 受限映射型（R11：声明式字段映射，结构分派）
+  field_map: { crm_amount: amount, crm_status: status }
+  const: {}
+  drop: [crm_internal_note]
+semantic_loss_declared:               # KS-4：MUST 声明语义损耗
+  - "crm_internal_note 丢弃：CRM 内部备注不构成契约语义"
+golden_set: tests/golden/data/crm_contract.jsonl   # VER-14 golden 钩子

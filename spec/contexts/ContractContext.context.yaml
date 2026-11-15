@@ -1,0 +1,4 @@
+context: ContractContext
+ubiquitous_language: { Contract: 双方受约束的承诺记录 }   # T09 上下文
+steward: contract-steward-role        # P-3：所有权必填（VER-12 校验）
+projection_delay_budget_ms: 500       # P-16：延迟预算

@@ -1,0 +1,18 @@
+spec_ref: AOS-ART-001
+foundation:
+  - audit_append_only
+  - perimeter_integrity
+  - breakglass_resonant
+forbidden:
+  - modify_foundation
+  - direct_event_write
+  - history_rewrite
+  - extinguish_override
+write_actions:
+  - { id: RecordDecision, class: decision_stream, gated_by: sc_structural_only, provenance: genesis }
+  - { id: RaiseInvariantViolation, class: domain, gated_by: detector_only, provenance: genesis }
+  - { id: DeclareIdentityMerge, class: domain, gated_by: merge_only, provenance: genesis }
+  - { id: ApproveContract, class: domain, gated_by: sc_full, provenance: SPEC-2026-014 }
+  - { id: VoidContract, class: domain, gated_by: sc_full, provenance: SPEC-2026-014 }
+channel_writes:
+  - { id: SessionAppend, stream: session, principal_required: true, provenance: genesis }

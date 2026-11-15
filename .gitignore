@@ -1,0 +1,13 @@
+# 运行时状态与缓存
+__pycache__/
+*.pyc
+.pytest_cache/
+.screenshots/
+.aos/
+drafts/
+
+# 构建产物（保留发布清单作为签发证据）
+build/
+*.egg-info/
+dist/*
+!dist/RELEASE-MANIFEST.json

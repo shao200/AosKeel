@@ -1,0 +1,13 @@
+checklist: VER-27
+clause: INV-13（能力清单完备性）
+kind: mandatory
+preconditions: [BOOT-0 完成, capabilities.yaml 已登记, registration.py 可运行]
+items:
+  - { id: 1, check: registration 重跑 diff 为空, evidence: run_pipeline reconcile 输出,
+      judge: declared == registered（第五步通过，无 diff）, signer: 内核 owner }
+  - { id: 2, check: 内核加载的是 generated 段, evidence: 内核启动加载日志,
+      judge: 运行时能力面仅来自 write_actions/channel_writes 生成段, signer: 内核 owner }
+  - { id: 3, check: 无绕管线条目, evidence: 能力清单枚举 vs 内核写路径枚举交叉核对（tools/verify_capability_list.py）,
+      judge: 内核不存在未列于能力清单的状态写路径, signer: 内核 owner }
+postconditions: [核对输出随工件哈希入审计, 差异 → GOV-4 阻断生效]
+retention: docs/RUNBOOK.md#mandatory-records

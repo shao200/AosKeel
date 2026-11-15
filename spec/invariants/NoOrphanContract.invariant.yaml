@@ -1,0 +1,14 @@
+invariant: NoOrphanContract
+aggregate: ContractAggregate
+declaration:
+  profile: boolean                    # 受限布尔 Function（R10）
+  expression: "len(snapshot.party_refs) > 0 or snapshot.status == 'draft'"
+  snapshot_inputs: [party_refs, status]
+violation_semantics:
+  kind: temporal                      # 时间限定 → 探测器求值（T13 / T25），不进追加门控
+  detection: async_detector
+  grace: 7d                           # 违规是对时间的判断（T20）
+repair_binding:                       # 第三元：无绑定 = 注册拒绝（INV-3 / P-6）
+  action: AssignPartyToContract
+  fallback: human_queue
+removal_consequence: F                # 移除后果（P-13 决策依据链）

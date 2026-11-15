@@ -1,0 +1,47 @@
+# config/verification.yaml —— VER-1..33 实文布线（P1-B）
+# aos test 与 make test 均以本文件为唯一分组依据——布线文件是承重件，不是装饰。
+# 〔自〕= auto（CI 门禁，gate: true 套件）；〔强〕= mandatory（人工执行，检查表留档）
+version: 1
+spec_ref: AOS-ART-NNN
+suites:
+  conformance: { gate: true }
+  negative: { gate: true }
+  golden: { gate: true }
+  genesis: { gate: true }
+  invariants: { gate: false }
+  replay: { gate: false }
+  redteam: { gate: false }
+ver:
+  - { id: VER-1,  clause: KS-1.2,      kind: auto, path: tests/conformance/test_event_schema.py }
+  - { id: VER-2,  clause: KS-7.2,      kind: auto, path: tests/conformance/test_pipeline_order.py }
+  - { id: VER-3,  clause: KS-1.4,      kind: auto, path: tests/conformance/test_conflict_reeval.py }
+  - { id: VER-4,  clause: KS-2.1,      kind: auto, path: tests/conformance/test_stream_separation.py }
+  - { id: VER-5,  clause: KS-2.2/2.3,  kind: auto, path: tests/conformance/test_session_channel.py }
+  - { id: VER-6,  clause: KS-2.4,      kind: auto, path: tests/negative/test_closure_no_session.py }
+  - { id: VER-7,  clause: KS-2.5,      kind: auto, path: tests/conformance/test_decision_refs.py }
+  - { id: VER-8,  clause: KS-3.2,      kind: auto, path: tests/negative/test_interpreter_forbidden.py }
+  - { id: VER-9,  clause: KS-3.2/R11,  kind: auto, path: tests/negative/test_mapping_profile.py }
+  - { id: VER-10, clause: KS-3.4,      kind: auto, path: tests/negative/test_replay_purity.py }
+  - { id: VER-11, clause: KS-3.3,      kind: auto, path: tests/conformance/test_interpreter_audit.py }
+  - { id: VER-12, clause: KS-4.1/4.2,  kind: auto, path: tests/conformance/test_source_declaration.py }
+  - { id: VER-13, clause: KS-5.2,      kind: auto, path: tests/conformance/test_upcasting_contract.py }
+  - { id: VER-14, clause: KS-5.3,      kind: auto, path: tests/golden/test_upcasting_golden.py }
+  - { id: VER-15, clause: KS-5.4,      kind: auto, path: tests/negative/test_no_event_deletion.py }
+  - { id: VER-16, clause: KS-6.1,      kind: auto, path: tests/negative/test_valid_time_domain.py }
+  - { id: VER-17, clause: KS-6.3,      kind: auto, path: tests/conformance/test_backfill_provenance.py }
+  - { id: VER-18, clause: KS-7.1,      kind: auto, path: tests/conformance/test_sc_compile.py }
+  - { id: VER-19, clause: KS-8.2,      kind: auto, path: tests/genesis/test_genesis_predicate.py }
+  - { id: VER-20, clause: KS-8.4/8.5,  kind: mandatory, checklist: bootstrap/checklists/VER-20.yaml }
+  - { id: VER-21, clause: P-4/INV-2,   kind: auto, path: tests/conformance/test_link_pattern.py }
+  - { id: VER-22, clause: P-6/INV-3,   kind: auto, path: tests/conformance/test_repair_binding.py }
+  - { id: VER-23, clause: P-7/INV-10,  kind: auto, path: tests/conformance/test_violation_object.py }
+  - { id: VER-24, clause: P-8,         kind: mandatory, checklist: bootstrap/checklists/VER-24.yaml, support: tests/replay/test_merge_replay.py }
+  - { id: VER-25, clause: P-12,        kind: auto, path: tests/conformance/test_dryrun_report.py }
+  - { id: VER-26, clause: P-16,        kind: mandatory, checklist: bootstrap/checklists/VER-26.yaml, support: tests/replay/test_projection_rebuild.py }
+  - { id: VER-27, clause: INV-13,      kind: mandatory, checklist: bootstrap/checklists/VER-27.yaml, support: tools/verify_capability_list.py }
+  - { id: VER-28, clause: INV-6,       kind: mandatory, checklist: bootstrap/checklists/VER-28.yaml, support: tests/redteam/test_foundation.py }
+  - { id: VER-29, clause: P-15,        kind: mandatory, checklist: bootstrap/checklists/VER-29.yaml, support: tests/redteam/test_breakglass.py }
+  - { id: VER-30, clause: GOV-2/3,     kind: auto, path: tests/conformance/test_artifact_ref.py }
+  - { id: VER-31, clause: P-4/8/11,    kind: auto, path: tests/genesis/test_genesis_scope.py }
+  - { id: VER-32, clause: KS-8.5,      kind: auto, path: tests/genesis/test_genesis_ttl.py }
+  - { id: VER-33, clause: KS-2.6,      kind: auto, path: tests/conformance/test_decision_stream.py }

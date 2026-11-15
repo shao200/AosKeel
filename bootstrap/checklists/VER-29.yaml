@@ -1,0 +1,16 @@
+checklist: VER-29
+clause: P-15（破窗响亮性演练）
+kind: mandatory
+preconditions: [基座三项在位, breakglass_resonant 能力已列于 foundation, 事后评审 Process 模板在案]
+items:
+  - { id: 1, check: 触发 breakglass, evidence: 触发审计记录,
+      judge: 破窗作为平台 Action 类被受理, signer: 红队执行者 }
+  - { id: 2, check: 限时生效 + 自动过期, evidence: 生效/过期时间戳,
+      judge: 生效窗口有限且到期自动失效, signer: 红队执行者 }
+  - { id: 3, check: 双重记录, evidence: 决策流与审计流各一条记录,
+      judge: 两条流均有不可变记录（KS-2.1 分离）, signer: 红队执行者 }
+  - { id: 4, check: 事后评审 Process 被强制创建, evidence: Process 实例引用,
+      judge: 评审 Process 存在且被 LinkType 挂接破窗事件（P-9）, signer: 红队执行者 }
+postconditions: [演练记录入 RUNBOOK 留档区, 缺陷 → GOV-3 通道]
+retention: docs/RUNBOOK.md#mandatory-records
+signers: [steward, 平台 owner]   # 双签

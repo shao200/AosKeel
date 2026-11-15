@@ -1,0 +1,23 @@
+[project]
+name = "aos-keel"
+version = "0.3.0"
+description = "AOS 模板生成系统 —— 基于本体论的 Agent 系统企业级模板（对应规范 v2.0.0）"
+requires-python = ">=3.11"
+dependencies = ["pyyaml>=6.0"]
+
+[project.scripts]
+aos = "src.cli.main:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+# 显式列出包：src 依赖 sys.path 注入运行（P-5），不使用 __init__.py 常规布局，
+# 构建wheel时按命名空间包打包，使 `aos` 控制台脚本在 pip install 后可用。
+[tool.setuptools]
+packages = ["src", "src.cli", "src.kernel", "src.interpreter", "src.generated", "src.agents"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"

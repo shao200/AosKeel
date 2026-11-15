@@ -1,0 +1,8 @@
+link_type: same_as
+pattern: structural                   # 结构性链接（P-4：零语义；注册期三项校验 VER-21）
+checks:
+  attributes_empty: true
+  traversal_transparent: true
+  no_action_binding: true
+scope: cross_context_only
+grants_permissions: false             # INV-2：不授予任何权限、不承载任何 Action
