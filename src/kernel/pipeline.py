@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """src/kernel/pipeline.py —— 内核提交管线（KS-7.2 运行时 / VER-2 / VER-3）。
 submit：能力核查 → 结构（Check AST）→ 条件（受限解释器，快照一次捕获 R2）→
-追加（VersionConflict → 完整重求值整条管线，重试有界防爆炸）。
+追加（VersionConflict → 重新执行上述整条评估管线再追加，重试有界防爆炸）。
+"完整重求值"是 KS-1.4 / VER-3 的硬要求：冲突后不得只换 expected_version
+重试追加，结构与条件必须在新的版本视图上重新评估（每轮各留 KS-3.3 审计）。
 条件失败不追加（VER-2 顺序判据）；结构失败先于条件失败（评估顺序即管线）。
 record_decision：决策三引用（投影标识, transaction_time, session_ref）→
 会话半边可解析（KS-2.5 / INV-4）→ RecordDecision。
@@ -29,6 +31,22 @@ class Kernel:
         act = self.compiled.get(action_type)
         if act is None:
             raise UnregisteredAction(f"{action_type} 未注册 —— 不注册即不可执行（INV-1 / P-1）")
+        stream = act.stream                            # 3 追加；版本冲突 → 完整重求值
+        payload = dict(params)
+        payload.setdefault("valid_time", _now())
+        for _ in range(MAX_REEVAL):
+            self._evaluate(act, params, principal)     # 1+2 每轮重跑（KS-1.4 / VER-3）
+            try:
+                return self.store.commit(action_type, stream,
+                                         len(self.store.streams.get(stream, [])),
+                                         f"{action_type}@1", payload, principal)
+            except VersionConflict:
+                continue                               # 下轮以新版本视图重新求值
+        raise BudgetExceeded(f"重求值超过 {MAX_REEVAL} 次 —— 竞争过热，fail-closed（R8）")
+    def _evaluate(self, act, params: dict, principal: str):
+        """一次完整评估：结构 → 条件。版本冲突时由 submit 重新调用本方法，
+        而非仅以新 expected_version 重试追加（KS-1.4 / VER-3）。每轮都留
+        KS-3.3 评估审计；条件快照来自调用方 params（模板层不物化投影）。"""
         try:
             run_structural(act.structural, params)     # 1 结构（KS-7.1 第一段）
         except ValueError as e:
@@ -47,17 +65,6 @@ class Kernel:
             if not ok:
                 raise ConditionalRejected(
                     f"条件校验未通过（KS-7.1 第二段）：{act.conditional}；不追加（VER-2）")
-        stream = act.stream                            # 3 追加；版本冲突 → 完整重求值
-        payload = dict(params)
-        payload.setdefault("valid_time", _now())
-        for _ in range(MAX_REEVAL):
-            try:
-                return self.store.commit(action_type, stream,
-                                         len(self.store.streams.get(stream, [])),
-                                         f"{action_type}@1", payload, principal)
-            except VersionConflict:
-                continue                               # KS-1.4：重求值而非仅重试
-        raise BudgetExceeded(f"重求值超过 {MAX_REEVAL} 次 —— 竞争过热，fail-closed（R8）")
     def record_decision(self, projection_ref: str, transaction_time: str,
                         session_ref: str, principal: str, payload: dict | None = None):
         """决策记录：三引用齐备 + 会话半边可解析（KS-2.5 / P-16 / INV-4）。"""

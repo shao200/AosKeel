@@ -81,42 +81,51 @@ class EventStore:
         if action_id not in self._actions:
             self._reject(f"未知能力 {action_id}",
                          UnknownAction(f"{action_id} 不在能力清单 write_actions 段（INV-13）"))
+        def reject(reason: str, exc: StoreRejection):
+            """commit 层的统一拒绝口：每次拒绝恰好一条审计（INV-1 / KS-1.3）。"""
+            self._reject(f"commit/{action_id}: {reason}", exc)
         try:
             if event_type.startswith("InvariantViolation@") and action_id != "RaiseInvariantViolation":
-                raise StreamRuleViolation(                     # INV-10：违规对象化唯一写者
-                    "违规对象仅可经 RaiseInvariantViolation 写入（P-7 / INV-10 / VER-23）")
+                reject("违规对象写者不合法", StreamRuleViolation(           # INV-10
+                    "违规对象仅可经 RaiseInvariantViolation 写入（P-7 / INV-10 / VER-23）"))
             if event_type.startswith("MergeDeclared@") and action_id != "DeclareIdentityMerge":
-                raise StreamRuleViolation(                     # INV-13：归并声明唯一写者
-                    "归并声明仅可经 DeclareIdentityMerge 写入（P-8 / INV-13 / VER-24）")
+                reject("归并声明写者不合法", StreamRuleViolation(           # INV-13
+                    "归并声明仅可经 DeclareIdentityMerge 写入（P-8 / INV-13 / VER-24）"))
             if action_id == "RecordDecision":
                 if stream_id != DECISION_STREAM:
-                    raise StreamRuleViolation("决策事件 MUST 归属决策流（KS-2.6 / VER-33）")
+                    reject("决策流归属不符", StreamRuleViolation(
+                        "决策事件 MUST 归属决策流（KS-2.6 / VER-33）"))
                 missing = {"projection_ref", "session_ref"} - set(payload)   # KS-2.5
                 if missing:
-                    raise StoreRejection(f"DECISION-REFS-MISSING: 缺 {sorted(missing)}"
-                                         f"（KS-2.5 / VER-7）")
+                    reject("决策引用缺失", StoreRejection(
+                        f"DECISION-REFS-MISSING: 缺 {sorted(missing)}（KS-2.5 / VER-7）"))
             elif action_id == "RaiseInvariantViolation":
                 if stream_id != VIOLATION_STREAM:
-                    raise StreamRuleViolation("违规对象 MUST 写入 domain:invariant 流（P-7 / VER-23）")
+                    reject("违规流归属不符", StreamRuleViolation(
+                        "违规对象 MUST 写入 domain:invariant 流（P-7 / VER-23）"))
                 missing = {"invariant_ref", "status"} - set(payload)
                 if missing:
-                    raise StoreRejection(f"VIOLATION-OBJECT-INCOMPLETE: 缺 {sorted(missing)}"
-                                         f"（P-7 生命周期 / INV-10）")
+                    reject("违规对象不完整", StoreRejection(
+                        f"VIOLATION-OBJECT-INCOMPLETE: 缺 {sorted(missing)}"
+                        f"（P-7 生命周期 / INV-10）"))
             elif action_id == "DeclareIdentityMerge":
                 if stream_id != "domain:identity":
-                    raise StreamRuleViolation("归并声明 MUST 写入 domain:identity 流（P-8）")
+                    reject("归并流归属不符", StreamRuleViolation(
+                        "归并声明 MUST 写入 domain:identity 流（P-8）"))
                 missing = {"canonical", "absorbed"} - set(payload)
                 if missing:
-                    raise StoreRejection(f"MERGE-REFS-MISSING: 缺 {sorted(missing)}（P-8 双向记录）")
+                    reject("归并引用缺失", StoreRejection(
+                        f"MERGE-REFS-MISSING: 缺 {sorted(missing)}（P-8 双向记录）"))
                 if payload.get("canonical") == payload.get("absorbed"):
-                    raise StoreRejection("SELF-MERGE-FORBIDDEN: canonical == absorbed（P-8）")
+                    reject("自归并", StoreRejection(
+                        "SELF-MERGE-FORBIDDEN: canonical == absorbed（P-8）"))
             elif stream_id == DECISION_STREAM or stream_id.startswith("session"):
-                raise StreamRuleViolation(
-                    f"{action_id} 不得写决策流/会话流（KS-2.1 / INV-5）")
+                reject("越权写入保留流", StreamRuleViolation(
+                    f"{action_id} 不得写决策流/会话流（KS-2.1 / INV-5）"))
             return self._append(stream_id, expected_version, event_type, payload,
                                 action_id, principal)
-        except StoreRejection as e:
-            self._reject(f"commit/{action_id}: {e}", e)
+        except StoreRejection:
+            raise          # _append / reject 已记审计：不重复记第二笔（审计双记缺陷）
     # ---------- 直写陷阱（必拒；VER-28 item1 模板层执行点） ----------
     def write_raw(self, **kwargs) -> Event:
         self.audit.append({"kind": "structurally-rejected", "attempt": "write_raw",

@@ -124,8 +124,8 @@ def validate_draft(decls: dict) -> list[str]:
 def write_draft(decls: dict, name: str) -> Path:
     out = drafts_dir(); out.mkdir(parents=True, exist_ok=True)
     path = out / f"draft-{name}.yaml"
-    path.write_text(yaml.safe_dump(decls, allow_unicode=True, sort_keys=False),
-                    encoding="utf-8")
+    path.write_bytes(yaml.safe_dump(decls, allow_unicode=True, sort_keys=False)
+                     .encode("utf-8"))                      # 字节精确（* -text）
     return path
 def draft_from_decls(decls: dict, name: str) -> dict:
     failures = validate_draft(decls)
@@ -167,8 +167,8 @@ def promote(draft_path: Path, proposal_ref: str) -> dict:
                    "evaluation_budget": o["evaluation_budget"]}
         else:
             doc = _action_decl(o, proposal_ref)                      # provenance = 提案
-        t.write_text(yaml.safe_dump(doc, allow_unicode=True, sort_keys=False),
-                     encoding="utf-8")
+        t.write_bytes(yaml.safe_dump(doc, allow_unicode=True, sort_keys=False)
+                      .encode("utf-8"))                    # 字节精确（* -text）
         promoted.append(t.name)
     try:
         generated = registration.apply_generated()                   # P-5 单写者

@@ -1,91 +1,119 @@
-# AosKeel —— 基于本体论的 Agent 系统开发模板（AOS Template v0.3）
+# AosKeel — Ontology-Based Agent System Development Template (AOS Template v0.3)
 
-**定位**：规范驱动开发是方法论，AI 软件工厂是组织与流程载体，本体论架构是让前两者在语义层面真正"可执行"的基础设施——本项目是这层基础设施的一个完整、可校验的具体实现（条款级对照与全链路缺口地图见 [POSITIONING.md](POSITIONING.md)）。对标 `npm create vue` / VS 项目模板：从 0 到 1 实例化一个基于本体论的、治理内建的企业级 Agent 系统。
+> **Language / 语言**: **English (default)** · [简体中文](README.zh-CN.md)
+>
+> Both language versions carry identical content; English is the default entry point.
+> The canonical specification ([aos-spec.md](aos-spec.md)) is a frozen Chinese text and is not translated here.
+> The remaining `docs/` files (POSITIONING / RUNBOOK / SPEC-FINGERPRINT) also remain in Chinese.
 
-正典规范：《AOS：基于本体论的 Agent 系统开发规范》v2.0.0（[docs/aos-spec.md](docs/aos-spec.md)，登记条目见 [docs/ARTIFACT-REGISTRY.md](docs/ARTIFACT-REGISTRY.md)）。
+**Positioning** — Specification-driven development is the methodology; the AI software factory is the organizational and process vehicle; the ontological architecture is the infrastructure that makes both genuinely *executable* at the semantic level. This project is a complete, verifiable implementation of that infrastructure (clause-by-clause mapping and the full-chain gap map are in [POSITIONING.md](POSITIONING.md)). It is comparable to `npm create vue` or a Visual Studio project template: instantiate, from 0 to 1, an ontology-based, governance-built-in enterprise Agent system.
 
-## 这个模板给什么、不给什么（先读这个）
+Canonical specification: *AOS: Ontology-Based Agent System Development Specification* v2.0.0 ([docs/aos-spec.md](aos-spec.md); registry entries in [docs/ARTIFACT-REGISTRY.md](ARTIFACT-REGISTRY.md)).
 
-**给**：VER 全部 auto 项的 CI 兑现 · 注册期管线（五步，单写者）· BOOT 序列脚手架 · 〔强〕项检查表（6 份）· 三关核对（结构/密码学/注册）· 双射断言。
+## What this template provides — and what it does not (read this first)
 
-**不给**：合规证明。〔强〕项的"已通过"只能来自运行系统上的人工执行（检查表留档：evidence + judge + signer）；基座不可修改的证明 = VER-28 红队演练；解释器纯性 = 解释器实现的正确性；正当性（steward、创制任命）是世界事件——本模板只记录，不制造（GOV-1）。
+**Provides**: CI fulfilment of all `auto` VER clauses · the registration-time pipeline (five steps, single writer) · BOOT-sequence scaffolding · six `mandatory` checklists · the three-gate check (structural / cryptographic / registration) · bijection assertions.
 
-## 快速开始（0 → 1）
+**Does not provide**: proof of compliance. A `mandatory` clause can only be marked "passed" through human execution on the running system (checklist records: evidence + judge + signer); proof that the base is immutable = the VER-28 red-team exercise; interpreter purity = correctness of the interpreter implementation; legitimacy (steward, founding appointment) is a world event — this template records it, never manufactures it (GOV-1).
+
+## Quick start (0 → 1)
 
 ```powershell
-pip install -e .                              # 或直接 python -m src.cli.main
-aos init my-org-system                        # 实例化（拒绝覆盖已存在目标）
+pip install -e .                              # or run python -m src.cli.main directly
+aos init my-org-system                        # instantiate (refuses to overwrite an existing target)
 cd my-org-system
-aos bootstrap --stage 0                       # BOOT-0：工件哈希登记 + 三关首跑
-aos verify                                    # 三关：结构(指纹) → 密码学(哈希) → 注册(declared==registered)
-python -m pytest -q tests                     # 一致性 + forbidden 双射 + 解释器负向集
-aos bootstrap --stage 1 --appointment-ref <外部凭据>   # BOOT-1 创制任命（强制真实凭据）
-aos test                                      # 按 config/verification.yaml 分组执行
-# —— 全链路生命周期（需求 → 制品）——
-aos draft requirements.txt --name r1          # 需求 DSL → 草案（编译把关，未全绿不落盘）
-aos draft promote spec/drafts/draft-r1.yaml --proposal-ref SPEC-2026-021   # 晋升正典（治理提案强制）
-aos generate                                  # 声明 → 代码骨架（手改检测，provenance 头）
-aos release                                   # 发布闸门（fail-closed）→ dist/RELEASE-MANIFEST.json
+aos bootstrap --stage 0                       # BOOT-0: artifact hash registration + first three-gate run
+aos verify                                    # three gates: structural (fingerprint) -> cryptographic (hash) -> registration (declared==registered)
+python -m pytest -q tests                     # consistency + forbidden bijection + interpreter negative set
+aos bootstrap --stage 1 --appointment-ref <external-credential>   # BOOT-1 founding appointment (real credential mandatory)
+aos test                                      # grouped execution per config/verification.yaml
+# -- full lifecycle: requirements -> artifact --
+aos draft requirements.txt --name r1          # requirements DSL -> draft (compiler-gated; nothing written unless all green)
+aos draft promote spec/drafts/draft-r1.yaml --proposal-ref SPEC-2026-021   # promote to canonical (governance proposal mandatory)
+aos generate                                  # declarations -> code skeleton (hand-edit detection, provenance header)
+aos release                                   # release gate (fail-closed) -> dist/RELEASE-MANIFEST.json
 ```
 
-之后的 BOOT-2/3（治理工作流、Identity Context 验收）与业务建模变更（走 GOV-3 版本通道，见 docs/RUNBOOK.md）属实例侧治理工作——模板提供声明位、编译器、闸门与验收清单，不模拟治理（诚实边界；Makefile 不合成创制任命凭据）。CI 门禁见 .github/workflows/ci.yml（pytest → 三关 → 发布闸门）。
+Subsequent BOOT-2/3 (governance workflow, Identity Context acceptance) and business-model changes (via the GOV-3 version channel, see [docs/RUNBOOK.md](RUNBOOK.md)) belong to instance-side governance work — the template supplies declaration slots, the compiler, the gates and the acceptance checklists; it does not simulate governance (honest boundary; the Makefile never synthesizes founding-appointment credentials). CI gates are in `.github/workflows/ci.yml` (pytest → three gates → release gate).
 
-## 模板树（v0.1 → v0.3）
+## Template tree (v0.1 → v0.3)
 
 ```
-docs/aos-spec.md               正典规范 v2.0.0（冻结）
-docs/SPEC-FINGERPRINT.md       条款指纹清单（正典之二，GOV-2.4）
-docs/ARTIFACT-REGISTRY.md      工件登记（append-only，GOV-2.3；实例自行重新登记）
-docs/README.md                 本文件（首屏诚实边界 + 快速开始 + 模板树）
-docs/POSITIONING.md            项目定位：规范驱动开发 / AI 软件工厂 / 本体论三者的对照与缺口地图
-docs/RUNBOOK.md                BOOT-2/3 工作流脚手架（GOV-3 版本通道 / GOV-2.5 二分 / 〔强〕项索引）
-docs/TEMPLATE-LOCK.md          init 时写入版本绑定
-config/capabilities.yaml       能力清单三段式（固定段/生成段/provenance）
-config/verification.yaml       VER-1..33 实文布线（承重件）
-spec/                          八类声明样例（objects/links/actions/contexts/aggregates/mappings/processes/invariants）
-src/cli/main.py                六命令入口（init/verify/register/bootstrap/test/spec fingerprint）
-src/kernel/registration.py     注册期管线（KS-7.2 五步，P-5 单写者；装载 spec/ 八类声明）
-src/kernel/sc_compiler.py      SC 两段式编译器（KS-7.1 / VER-18）
-src/kernel/pipeline.py         内核提交管线（结构→条件→追加；冲突完整重求值 VER-2/3）
-src/kernel/store.py            本体事件日志（append-only；INV-1 写路径闭环）
-src/kernel/session.py          会话事件流（KS-2.2 物理分离存储 / VER-4）
-src/kernel/genesis.py          创世窗口状态机（KS-8；熄灭不可逆）
-src/kernel/projection.py       投影与决策输入（P-16；可重建 / 会话禁入）
-src/kernel/detector.py         探测器（T25；违规对象经 RaiseInvariantViolation，P-7/INV-10）
-src/kernel/upcasting.py        读时升级（KS-5.2-5.4；无路径即读失败，golden 锚定）
-src/kernel/merge.py            Identity 归并史（P-8；双路径重放比对，VER-24）
-src/kernel/saga.py             跨聚合编排（P-9；补偿本身是 Action，幂等）
-src/kernel/dryrun.py           演练模拟器（P-12；可重复、零副作用，VER-25）
-src/agents/runtime.py          AGENT 能力面（P-10；清单严格子集，无特权通道）
-src/kernel/governance.py       治理层（GOV-4 生效重跑；失败 = 阻断 + governance 类违规对象）
-src/kernel/errors.py           类型化异常（异常类型即条款的运行时形态）
-src/interpreter/boolean_profile.py   布尔档受限解释器（R10 AST 白名单 / VER-8）
-src/interpreter/mapping_profile.py   映射档受限解释器（R11 无谓词分派 / VER-9）
-src/interpreter/audit.py       解释器审计（KS-3.3 版本身份 + 快照哈希）
-tools/hash_spec.py             分离式哈希（密码学层唯一执行点，GOV-2.3）
-tools/fingerprint.py           结构层指纹核对（GOV-2.5 分歧二分）
-tools/verify_capability_list.py  VER-27 支撑（清单完备性）
-tools/codegen.py                 声明 → 代码骨架生成器（aos generate；手改检测，provenance 头）
-tools/release_gate.py            发布闸门（aos release；fail-closed，VER-27 前置）
-tools/ontology_draft.py          需求 DSL → 本体草案（aos draft；编译把关，晋升须治理提案）
-docs/samples/requirements-sample.txt  需求 DSL 样例（draft 入口）
-src/generated/                   生成物：actions.py（INV-1 封装 submit）+ reducers.py（纯函数，漂移可见）
-tests/negative/test_forbidden.py            forbidden × 负向测试（每项恰一用例）
-tests/negative/test_forbidden_coverage.py   双射断言（P-10）
-tests/conformance/test_declared_registered.py  declared == registered 持续核对（INV-13）
-bootstrap/checklists/          _schema + VER-20/24/26/27/28/29（P-14 证据留档）
+README.md                      Repository entry (English default; points to both full documents)
+docs/README.md                 This file (default English: honest boundary + quick start + template tree)
+docs/README.zh-CN.md           Simplified Chinese version of this file (identical content)
+docs/aos-spec.md               Canonical specification v2.0.0 (frozen)
+docs/SPEC-FINGERPRINT.md       Clause fingerprint manifest (second canonical artifact, GOV-2.4)
+docs/ARTIFACT-REGISTRY.md      Artifact registry (append-only, GOV-2.3; instances re-register)
+docs/POSITIONING.md            Positioning: SDD / AI software factory / ontology — mapping and gap map
+docs/RUNBOOK.md                BOOT-2/3 workflow scaffolding (GOV-3 version channel / GOV-2.5 dichotomy / mandatory index)
+docs/TEMPLATE-LOCK.md          Written by init: version binding
+config/capabilities.yaml       Capability list, three sections (fixed / generated / provenance)
+config/verification.yaml       VER-1..33 clause-to-test wiring (load-bearing)
+spec/                          Eight declaration kinds (objects/links/actions/contexts/aggregates/mappings/processes/invariants)
+src/cli/main.py                Table-driven CLI entry (11 commands, see below; startup self-check refuses a wrongly installed wheel)
+src/kernel/registration.py     Registration pipeline (KS-7.2 five steps, P-5 single writer; loads the eight declaration kinds)
+src/kernel/sc_compiler.py      Two-phase SC compiler (KS-7.1 / VER-18)
+src/kernel/pipeline.py         Kernel submission pipeline (structural -> conditional -> append; full re-evaluation on conflict, VER-2/3)
+src/kernel/store.py            Ontological event log (append-only; INV-1 closed write path)
+src/kernel/session.py          Session event stream (KS-2.2 physically separated store / VER-4)
+src/kernel/genesis.py          Genesis window state machine (KS-8; extinguishing is irreversible)
+src/kernel/projection.py       Projections and decision inputs (P-16; rebuildable / sessions excluded)
+src/kernel/detector.py         Detector (T25; violations via RaiseInvariantViolation, P-7/INV-10)
+src/kernel/upcasting.py        Read-time upcasting (KS-5.2-5.4; no path = read failure, golden-anchored)
+src/kernel/merge.py            Identity merge history (P-8; dual-path replay comparison, VER-24)
+src/kernel/saga.py             Cross-aggregate orchestration (P-9; compensation is itself an Action, idempotent)
+src/kernel/dryrun.py           Dry-run simulator (P-12; repeatable, zero side effects, VER-25)
+src/agents/runtime.py          AGENT capability surface (P-10; strict subset of the list, no privileged channel)
+src/kernel/governance.py       Governance layer (GOV-4 re-run on effect; failure = block + governance violation object)
+src/kernel/errors.py           Typed exceptions (exception types are the runtime form of clauses)
+src/interpreter/boolean_profile.py   Boolean-profile restricted interpreter (R10 AST whitelist / VER-8)
+src/interpreter/mapping_profile.py   Mapping-profile restricted interpreter (R11 no predicate dispatch / VER-9)
+src/interpreter/audit.py       Interpreter audit (KS-3.3 version identity + snapshot hash)
+tools/hash_spec.py             Separated hashing (sole cryptographic-layer executor, GOV-2.3)
+tools/fingerprint.py           Structural fingerprint check (GOV-2.5 divergence dichotomy)
+tools/verify_capability_list.py  VER-27 support (capability list completeness)
+tools/wiring.py                Sole reader of verification.yaml (pyyaml; missing path blocks)
+tools/codegen.py               Declarations -> code skeleton generator (aos generate; hand-edit detection, provenance header)
+tools/release_gate.py          Release gate (aos release; fail-closed, VER-27 prerequisite)
+tools/ontology_draft.py        Requirements DSL -> ontology draft (aos draft; compiler-gated, promotion requires a governance proposal)
+docs/samples/requirements-sample.txt   Requirements DSL sample (draft entry point)
+src/generated/                 Generated artifacts: actions.py (INV-1 wraps submit) + reducers.py (pure functions, drift visible)
+tests/negative/test_forbidden.py            forbidden x negative tests (exactly one case per item)
+tests/negative/test_forbidden_coverage.py   Bijection assertion (P-10)
+tests/conformance/test_declared_registered.py  Continuous declared == registered check (INV-13)
+tests/conformance/test_integrity.py        Integrity guards for the v0.3 hardening (wired via integrity_paths, not new VER clauses)
+bootstrap/checklists/          _schema + VER-20/24/26/27/28/29 (P-14 evidence records)
 ```
 
-## CLI 命令 ×6 与护栏 ×2
+## CLI commands ×11 and guardrails ×2
 
-| 命令 | 语义 | 失败行为 |
+| Command | Semantics | Failure behavior |
 |---|---|---|
-| `init <dir>` | 实例化 + TEMPLATE-LOCK 版本绑定 | 目标已存在 → 拒绝 |
-| `verify` | 三关串联 | 任一失败 → exit 1 |
-| `register <version>` | GOV-2.3 登记 | 同哈希幂等；漂移 → 拒绝（GOV-3） |
-| `bootstrap --stage N` | BOOT-0..3；`--dry-run` 只跑检查表 | 阶段乱序 → 拒绝 |
-| `test [--suite S]` | 按 verification.yaml 分组 | 套件失败 → exit 1 |
-| `spec fingerprint` | 独立结构层核对 | 报缺 → exit 1 |
+| `init <dir>` | Instantiate + TEMPLATE-LOCK version binding | Target exists → refuse |
+| `verify` | Three gates chained | Any failure → exit 1 |
+| `register <version>` | GOV-2.3 registration | Same hash is idempotent; drift → refuse (GOV-3) |
+| `bootstrap --stage N` | BOOT-0..3; `--dry-run` runs checklists only | Out-of-order stage → refuse; 2/3 are instance-side |
+| `test [--suite S]` | Grouped by verification.yaml | Suite failure / missing wiring path → exit 1 |
+| `spec fingerprint` | Standalone structural-layer check | Reports missing clauses → exit 1 |
+| `spec version <v>` | GOV-3 version channel (append-only) | Missing `--proposal-ref` → refuse |
+| `generate [--force]` | Declarations → code skeleton (byte-level zero drift) | Hand-edit drift → refuse silent overwrite |
+| `release` | Release gate (fail-closed) | Any failed step → no artifact |
+| `draft <file>` | Requirements DSL → draft (compiler-gated) | Not all green → nothing written |
+| `draft promote <f>` | Promote draft to canonical (GOV-1 proposal mandatory) | Target exists → refuse; use GOV-3 |
 
-护栏一：`bootstrap --stage 1` 强制 `--appointment-ref`——拒绝合成创制任命（GOV-1）。
-护栏二：实例携带规范副本 + 登记条目 ID，副本哈希 = 登记哈希，改动即 FROZEN-TEXT-MUTATED（INV-12）。
+Guardrail 1: `bootstrap --stage 1` requires `--appointment-ref` — refuses to synthesize a founding appointment (GOV-1).
+Guardrail 2: an instance carries a specification copy + registry entry ID; copy hash = registry hash, so any change yields FROZEN-TEXT-MUTATED (INV-12).
+
+## Runtime shape and engineering boundaries (read first to avoid misjudgement)
+
+| Boundary | Fact | Cost / instance-side duty |
+|---|---|---|
+| Delivery shape | The template ships as a **source tree**: `pip install -e .` or `python -m src.cli.main`. The wheel contains no `docs/spec/config`, and the startup self-check explicitly refuses it — **it is not an installable artifact** | Making the wheel installable requires reworking ROOT resolution and data-file packaging (P2, not done in this version) |
+| Event store | `EventStore` is an **in-memory** dict; state is lost on process exit, no persistence | Production instances must connect a database and prove append-only semantics and audit durability themselves |
+| Structural fingerprint | Checks "clause count + first anchor + last anchor" and **does not verify intermediate clause content**; the strong guarantee comes from the full-text hash of the cryptographic layer (GOV-2.3) | Changing a middle clause while keeping both anchors → structural layer passes, hash layer catches it; this is the trade-off defined by the Appendix F manifest |
+| BOOT-2/3 | The template supplies only scaffolding and checklists; `bootstrap --stage 2/3` returns a refusal | Governance workflow and Identity Context acceptance are instance-side world events (GOV-1) |
+| `mandatory` clauses | VER-20/24/26/27/28/29 have only checklist/support entries and never enter the auto suites | Human execution + evidence / judge / signer records; the template never pretends they passed |
+| Byte exactness | All write points use UTF-8 + LF byte writes; `.gitattributes * -text` forbids newline conversion | If generated artifacts / registry / manifest are switched to CRLF by external tooling, `generate` / `release` refuse on byte-level drift |
+
+The load-bearing wiring file `config/verification.yaml` is parsed through a single point, `tools/wiring.py`, using pyyaml: if a declared `path` does not exist, `aos test` and `aos release` **block** (no silent degradation). The `integrity_paths` section registers only execution paths for regression guard tests and **does not create new VER clauses** (the v2.0.0 frozen clause set remains VER-1..33; neither the fingerprint manifest nor the registry hash was changed).

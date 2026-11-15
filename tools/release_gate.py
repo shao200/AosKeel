@@ -19,14 +19,14 @@ import sys
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "src"))
-from tools import fingerprint, codegen
+from tools import fingerprint, codegen, wiring
 from tools.hash_spec import canonical_digest, verify as hs_verify, _entries
 from kernel import registration
 def _default_tests() -> str:
-    text = (ROOT / "config/verification.yaml").read_text(encoding="utf-8")
-    paths = [p for _, p in re.findall(
-        r"-\s\{\s*id:\s*(VER-\d+),.*?path:\s*([^\s}]+)", text) if (ROOT / p).exists()]
-    r = subprocess.run([sys.executable, "-m", "pytest", "-q"] + paths,
+    # 承重件统一解析（tools/wiring.py）：正则抠 path 会在合法 YAML 格式微调时
+    # 静默丢项，使"全绿"变成少跑一条 VER 的假绿 —— 缺路径一律阻断。
+    paths = [p for _, p in wiring.wired_paths()]
+    r = subprocess.run([sys.executable, "-m", "pytest", "-q"] + list(dict.fromkeys(paths)),
                        cwd=ROOT, capture_output=True, text=True)
     if r.returncode != 0:
         raise RuntimeError(f"pytest exit={r.returncode}（gate 套件失败即不出制品）")
@@ -52,7 +52,7 @@ def run_gate(out_dir: Path | None = None, run_tests=None) -> dict:
                else (_ for _ in ()).throw(RuntimeError("哈希漂移（GOV-2.5）")))
     ok &= step("registered", lambda: f"declared==registered · {len(registration.run_pipeline()['write_actions'])} 能力")
     ok &= step("tests", run_tests or _default_tests)
-    ok &= step("codegen", lambda: f"骨架零漂移 · {codegen.generate() is not None}")
+    ok &= step("codegen", lambda: f"骨架字节级零漂移 · {len(codegen.generate()['files'])} 文件")
     caps_text = (ROOT / "config/capabilities.yaml").read_text(encoding="utf-8")
     m = re.search(r"spec_ref:\s*(AOS-ART-\d+)", caps_text)
     manifest = {
@@ -65,8 +65,8 @@ def run_gate(out_dir: Path | None = None, run_tests=None) -> dict:
     if not ok:
         return {"ok": False, "manifest": None, "steps": steps}
     out_dir.mkdir(exist_ok=True)
-    (out_dir / "RELEASE-MANIFEST.json").write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    (out_dir / "RELEASE-MANIFEST.json").write_bytes(
+        json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8"))
     return {"ok": True, "manifest": out_dir / "RELEASE-MANIFEST.json", "steps": steps}
 def main() -> int:
     report = run_gate()

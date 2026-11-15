@@ -34,10 +34,16 @@ def _next_id() -> str:
     n = max([int(l.split("|")[1].strip().rsplit("-", 1)[-1]) for l in _entries()], default=0)
     return f"AOS-ART-{n+1:03d}"
 def _set_spec_ref(art_id: str):
-    text = CAPS.read_text().splitlines()
-    out = [f"spec_ref: {art_id}   # 登记条目 ID（GOV-2.2）；哈希见登记表"
-           if l.strip().startswith("spec_ref:") else l for l in text]
-    CAPS.write_text("\n".join(out) + "\n")
+    """登记条目 ID 回填到两份配置：capabilities.yaml（GOV-2.2 溯源）与
+    verification.yaml（布线件同源，GOV-3 版本更替时不再留占位符漂移）。
+    文件不存在则跳过（实例侧可裁剪布线）；字节写入遵守 `* -text`。"""
+    for path in (CAPS, ROOT / "config/verification.yaml"):
+        if not path.exists():
+            continue
+        lines = path.read_text(encoding="utf-8").splitlines()
+        out = [f"spec_ref: {art_id}   # 登记条目 ID（GOV-2.2）；哈希见登记表"
+               if l.strip().startswith("spec_ref:") else l for l in lines]
+        path.write_bytes(("\n".join(out) + "\n").encode("utf-8"))
 def register(spec_version: str) -> int:
     digest = canonical_digest()
     rows = _entries()
@@ -48,10 +54,12 @@ def register(spec_version: str) -> int:
                  "修改；走 GOV-3 产生新版本后重新登记。")
     art_id, now = _next_id(), datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
     if not REGISTRY.exists():
-        REGISTRY.write_text("# AOS 工件登记（append-only；GOV-2.3）\n\n"
-                            "| 条目 ID | 版本 | 哈希 | 登记时间 | 状态 |\n|---|---|---|---|---|\n")
-    with REGISTRY.open("a") as f:
-        f.write(f"| {art_id} | {spec_version} | sha256:{digest} | {now} | registered |\n")
+        REGISTRY.write_bytes(("# AOS 工件登记（append-only；GOV-2.3）\n\n"
+                              "| 条目 ID | 版本 | 哈希 | 登记时间 | 状态 |\n"
+                              "|---|---|---|---|---|\n").encode("utf-8"))
+    with REGISTRY.open("ab") as f:                 # 字节追加：文本模式会写入 CRLF
+        f.write(f"| {art_id} | {spec_version} | sha256:{digest} | {now} | registered |\n"
+                .encode("utf-8"))
     _set_spec_ref(art_id)
     print(f"REGISTERED: {art_id}  sha256:{digest[:16]}…"); return 0
 def supersede(spec_version: str, proposal_ref: str) -> int:
@@ -68,12 +76,15 @@ def supersede(spec_version: str, proposal_ref: str) -> int:
     art_id = _next_id()
     now = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
     if not REGISTRY.exists():
-        REGISTRY.write_text("# AOS 工件登记（append-only；GOV-2.3）\n\n"
-                            "| 条目 ID | 版本 | 哈希 | 登记时间 | 状态 |\n|---|---|---|---|---|\n")
-    with REGISTRY.open("a") as f:
-        f.write(f"| {art_id} | {spec_version} | sha256:{digest} | {now} | registered |\n")
+        REGISTRY.write_bytes(("# AOS 工件登记（append-only；GOV-2.3）\n\n"
+                              "| 条目 ID | 版本 | 哈希 | 登记时间 | 状态 |\n"
+                              "|---|---|---|---|---|\n").encode("utf-8"))
+    with REGISTRY.open("ab") as f:                 # 字节追加：文本模式会写入 CRLF
+        f.write(f"| {art_id} | {spec_version} | sha256:{digest} | {now} | registered |\n"
+                .encode("utf-8"))
         f.write(f"# superseded-via: {proposal_ref} → {art_id}（GOV-3 版本通道；"
-                f"前一登记条目由本条目取代，旧行不改写——append-only P-15）\n")
+                f"前一登记条目由本条目取代，旧行不改写——append-only P-15）\n"
+                .encode("utf-8"))
     _set_spec_ref(art_id)
     print(f"SUPERSEDED: {art_id}  sha256:{digest[:16]}…  proposal={proposal_ref}")
     return 0

@@ -7,7 +7,7 @@
 - reducers.py  每个 object 一个投影 reducer：纯函数（R11 / KS-3.4），
                只物化声明内属性；声明外字段进 _undeclared —— 语义漂移可见（KS-4.3）；
 - 溯源：文件头携带 spec_ref 与每条声明 provenance（GOV-2.2 的代码形态）；
-- 手改检测：已存在且与再生成结果不一致 → 拒绝（禁止静默覆盖人工代码）；
+- 手改检测：已存在且与再生成结果字节不一致 → 拒绝（禁止静默覆盖人工代码）；
   --force 显式覆盖（正常路径：改声明 → 重新生成）。
 """
 from __future__ import annotations
@@ -92,18 +92,21 @@ def generate(force: bool = False) -> dict:
         "actions.py": _render_actions(actions),
         "reducers.py": _render_reducers(objects),
     }
+    # 字节级比对与写入（GOV-2.3 / .gitattributes `* -text`）：Windows 的
+    # write_text 把 \n 落成 \r\n，而 read_text 又把 \r\n 读回 \n —— 文本比较
+    # 会掩盖换行漂移，"骨架零漂移" 判据因此失效。签发制品必须字节精确。
     drift = []
     for rel, src in files.items():
         p = OUT_DIR / rel
-        if p.exists() and p.read_text(encoding="utf-8") != src:
+        if p.exists() and p.read_bytes() != src.encode("utf-8"):
             drift.append(rel)
     if drift and not force:
         raise CodegenDrift(
-            f"生成物与手改内容不一致: {drift} —— 禁止静默覆盖；"
+            f"生成物与手改内容不一致（字节级）: {drift} —— 禁止静默覆盖；"
             f"确认后执行 aos generate --force（正常路径：先改 spec/ 声明再生成）")
     OUT_DIR.mkdir(exist_ok=True)
     for rel, src in files.items():
-        (OUT_DIR / rel).write_text(src, encoding="utf-8")
+        (OUT_DIR / rel).write_bytes(src.encode("utf-8"))
     return {"files": sorted(files), "actions": [a["action_type"] for a in actions],
             "objects": [o["object_type"] for o in objects]}
 def main(force: bool = False) -> int:

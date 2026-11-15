@@ -12,10 +12,13 @@ aos = "src.cli.main:main"
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
-# 显式列出包：src 依赖 sys.path 注入运行（P-5），不使用 __init__.py 常规布局，
-# 构建wheel时按命名空间包打包，使 `aos` 控制台脚本在 pip install 后可用。
+# 显式列出包：src 依赖 sys.path 注入运行（P-5），不使用 __init__.py 常规布局。
+# tools 一并打包，使 wheel 内的 CLI 能 import 并给出明确的"须从源码树运行"拒绝，
+# 而不是裸 ImportError。注意：wheel 不含 docs/spec/config，不是可安装交付物；
+# 模板唯一受支持的运行形态是源码树 + pip install -e .（见 docs/README.md）。
 [tool.setuptools]
-packages = ["src", "src.cli", "src.kernel", "src.interpreter", "src.generated", "src.agents"]
+packages = ["src", "src.cli", "src.kernel", "src.interpreter", "src.generated",
+            "src.agents", "tools"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

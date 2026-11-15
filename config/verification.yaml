@@ -2,7 +2,7 @@
 # aos test 与 make test 均以本文件为唯一分组依据——布线文件是承重件，不是装饰。
 # 〔自〕= auto（CI 门禁，gate: true 套件）；〔强〕= mandatory（人工执行，检查表留档）
 version: 1
-spec_ref: AOS-ART-NNN
+spec_ref: AOS-ART-001   # 登记条目 ID（GOV-2.2）；register / spec version 同步回填
 suites:
   conformance: { gate: true }
   negative: { gate: true }
@@ -11,6 +11,10 @@ suites:
   invariants: { gate: false }
   replay: { gate: false }
   redteam: { gate: false }
+# 回归补充路径：不新增 VER 条款（v2.0.0 的 VER-1..33 是冻结条款集），
+# 只把修补后的守卫测试纳入同一条布线，使其真正进入发布闸门。
+integrity_paths:
+  - { id: INTEGRITY-1, path: tests/conformance/test_integrity.py }
 ver:
   - { id: VER-1,  clause: KS-1.2,      kind: auto, path: tests/conformance/test_event_schema.py }
   - { id: VER-2,  clause: KS-7.2,      kind: auto, path: tests/conformance/test_pipeline_order.py }

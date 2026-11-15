@@ -45,36 +45,21 @@ GENESIS_BUILTINS = {                                  # BOOT-0 基线（KS-8.3 /
 }
 def _norm(v) -> str:
     return str(v).lower() if isinstance(v, bool) else str(v)
-def _flow_dict(s: str) -> dict:
-    body = s.strip().strip("{}")
-    d = {}
-    for part in body.split(","):
-        k, _, v = part.partition(":")
-        d[k.strip()] = v.strip()
-    return d
-def _parse_subset(text: str) -> dict:
-    """受限 YAML 子集解析（capabilities.yaml 的全部形态；无第三方依赖）。"""
-    data, cur = {}, None
-    for raw in text.splitlines():
-        line = raw.rstrip()
-        if not line.strip() or line.strip().startswith("#"):
-            continue
-        indent, s = len(raw) - len(raw.lstrip()), line.strip()
-        if indent == 0 and s.endswith(":"):
-            cur = s[:-1]; data[cur] = []
-        elif indent == 0 and ":" in s:
-            k, _, v = s.partition(":")
-            data[k.strip()] = v.split(" #")[0].strip()
-            cur = None
-        elif s.startswith("- {") and cur is not None:
-            data[cur].append(_flow_dict(s[2:]))
-        elif s.startswith("- ") and cur is not None:
-            data[cur].append(s[2:].strip())
-    return data
 def load_caps() -> dict:
+    """能力清单的唯一读取点（承重件）。
+
+    用 pyyaml 解析（项目已声明依赖）。此前手写的"受限 YAML 子集"解析器按
+    逗号切分 flow mapping：值内含逗号或引号时会把一条声明拆成两个键，
+    静默改变 declared == registered 的对账输入 —— 承重件不能带这种隐式限制。
+    """
     if not CAPS.exists():
         raise RegistrationFailed(f"STRUCTURAL-FAIL: 缺少 {CAPS.name}")
-    return _parse_subset(CAPS.read_text(encoding="utf-8"))
+    if yaml is None:
+        raise RegistrationFailed("DEPENDENCY: 能力清单解析需要 pyyaml（pip install pyyaml）")
+    data = yaml.safe_load(CAPS.read_text(encoding="utf-8")) or {}
+    if not isinstance(data, dict):
+        raise RegistrationFailed("STRUCTURAL-FAIL: capabilities.yaml 顶层须为映射")
+    return data
 def _load_yaml(path: Path) -> dict:
     if yaml is None:
         raise RegistrationFailed("DEPENDENCY: spec/ 声明解析需要 pyyaml（pip install pyyaml）")
@@ -170,7 +155,7 @@ def apply_generated() -> dict:
         for e in entries:
             inner = ", ".join(f"{k}: {v}" for k, v in e.items())
             lines.append(f"  - {{ {inner} }}")
-    CAPS.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    CAPS.write_bytes(("\n".join(lines) + "\n").encode("utf-8"))   # 字节精确（* -text）
     return generated
 def run_pipeline() -> dict:
     """KS-7.2 五步管线；返回 generated 段。不一致即抛 RegistrationFailed。"""

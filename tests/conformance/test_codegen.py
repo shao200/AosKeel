@@ -40,13 +40,13 @@ def test_hand_edit_refused(tmp_path):
     p = ROOT / "src/generated/actions.py"
     original = p.read_text(encoding="utf-8")
     try:
-        p.write_text(original + "\n# human hack\n", encoding="utf-8")
+        p.write_bytes((original + "\n# human hack\n").encode("utf-8"))
         with pytest.raises(CodegenDrift, match="禁止静默覆盖"):
             generate()
         generate(force=True)                           # --force 显式覆盖
         assert "human hack" not in p.read_text(encoding="utf-8")
     finally:
-        p.write_text(original, encoding="utf-8")
+        p.write_bytes(original.encode("utf-8"))   # 字节级还原，避免测试自身污染工作区
 def test_reducer_pure_and_drift_visible():
     """R11 纯函数 + KS-4.3 漂移可见：声明外字段进 _undeclared，不静默丢弃。"""
     mod = _load("reducers.py")
