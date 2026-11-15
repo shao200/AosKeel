@@ -10,6 +10,36 @@
 
 Canonical specification: *AOS: Ontology-Based Agent System Development Specification* v2.0.0 ([docs/aos-spec.md](aos-spec.md); registry entries in [docs/ARTIFACT-REGISTRY.md](ARTIFACT-REGISTRY.md)).
 
+## Theory and guided learning (start here)
+
+**An AI ontology is an explicit, formal definition of a domain's concepts, relations, properties and rules.** A database stores `user_id`; an ontology defines what a *User* is, what *Purchase* means, and that *payment succeeded* is a precondition for *shipping*. AosKeel turns that skeleton into machine-checkable contracts, so an Agent's assertions and actions have a traceable basis.
+
+**TBox / ABox (a teaching analogy).** The ontology is the blueprint — classes, properties, relations, axioms; a knowledge graph is the building — individuals and facts. In AosKeel the blueprint is `spec/` (eight declaration kinds) and the building is an append-only event log plus rebuildable read-only projections. It is **not** RDF triples or SPARQL queries.
+
+**The AOS increment.** Classical ontology describes *what is true*. AOS adds `ActionType` as a first-class element, so the ontology also governs *who may change what, under which conditions, and with what audit trail*: descriptive ontology → **governable ontology**. Two further dimensions have no classical counterpart — a non-authoritative observation layer (the session stream) and governance as a startup condition (`declared == registered`).
+
+| Classical term | AOS construct | Artifact |
+|---|---|---|
+| Class | `ObjectType` | `spec/ontology/objects/*.object.yaml` |
+| Property | `Property` (optionally `decision_relevant`) | object declarations |
+| Relation | `LinkType` — structural, zero business semantics | `spec/ontology/links/*.link.yaml` |
+| Axiom / rule | Invariant triple + restricted Boolean function | `spec/invariants/`, `src/interpreter/` |
+| Individual / triple | Event-derived state / 8-field append-only event | `src/kernel/projection.py`, `src/kernel/store.py` |
+| *(none)* | `ActionType`, capability list, session stream, genesis window | `spec/ontology/actions/`, `config/capabilities.yaml`, `src/kernel/session.py`, `src/kernel/genesis.py` |
+
+The full **seven-part guide** is Chinese (clause-faithful terminology) and is copied into every instance by `aos init`; it is also linked from the [GitHub entry page](../README.md#6-guided-learning).
+
+| Guide | Coverage |
+|---|---|
+| [Index](guide/README.md) | Reader-specific paths and three honest boundaries |
+| [01 Foundations](guide/01-foundations.md) | Ontology, TBox/ABox, blueprint/building, Palantir-style comparison, four-element tuple |
+| [02 Architecture](guide/02-architecture.md) | AX→KS→P→INV→BOOT→GOV→VER derivation, four event streams, accident-based patterns |
+| [03 Implementation](guide/03-implementation.md) | Registration, SC compiler, submission pipeline, restricted interpreter, upcasting, gates |
+| [04 Tutorial](guide/04-tutorial.md) | install → init → BOOT-0 → draft/promote → generate → submit → test/release (real outputs) |
+| [05 Reference](guide/05-reference.md) | CLI ×11, file map, T01–T26, VER-1..33 wiring, exceptions, FAQ |
+| [06 Formal semantics](guide/06-formal-semantics.md) | Description logic, open vs closed world, ontology engineering, OWL↔AOS limits |
+| [07 Kernel walkthrough](guide/07-kernel-walkthrough.md) | Executable Python: rejection paths, full re-evaluation, projection, decision audit |
+
 ## What this template provides — and what it does not (read this first)
 
 **Provides**: CI fulfilment of all `auto` VER clauses · the registration-time pipeline (five steps, single writer) · BOOT-sequence scaffolding · six `mandatory` checklists · the three-gate check (structural / cryptographic / registration) · bijection assertions.
@@ -49,6 +79,7 @@ docs/SPEC-FINGERPRINT.md       Clause fingerprint manifest (second canonical art
 docs/ARTIFACT-REGISTRY.md      Artifact registry (append-only, GOV-2.3; instances re-register)
 docs/POSITIONING.md            Positioning: SDD / AI software factory / ontology — mapping and gap map
 docs/RUNBOOK.md                BOOT-2/3 workflow scaffolding (GOV-3 version channel / GOV-2.5 dichotomy / mandatory index)
+docs/guide/                    Theory + tutorial guide (7 files; copied by init; see "Theory and guided learning" above)
 docs/TEMPLATE-LOCK.md          Written by init: version binding
 config/capabilities.yaml       Capability list, three sections (fixed / generated / provenance)
 config/verification.yaml       VER-1..33 clause-to-test wiring (load-bearing)

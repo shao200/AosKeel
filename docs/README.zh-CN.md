@@ -9,6 +9,36 @@
 
 正典规范：《AOS：基于本体论的 Agent 系统开发规范》v2.0.0（[docs/aos-spec.md](aos-spec.md)，登记条目见 [docs/ARTIFACT-REGISTRY.md](ARTIFACT-REGISTRY.md)）。
 
+## 理论与教程导览（从这里开始）
+
+**AI 本体论是对某领域概念、关系、属性与规则所做的显式、形式化定义。** 数据库只存 `user_id`；本体则要定义"用户"是什么、"购买"意味着什么，以及"支付成功"是"发货"的前置规则。AosKeel 把这套骨架变成机器可校验的契约，让 Agent 的断言与行动有据可依、有规可循。
+
+**TBox / ABox 是教学类比。** 本体是图纸——类、属性、关系、公理；知识图谱是按图纸盖好的大楼——个体与事实。在 AosKeel 中，图纸是 `spec/` 的八类声明，大楼是 append-only 事件日志与可重建的只读投影；**不是** RDF 三元组，也不是 SPARQL 查询。
+
+**AOS 的增量。** 经典本体描述"什么为真"；AOS 把 `ActionType` 提升为一等元，于是本体同时约束"谁能改什么、在什么条件下、留下什么审计轨迹"——从描述性本体跃迁为**治理性本体**。另有两层经典本体没有的维度：非权威的观测层（会话事件流），以及作为启动条件的治理（`declared == registered`）。
+
+| 经典概念 | AOS 构件 | 实际落点 |
+|---|---|---|
+| 类 Class | `ObjectType` | `spec/ontology/objects/*.object.yaml` |
+| 属性 Property | `Property`（可标 `decision_relevant`） | 对象声明 |
+| 关系 Relation | `LinkType`——结构性、零业务语义 | `spec/ontology/links/*.link.yaml` |
+| 公理 / 规则 | 不变量三元组 + 受限布尔函数 | `spec/invariants/`、`src/interpreter/` |
+| 个体 / 三元组 | 事件投影状态 / 八字段不可变事件 | `src/kernel/projection.py`、`src/kernel/store.py` |
+| *（无对应）* | `ActionType`、能力清单、会话流、创世窗口 | `spec/ontology/actions/`、`config/capabilities.yaml`、`src/kernel/session.py`、`src/kernel/genesis.py` |
+
+完整的**七篇指南**为中文撰写（保证条款级术语零损失），随 `aos init` 复制到每个实例；也可从 [GitHub 首屏入口](../README.md#6-guided-learning) 进入。
+
+| 指南 | 覆盖内容 |
+|---|---|
+| [索引](guide/README.md) | 按读者分流的路径与三条诚实边界 |
+| [01 基础概念](guide/01-foundations.md) | 本体论、TBox/ABox、蓝图-建筑、Palantir 风格对照、四元组 |
+| [02 体系逻辑](guide/02-architecture.md) | AX→KS→P→INV→BOOT→GOV→VER 推导链、四条事件流、事故反证模式 |
+| [03 实现方法](guide/03-implementation.md) | 注册、SC 编译、提交管线、受限解释器、升级、闸门 |
+| [04 实操教程](guide/04-tutorial.md) | install → init → BOOT-0 → draft/promote → generate → 提交 → test/release（实测输出） |
+| [05 速查手册](guide/05-reference.md) | CLI ×11、文件地图、T01–T26、VER-1..33 布线、异常、FAQ |
+| [06 形式语义](guide/06-formal-semantics.md) | 描述逻辑、开放/封闭世界、本体工程方法、OWL↔AOS 翻译边界 |
+| [07 内核实操](guide/07-kernel-walkthrough.md) | 可运行 Python：拒绝路径、完整重求值、投影、决策审计 |
+
 ## 这个模板给什么、不给什么（先读这个）
 
 **给**：VER 全部 auto 项的 CI 兑现 · 注册期管线（五步，单写者）· BOOT 序列脚手架 · 〔强〕项检查表（6 份）· 三关核对（结构/密码学/注册）· 双射断言。
@@ -48,6 +78,7 @@ docs/SPEC-FINGERPRINT.md       条款指纹清单（正典之二，GOV-2.4）
 docs/ARTIFACT-REGISTRY.md      工件登记（append-only，GOV-2.3；实例自行重新登记）
 docs/POSITIONING.md            项目定位：规范驱动开发 / AI 软件工厂 / 本体论三者的对照与缺口地图
 docs/RUNBOOK.md                BOOT-2/3 工作流脚手架（GOV-3 版本通道 / GOV-2.5 二分 / 〔强〕项索引）
+docs/guide/                    理论与实操指南（7 文件；随 init 复制；见上文"理论与教程导览"）
 docs/TEMPLATE-LOCK.md          init 时写入版本绑定
 config/capabilities.yaml       能力清单三段式（固定段/生成段/provenance）
 config/verification.yaml       VER-1..33 实文布线（承重件）

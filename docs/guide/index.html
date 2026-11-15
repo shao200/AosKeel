@@ -53,7 +53,7 @@
 
 <header>
   <h1>AosKeel 理论与实操指南</h1>
-  <p class="lead">从"AI 为什么需要本体论"到"如何用它生成一个可校验的 Agent 系统脚手架"。五篇正文 + 一份索引，中文撰写，与冻结正典同语言；本页只做导航与概念地图。</p>
+  <p class="lead">从"AI 为什么需要本体论"到"如何用它生成一个可校验的 Agent 系统脚手架"。七篇正文 + 一份索引，中文撰写，与冻结正典同语言；本页只做导航与概念地图。</p>
   <span class="tag">v0.3.0</span><span class="tag soft">规范 v2.0.0（冻结）</span>
   <span class="tag soft">信息性文档 · 不产生规范条款</span>
 </header>
@@ -64,6 +64,8 @@
   <div class="card"><b>选型评估 → 02</b><span>读七段推导链与适用边界，判断"错误代价 &gt; 建模成本"是否在你的领域成立。</span></div>
   <div class="card"><b>二次开发 → 02 → 03</b><span>把公理、条款、模式映射到具体模块，知道失败发生在哪一步、哪个文件。</span></div>
   <div class="card"><b>立刻上手 → 04 → 05</b><span>按实测命令走完 install → init → BOOT-0 → 建模 → 发布，再随手查速查表。</span></div>
+  <div class="card"><b>理论基础 → 06</b><span>描述逻辑、开放/封闭世界、本体工程七步法，以及 OWL↔AOS 的翻译边界。</span></div>
+  <div class="card"><b>代码实操 → 07 → 03</b><span>照着可运行代码复现四类拒绝、版本冲突完整重求值、投影重建与决策审计。</span></div>
 </div>
 
 <h2>概念地图：通用本体论 → AOS 条款 → 代码构件</h2>
@@ -99,7 +101,7 @@
   <g class="box"><rect x="385" y="46" width="270" height="54" rx="8"/><text x="399" y="69" class="lblb">T01 四元组（含 ActionType）</text><text x="399" y="88" class="cap">ObjectType / Property / LinkType / ActionType</text></g>
   <g class="box"><rect x="385" y="114" width="270" height="54" rx="8"/><text x="399" y="137" class="lblb">T10 不变量三元组</text><text x="399" y="156" class="cap">声明 + 违规语义 + 修复绑定</text></g>
   <g class="box"><rect x="385" y="182" width="270" height="54" rx="8"/><text x="399" y="205" class="lblb">声明层 / 事实层 + 观测层</text><text x="399" y="224" class="cap">八类声明 / 事件日志 / 会话流</text></g>
-  <g class="box"><rect x="385" y="250" width="270" height="54" rx="8"/><text x="399" y="273" class="lblb">KS-1 事件（九字段）</text><text x="399" y="292" class="cap">append-only，非 RDF 三元组</text></g>
+  <g class="box"><rect x="385" y="250" width="270" height="54" rx="8"/><text x="399" y="273" class="lblb">KS-1.2 事件（八字段）</text><text x="399" y="292" class="cap">append-only，非 RDF 三元组</text></g>
   <g class="box"><rect x="385" y="318" width="270" height="54" rx="8"/><text x="399" y="341" class="lblb">KS-3 受限解释器 R1–R11</text><text x="399" y="360" class="cap">布尔档 / 映射档 + 审计</text></g>
   <g class="box"><rect x="385" y="386" width="270" height="54" rx="8"/><text x="399" y="409" class="lblb">INV-1 / INV-13 + GOV-2 三关</text><text x="399" y="428" class="cap">写路径唯一 + 能力清单前置</text></g>
 
@@ -137,6 +139,8 @@
     <tr><td>03</td><td><a href="03-implementation.md">实现方法</a></td><td>注册五步、SC 编译、提交管线、受限解释器、事件日志/upcasting、三关与闸门、反模式</td></tr>
     <tr><td>04</td><td><a href="04-tutorial.md">实操教程</a></td><td>安装 → 实例化 → BOOT-0 → 建模/草案/晋升 → 生成 → 运行内核 → 测试发布 → 排错</td></tr>
     <tr><td>05</td><td><a href="05-reference.md">速查手册</a></td><td>CLI ×11、文件地图、术语 T01–T26、VER-1..33 布线、异常索引、FAQ</td></tr>
+    <tr><td>06</td><td><a href="06-formal-semantics.md">形式语义与本体工程</a></td><td>描述逻辑与解释、OWA/CWA、三类推理服务的 AOS 对应物、七步法、能力问题、OWL↔AOS 边界</td></tr>
+    <tr><td>07</td><td><a href="07-kernel-walkthrough.md">内核实操</a></td><td>可运行 Python：装配、事件八字段、四类拒绝、冲突完整重求值、投影重建、决策三引用、两套审计</td></tr>
   </tbody>
 </table>
 
