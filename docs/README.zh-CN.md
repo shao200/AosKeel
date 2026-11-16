@@ -38,6 +38,7 @@
 | [05 速查手册](guide/05-reference.md) | CLI ×11、文件地图、T01–T26、VER-1..33 布线、异常、FAQ |
 | [06 形式语义](guide/06-formal-semantics.md) | 描述逻辑、开放/封闭世界、本体工程方法、OWL↔AOS 翻译边界 |
 | [07 内核实操](guide/07-kernel-walkthrough.md) | 可运行 Python：拒绝路径、完整重求值、投影、决策审计 |
+| [08 企业应用构建指南](guide/08-enterprise-app-guide.md) | 完整构建路径：建模 → AI 起草与晋升 → 生成 → 外部接入 → Agent 装配 → 签发 → 实例侧自建清单 |
 
 ## 这个模板给什么、不给什么（先读这个）
 

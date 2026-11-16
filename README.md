@@ -148,6 +148,7 @@ The guide ships in Chinese to preserve clause-level terminology exactly; it is c
 | 05 | [Reference](docs/guide/05-reference.md) | 11 commands, file map, T01–T26, VER-1..33 wiring, exceptions, FAQ |
 | 06 | [Formal semantics](docs/guide/06-formal-semantics.md) | Description logic, open vs closed world, engineering method, OWL↔AOS translation limits |
 | 07 | [Kernel walkthrough](docs/guide/07-kernel-walkthrough.md) | Executable Python: rejection paths, full re-evaluation, projections, decision audit |
+| 08 | [Enterprise app guide](docs/guide/08-enterprise-app-guide.md) | The full build-out: modeling → AI drafting & promotion → generation → external ingestion → agent wiring → release → what you must build yourself |
 | — | [Visual overview](docs/guide/index.html) | HTML concept map: generic concept → AOS clause → code artifact |
 
 ---

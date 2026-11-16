@@ -128,8 +128,10 @@ def cmd_init(target: str) -> int:
         "实例内命令一律经 `python src/cli/main.py <command>`；"
         "`aos` 控制台入口锚定模板根，不指向实例。\n\n"
         "## 学习路径\n\n"
-        "docs/guide/README.md（指南索引）· docs/README.zh-CN.md（项目全貌）· "
-        "docs/aos-spec.md（冻结正典，勿改：GOV-2.3）\n"
+        "构建企业应用全程指南：docs/guide/08-enterprise-app-guide.md"
+        "（建模 → AI 起草与晋升 → 生成 → 外部接入 → Agent 装配 → 签发 → 自建清单）\n\n"
+        "指南索引 docs/guide/README.md · 项目全貌 docs/README.zh-CN.md · "
+        "冻结正典 docs/aos-spec.md（勿改：GOV-2.3）\n"
     ).encode("utf-8"))
     snap_ok = not fingerprint.check((dst / "docs/aos-spec.md").read_text(encoding="utf-8"))
     lock = (f"# TEMPLATE-LOCK（init 时写入；版本绑定）\n\n"

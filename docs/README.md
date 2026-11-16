@@ -39,6 +39,7 @@ The full **seven-part guide** is Chinese (clause-faithful terminology) and is co
 | [05 Reference](guide/05-reference.md) | CLI ×11, file map, T01–T26, VER-1..33 wiring, exceptions, FAQ |
 | [06 Formal semantics](guide/06-formal-semantics.md) | Description logic, open vs closed world, ontology engineering, OWL↔AOS limits |
 | [07 Kernel walkthrough](guide/07-kernel-walkthrough.md) | Executable Python: rejection paths, full re-evaluation, projection, decision audit |
+| [08 Enterprise app guide](guide/08-enterprise-app-guide.md) | Full build-out: modeling → AI drafting & promotion → generation → ingestion → agent wiring → release → what you must build yourself |
 
 ## What this template provides — and what it does not (read this first)
 
