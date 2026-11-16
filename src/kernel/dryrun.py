@@ -35,7 +35,7 @@ def dryrun(kernel, action_type: str, params: dict, principal: str,
         report["reason"] = f"structural: {e}"
         return report
     if act.conditional:                                 # 条件（R2 快照；不入评估审计）
-        snap_keys = [k for k in act.snapshot_inputs if not k.startswith("principal")]
+        snap_keys = act.snapshot_keys            # 来源分类在编译期定死（R2）
         env = {"snapshot": {k: params.get(k) for k in snap_keys},
                "principal": {"role": principal}}
         try:

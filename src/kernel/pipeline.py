@@ -62,7 +62,7 @@ class Kernel:
         except ValueError as e:
             raise StructuralRejected(str(e)) from e
         if act.conditional:                            # 2 条件（快照一次捕获，R2）
-            snap_keys = [k for k in act.snapshot_inputs if not k.startswith("principal")]
+            snap_keys = act.snapshot_keys        # 来源分类在编译期定死（R2）
             env = {"snapshot": {k: params.get(k) for k in snap_keys},
                    "principal": {"role": principal}}
             try:

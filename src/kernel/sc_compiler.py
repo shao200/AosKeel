@@ -18,7 +18,8 @@ class CompiledAction:
     aggregate: str
     structural: tuple[Check, ...]
     conditional: str | None          # BooleanFunctionRef（R10 引用）
-    snapshot_inputs: tuple[str, ...] # R2：快照输入声明
+    snapshot_inputs: tuple[str, ...] # R2：快照输入声明（原样，含 principal.* 声明位）
+    snapshot_keys: tuple[str, ...]   # R2 来源在编译期定死：环境快照输入（不含 principal.*）
     permissions: dict
     stream: str
     provenance: str
@@ -50,10 +51,13 @@ def compile_action(decl: dict, provenance: str) -> CompiledAction:
                 f"SC-COMPILE-FAIL: {action_type} 条件表达式必须起于 "
                 f"snapshot./principal.（R2），实得 '{first}'")
     agg = str(aggregate)
+    declared_inputs = tuple(cond.get("snapshot_inputs", []) or [])
     return CompiledAction(
         action_type=action_type, aggregate=agg,
         structural=structural, conditional=expr,
-        snapshot_inputs=tuple(cond.get("snapshot_inputs", []) or []),
+        snapshot_inputs=declared_inputs,
+        snapshot_keys=tuple(k for k in declared_inputs
+                            if k.split(".", 1)[0] != "principal"),
         permissions=decl.get("permissions") or {},
         stream=f"domain:{agg}",
         provenance=provenance,

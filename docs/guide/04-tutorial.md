@@ -49,11 +49,11 @@ cd my-org-system
 预期：
 
 ```
-INITIALIZED: ...\my-org-system（116 文件；TEMPLATE-LOCK: template 0.3 × v2.0.0 × AOS-ART-001）
+INITIALIZED: ...\my-org-system（117 文件；TEMPLATE-LOCK: template 0.3 × v2.0.0 × AOS-ART-001）
 下一步: cd 实例 && python src/cli/main.py bootstrap --stage 0
 ```
 
-实例携带：八类声明样例、源码、测试、工具、布线配置、指南（`docs/guide/`，含 09 结构与开发轨迹）、CI 模板、根层文件（`.gitattributes` 的 `* -text` 字节精确防线、`.gitignore`、`pyproject.toml` 依赖声明）、生成的实例 README（首屏指向 BOOT-0 与 `docs/DOMAIN-MANUAL.md`）、`TEMPLATE-LOCK`（版本绑定）、`docs/DOMAIN-MANUAL.md`（init 从实例 spec/ 生成的领域说明书）。**不携带**：`ARTIFACT-REGISTRY.md`（自行登记）、`TEMPLATE-LOCK.md` 原稿（由 init 写入）、模板 README（描述模板自身，实例 README 由 init 生成）、`REVIEW-*` 作者本地文档、模板侧 DOMAIN-MANUAL 拷贝（派生件一律实例侧重生成）。
+实例携带：八类声明样例、源码、测试（含 `tests/README.md` 测试组织与新增契约）、工具、布线配置、指南（`docs/guide/`，含 09 结构与开发轨迹）、CI 模板、根层文件（`.gitattributes` 的 `* -text` 字节精确防线、`.gitignore`、`pyproject.toml` 依赖声明）、生成的实例 README（首屏指向 BOOT-0 与 `docs/DOMAIN-MANUAL.md`）、`TEMPLATE-LOCK`（版本绑定）、`docs/DOMAIN-MANUAL.md`（init 从实例 spec/ 生成的领域说明书）。**不携带**：`ARTIFACT-REGISTRY.md`（自行登记）、`TEMPLATE-LOCK.md` 原稿（由 init 写入）、模板 README（描述模板自身，实例 README 由 init 生成）、`REVIEW-*` 作者本地文档、模板侧 DOMAIN-MANUAL 拷贝（派生件一律实例侧重生成）。
 
 因此后续所有实例内命令用：
 

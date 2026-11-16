@@ -18,7 +18,10 @@ _ALLOWED_CALLS = {"len", "all", "any", "min", "max", "sum", "abs", "round", "sor
 _FORBIDDEN_NAMES = {"open", "eval", "exec", "compile", "__import__", "input", "globals",
                     "locals", "vars", "getattr", "setattr", "delattr", "time", "random",
                     "os", "sys", "subprocess", "socket", "importlib", "builtins"}
-def _lint(node, depth: int = 0) -> None:
+def _lint(node, depth: int = 0, roots: set | None = None) -> None:
+    """单遍遍历：白名单/深度/调用/dunder 校验 + 收集全部 Name（R2 源检查同源）。"""
+    if roots is None:
+        roots = set()
     if depth > MAX_DEPTH:                       # R8 预算纪律的静态同源
         raise InterpreterRejected("DEPTH-LIMIT: 表达式深度超限（R8）")
     if not isinstance(node, _ALLOWED_NODES):
@@ -29,14 +32,16 @@ def _lint(node, depth: int = 0) -> None:
             fn.attr if isinstance(fn, ast.Attribute) else None)
         if name not in _ALLOWED_CALLS:
             raise InterpreterRejected(f"CALL-FORBIDDEN: {name} 不在布尔档函数白名单（R10）")
-    if isinstance(node, ast.Name) and node.id in _FORBIDDEN_NAMES:
-        raise InterpreterRejected(f"NAME-FORBIDDEN: {node.id}（R1 输入封闭 / R4-R6 无时钟）")
+    if isinstance(node, ast.Name):
+        roots.add(node.id)
+        if node.id in _FORBIDDEN_NAMES:
+            raise InterpreterRejected(f"NAME-FORBIDDEN: {node.id}（R1 输入封闭 / R4-R6 无时钟）")
     if isinstance(node, ast.Attribute) and node.attr.startswith("__"):
         # dunder 属性链（__class__/__base__ 等）可遍历类型结构 —— R1 输入封闭禁止
         raise InterpreterRejected(
             f"ATTRIBUTE-FORBIDDEN: {node.attr} dunder 属性访问（R1 输入封闭）")
     for child in ast.iter_child_nodes(node):
-        _lint(child, depth + 1)
+        _lint(child, depth + 1, roots)
 def eval_boolean(expr: str, env: dict) -> bool:
     """受限求值：仅允许 snapshot.* 与 principal.* 两源（R2），
     环境缺名 = InterpreterRejected（R1 输入封闭，拒绝谓词性猜测）。"""
@@ -44,9 +49,9 @@ def eval_boolean(expr: str, env: dict) -> bool:
         tree = ast.parse(expr, mode="eval")
     except SyntaxError as e:
         raise InterpreterRejected(f"PARSE-FAIL: {e}") from e
-    _lint(tree)
-    root = tree.body
-    for name in _collect_roots(root):           # R2：仅此二源
+    roots: set = set()
+    _lint(tree, roots=roots)
+    for name in roots:                          # R2：仅此二源
         if name.split(".")[0] not in ("snapshot", "principal"):
             raise InterpreterRejected(f"SOURCE-FORBIDDEN: {name} 必须起于 snapshot./principal.（R2）")
     sandbox = {"__builtins__": {k: __builtins__[k] if isinstance(__builtins__, dict) else getattr(__builtins__, k)
@@ -68,9 +73,3 @@ def _namespace(v):
     if isinstance(v, list):
         return [_namespace(x) for x in v]
     return v
-def _collect_roots(node) -> set:
-    roots = set()
-    for sub in ast.walk(node):
-        if isinstance(sub, ast.Name):
-            roots.add(sub.id)
-    return roots

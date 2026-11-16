@@ -115,8 +115,25 @@ def cmd_init(target: str) -> int:
         if src_f.exists():
             shutil.copy2(src_f, dst / f); copied += 1
     # 实例 README 由 init 生成（模板 README 描述的是模板自身，不复制）
-    (dst / "README.md").write_bytes((
-        f"# {dst.name} —— AOS 实例\n\n"
+    (dst / "README.md").write_bytes(
+        _gen_instance_readme(dst.name, spec_ver, art_id).encode("utf-8"))
+    snap_ok = not fingerprint.check((dst / "docs/aos-spec.md").read_text(encoding="utf-8"))
+    # 领域说明书：init 即生成，用户第一眼看到"本域能做什么/谁说了算/哪里会拒绝"
+    try:
+        from tools.domain_manual import render as _render_manual
+        (dst / "docs/DOMAIN-MANUAL.md").write_bytes(_render_manual().encode("utf-8"))
+    except Exception as e:                               # 派生视图不阻断实例化
+        print(f"WARN: 领域说明书生成失败（{e}）—— 可稍后 aos manual --out docs/DOMAIN-MANUAL.md")
+    (dst / "docs/TEMPLATE-LOCK.md").write_bytes(
+        _gen_template_lock(spec_ver, art_id, snap_ok, copied).encode("utf-8"))
+    print(f"INITIALIZED: {dst}（{copied} 文件；TEMPLATE-LOCK: template 0.3 × {spec_ver} × {art_id}）")
+    print("下一步: cd 实例 && python src/cli/main.py bootstrap --stage 0")
+    return 0
+
+
+def _gen_instance_readme(name: str, spec_ver: str, art_id: str) -> str:
+    return (
+        f"# {name} —— AOS 实例\n\n"
         f"template 0.3 × spec {spec_ver} × registry {art_id}"
         f"（绑定详情见 docs/TEMPLATE-LOCK.md）\n\n"
         "## 先读两份地图\n\n"
@@ -147,9 +164,11 @@ def cmd_init(target: str) -> int:
         "（建模 → AI 起草与晋升 → 生成 → 外部接入 → Agent 装配 → 签发 → 自建清单）\n\n"
         "指南索引 docs/guide/README.md · 项目全貌 docs/README.zh-CN.md · "
         "冻结正典 docs/aos-spec.md（勿改：GOV-2.3）\n"
-    ).encode("utf-8"))
-    snap_ok = not fingerprint.check((dst / "docs/aos-spec.md").read_text(encoding="utf-8"))
-    lock = (f"# TEMPLATE-LOCK（init 时写入；版本绑定）\n\n"
+    )
+
+
+def _gen_template_lock(spec_ver: str, art_id: str, snap_ok: bool, copied: int) -> str:
+    return (f"# TEMPLATE-LOCK（init 时写入；版本绑定）\n\n"
             f"- template_version: 0.3\n- spec_version: {spec_ver}\n"
             f"- registry_entry: {art_id}\n"
             f"- fingerprint_snapshot: {'PASS' if snap_ok else 'FAIL'}\n"
@@ -157,16 +176,6 @@ def cmd_init(target: str) -> int:
             f"- 规范副本哈希绑定登记条目 {art_id}；实例内 aos verify 校验"
             f"副本哈希 = 登记哈希，改动即 FROZEN-TEXT-MUTATED（INV-12）\n"
             f"- 下一步: aos bootstrap --stage 0（实例自行登记为首个 AOS-ART 条目）\n")
-    # 领域说明书：init 即生成，用户第一眼看到"本域能做什么/谁说了算/哪里会拒绝"
-    try:
-        from tools.domain_manual import render as _render_manual
-        (dst / "docs/DOMAIN-MANUAL.md").write_bytes(_render_manual().encode("utf-8"))
-    except Exception as e:                               # 派生视图不阻断实例化
-        print(f"WARN: 领域说明书生成失败（{e}）—— 可稍后 aos manual --out docs/DOMAIN-MANUAL.md")
-    (dst / "docs/TEMPLATE-LOCK.md").write_bytes(lock.encode("utf-8"))
-    print(f"INITIALIZED: {dst}（{copied} 文件；TEMPLATE-LOCK: template 0.3 × {spec_ver} × {art_id}）")
-    print("下一步: cd 实例 && python src/cli/main.py bootstrap --stage 0")
-    return 0
 
 
 def cmd_bootstrap(stage: int, appointment_ref: str | None, dry_run: bool) -> int:
