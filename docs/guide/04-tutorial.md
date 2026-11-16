@@ -49,11 +49,11 @@ cd my-org-system
 预期：
 
 ```
-INITIALIZED: ...\my-org-system（114 文件；TEMPLATE-LOCK: template 0.3 × v2.0.0 × AOS-ART-001）
+INITIALIZED: ...\my-org-system（116 文件；TEMPLATE-LOCK: template 0.3 × v2.0.0 × AOS-ART-001）
 下一步: cd 实例 && python src/cli/main.py bootstrap --stage 0
 ```
 
-实例携带：八类声明样例、源码、测试、工具、布线配置、指南（`docs/guide/`）、CI 模板、根层文件（`.gitattributes` 的 `* -text` 字节精确防线、`.gitignore`、`pyproject.toml` 依赖声明）、生成的实例 README（首屏指向 BOOT-0）、`TEMPLATE-LOCK`（版本绑定）。**不携带**：`ARTIFACT-REGISTRY.md`（自行登记）、`TEMPLATE-LOCK.md` 原稿（由 init 写入）、模板 README（描述模板自身，实例 README 由 init 生成）。
+实例携带：八类声明样例、源码、测试、工具、布线配置、指南（`docs/guide/`，含 09 结构与开发轨迹）、CI 模板、根层文件（`.gitattributes` 的 `* -text` 字节精确防线、`.gitignore`、`pyproject.toml` 依赖声明）、生成的实例 README（首屏指向 BOOT-0 与 `docs/DOMAIN-MANUAL.md`）、`TEMPLATE-LOCK`（版本绑定）、`docs/DOMAIN-MANUAL.md`（init 从实例 spec/ 生成的领域说明书）。**不携带**：`ARTIFACT-REGISTRY.md`（自行登记）、`TEMPLATE-LOCK.md` 原稿（由 init 写入）、模板 README（描述模板自身，实例 README 由 init 生成）、`REVIEW-*` 作者本地文档、模板侧 DOMAIN-MANUAL 拷贝（派生件一律实例侧重生成）。
 
 因此后续所有实例内命令用：
 
@@ -199,16 +199,17 @@ from kernel.errors import StructuralRejected, ConditionalRejected, UnregisteredA
 
 k = Kernel(EventStore(), SessionChannel(), compile_all())
 
-# 成功：结构 → 条件 → 追加
+# 成功：权限（角色证据）→ 结构 → 条件 → 追加
 ev = k.submit("ApproveContract",
               {"contract_id": "C-1", "status": "pending", "amount": 500000},
-              "contract_steward")
+              "alice", roles=("contract_steward",))
 print("APPENDED:", ev.stream_id, ev.action_id,
       ev.payload["valid_time"] <= ev.transaction_time)   # True
 
 # 结构失败：缺 contract_id，绝不进条件、绝不追加
 try:
-    k.submit("ApproveContract", {"status": "pending"}, "contract_steward")
+    k.submit("ApproveContract", {"status": "pending"},
+             "alice", roles=("contract_steward",))
 except StructuralRejected as e:
     print("STRUCTURAL:", e)
 
@@ -216,7 +217,7 @@ except StructuralRejected as e:
 try:
     k.submit("ApproveContract",
              {"contract_id": "C-2", "status": "void", "amount": 1},
-             "contract_steward")
+             "alice", roles=("contract_steward",))
 except ConditionalRejected as e:
     print("CONDITIONAL:", e)
 print("AUDIT:", k.interpreter_audit[-1])   # 含版本、快照哈希、result=False

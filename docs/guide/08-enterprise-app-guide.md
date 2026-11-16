@@ -164,8 +164,8 @@ python src/cli/main.py release     # fail-closed：三关+布线全绿+骨架零
 脚手架交付的是**内核参考实现**。投产前，五件事必须补齐：
 
 1. **持久事件存储**——模板 `EventStore` 是内存 dict；须换成可证明 append-only + 审计持久化的存储（数据库仅经摄取 Action 或映射进入本体，见阶段 4）；
-2. **主体身份接入**——T03 主体身份来自平台 authN（SSO/LDAP），生产环境 `principal` 参数不可信自报；
-3. **权限强制点归位**——当前 `Kernel.submit` 不强制 `permissions.roles`（仅 AgentRuntime 子集自检，评审已知裂缝），单一写路径上应补强制；
+2. **主体身份接入**——T03 主体身份来自平台 authN（SSO/LDAP），生产环境 `principal` 参数不可信自报；`roles` 证据同样必须由认证层解析后出示，调用方自报的 `roles` 与自报的 `principal` 一样不可信；
+3. **权限强制点已归位（模板层）**——`Kernel.submit` 在单一写路径上强制 `permissions.roles`：出示的角色与声明角色不相交即 `PermissionDenied`，在触达存储与评估之前（fail-closed，P-10/INV-4）；实例侧剩余职责只是把 authN 结果接到 `roles` 参数上；
 4. **条件求值物化投影**——当前条件在调用方参数快照上求值而非权威投影状态（评审已知裂缝），高风险域须接投影快照后再求值；
 5. **BOOT-2/3 治理工作流与 Identity Context**——模板层明示未实装，治理闭环依赖组织流程。
 
@@ -177,7 +177,7 @@ python src/cli/main.py release     # fail-closed：三关+布线全绿+骨架零
 |---|---|---|
 | 领域专家 | 审定八类声明的业务语义；执行〔强〕项 | 提案记录、检查表签字 |
 | 架构师 | 上下文/聚合切分；不变量三元组 | spec/ 声明 + 能力问题清单 |
-| 工程团队 | reducers/持久化/SSO/权限归位 | src/generated 实现 + 实例侧守卫 |
+| 工程团队 | reducers/持久化/SSO 与 roles 证据接入 | src/generated 实现 + 实例侧守卫 |
 | AI 工程师 | Agent 装配、起草 DSL | 提议-把关流水线 + 决策引用纪律 |
 | 治理委员会 | GOV-3 提案处置、SpecChange | 提案号（draft promote 的必填输入） |
 

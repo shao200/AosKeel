@@ -92,13 +92,14 @@ channel_writes:                # 生成段：会话通道写入，强制主体�
 
 ---
 
-## 2. 提交管线：能力 → 结构 → 条件 → 追加
+## 2. 提交管线：能力 → 权限 → 结构 → 条件 → 追加
 
 入口：`src/kernel/pipeline.py::Kernel.submit()`。运行顺序与 KS-7.2 完全一致：
 
 | 阶段 | 动作 | 失败即 | 审计 |
 |---|---|---|---|
 | 0 能力核查 | `action_type` 必在编译产物中 | `UnregisteredAction`（INV-1） | 无 |
+| 0.5 权限（角色证据） | 声明了 `permissions.roles` 的 Action：出示的 `roles` 与之相交才放行；未出示 = 无权（fail-closed） | `PermissionDenied`，在触达存储与评估之前（P-10 / INV-4） | 无（零接触） |
 | 1 结构 | `run_structural(Check AST, params)` | `StructuralRejected` | 无（结构失败不进解释器） |
 | 2 条件 | `eval_boolean(BooleanFunctionRef, env)` | `ConditionalRejected`；求值异常照记审计 | `record_evaluation`：版本 + 快照哈希 + 结果（KS-3.3） |
 | 3 追加 | `store.commit(action_id, stream, expected_version, ...)` | `StoreRejection` / `StreamRuleViolation` | 一条拒绝恰一条审计（不双记） |

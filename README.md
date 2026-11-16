@@ -92,7 +92,7 @@ Five axioms drive the whole design: **AX-1** events are the source of truth and 
 
 1. **Declare** the domain in `spec/` (eight YAML kinds — never edit generated code as the source of truth).
 2. **Register**: the five-step pipeline compiles structural checks and conditions, validates links/contexts, and publishes the capability list. A failure blocks startup.
-3. **Submit**: `Kernel.submit()` runs capability check → structural validation → conditional evaluation → append. A version conflict reruns the *entire* evaluation, not just the append.
+3. **Submit**: `Kernel.submit()` runs capability + role-evidence check → structural validation → conditional evaluation → append. Declared roles must be presented (`roles=…`); missing evidence = refused before the store is touched (P-10 / INV-4, fail-closed). A version conflict reruns the *entire* evaluation, not just the append.
 4. **Check**: three gates — structural fingerprint → cryptographic hash → `declared == registered`. Any failure exits non-zero.
 5. **Release**: a fail-closed gate chains the wired test suites and skeleton byte check; only then is `dist/RELEASE-MANIFEST.json` written.
 
@@ -121,11 +121,13 @@ from kernel.errors import ConditionalRejected
 kernel = Kernel(EventStore(), SessionChannel(), compile_all())
 params = {"contract_id": "C-1", "status": "pending", "amount": 500000}
 
-ev = kernel.submit("ApproveContract", dict(params), "contract_steward")
+ev = kernel.submit("ApproveContract", dict(params), "alice",
+                   roles=("contract_steward",))
 print(ev.event_type, ev.stream_id)     # ApproveContract@1 domain:ContractAggregate
 
 try:
-    kernel.submit("ApproveContract", dict(params, status="void"), "contract_steward")
+    kernel.submit("ApproveContract", dict(params, status="void"), "alice",
+                  roles=("contract_steward",))
 except ConditionalRejected:
     print("refused — no event appended; audit retained")
 ```
@@ -145,10 +147,11 @@ The guide ships in Chinese to preserve clause-level terminology exactly; it is c
 | 02 | [Architecture](docs/guide/02-architecture.md) | AX→KS→P→INV→BOOT→GOV→VER derivation, four event streams, accident-based pattern justification |
 | 03 | [Implementation](docs/guide/03-implementation.md) | Registration pipeline, SC compiler, submission pipeline, restricted interpreter, upcasting, gates |
 | 04 | [Tutorial](docs/guide/04-tutorial.md) | install → init → BOOT-0 → draft/promote → generate → submit → test/release, with real outputs |
-| 05 | [Reference](docs/guide/05-reference.md) | 11 commands, file map, T01–T26, VER-1..33 wiring, exceptions, FAQ |
+| 05 | [Reference](docs/guide/05-reference.md) | 12 commands, file map, T01–T26, VER-1..33 wiring, exceptions, FAQ |
 | 06 | [Formal semantics](docs/guide/06-formal-semantics.md) | Description logic, open vs closed world, engineering method, OWL↔AOS translation limits |
 | 07 | [Kernel walkthrough](docs/guide/07-kernel-walkthrough.md) | Executable Python: rejection paths, full re-evaluation, projections, decision audit |
 | 08 | [Enterprise app guide](docs/guide/08-enterprise-app-guide.md) | The full build-out: modeling → AI drafting & promotion → generation → external ingestion → agent wiring → release → what you must build yourself |
+| 09 | [Structure & trajectory](docs/guide/09-structure-and-trajectory.md) | Project structure map, clause-ID lookup, the standard development trajectory (incl. permission model and stuck-point table) |
 | — | [Visual overview](docs/guide/index.html) | HTML concept map: generic concept → AOS clause → code artifact |
 
 ---

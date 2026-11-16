@@ -26,7 +26,7 @@
 | 个体 / 三元组 | 事件投影状态 / 八字段不可变事件 | `src/kernel/projection.py`、`src/kernel/store.py` |
 | *（无对应）* | `ActionType`、能力清单、会话流、创世窗口 | `spec/ontology/actions/`、`config/capabilities.yaml`、`src/kernel/session.py`、`src/kernel/genesis.py` |
 
-完整的**七篇指南**为中文撰写（保证条款级术语零损失），随 `aos init` 复制到每个实例；也可从 [GitHub 首屏入口](../README.md#6-guided-learning) 进入。
+完整的**九篇指南**为中文撰写（保证条款级术语零损失），随 `aos init` 复制到每个实例；也可从 [GitHub 首屏入口](../README.md#6-guided-learning) 进入。
 
 | 指南 | 覆盖内容 |
 |---|---|
@@ -35,10 +35,11 @@
 | [02 体系逻辑](guide/02-architecture.md) | AX→KS→P→INV→BOOT→GOV→VER 推导链、四条事件流、事故反证模式 |
 | [03 实现方法](guide/03-implementation.md) | 注册、SC 编译、提交管线、受限解释器、升级、闸门 |
 | [04 实操教程](guide/04-tutorial.md) | install → init → BOOT-0 → draft/promote → generate → 提交 → test/release（实测输出） |
-| [05 速查手册](guide/05-reference.md) | CLI ×11、文件地图、T01–T26、VER-1..33 布线、异常、FAQ |
+| [05 速查手册](guide/05-reference.md) | CLI ×12、文件地图、T01–T26、VER-1..33 布线、异常、FAQ |
 | [06 形式语义](guide/06-formal-semantics.md) | 描述逻辑、开放/封闭世界、本体工程方法、OWL↔AOS 翻译边界 |
 | [07 内核实操](guide/07-kernel-walkthrough.md) | 可运行 Python：拒绝路径、完整重求值、投影、决策审计 |
 | [08 企业应用构建指南](guide/08-enterprise-app-guide.md) | 完整构建路径：建模 → AI 起草与晋升 → 生成 → 外部接入 → Agent 装配 → 签发 → 实例侧自建清单 |
+| [09 结构与开发轨迹](guide/09-structure-and-trajectory.md) | 项目结构地图、条款编号速查、标准开发轨迹（含权限模型与卡点排查表） |
 
 ## 这个模板给什么、不给什么（先读这个）
 
@@ -79,12 +80,12 @@ docs/SPEC-FINGERPRINT.md       条款指纹清单（正典之二，GOV-2.4）
 docs/ARTIFACT-REGISTRY.md      工件登记（append-only，GOV-2.3；实例自行重新登记）
 docs/POSITIONING.md            项目定位：规范驱动开发 / AI 软件工厂 / 本体论三者的对照与缺口地图
 docs/RUNBOOK.md                BOOT-2/3 工作流脚手架（GOV-3 版本通道 / GOV-2.5 二分 / 〔强〕项索引）
-docs/guide/                    理论与实操指南（7 文件；随 init 复制；见上文"理论与教程导览"）
+docs/guide/                    理论与实操指南（九篇 + 索引；随 init 复制；见上文"理论与教程导览"）
 docs/TEMPLATE-LOCK.md          init 时写入版本绑定
 config/capabilities.yaml       能力清单三段式（固定段/生成段/provenance）
 config/verification.yaml       VER-1..33 实文布线（承重件）
 spec/                          八类声明样例（objects/links/actions/contexts/aggregates/mappings/processes/invariants）
-src/cli/main.py                命令表驱动入口（11 命令，见下表；启动自检拒绝误装 wheel）
+src/cli/main.py                命令表驱动入口（12 命令，见下表；启动自检拒绝误装 wheel）
 src/kernel/registration.py     注册期管线（KS-7.2 五步，P-5 单写者；装载 spec/ 八类声明）
 src/kernel/sc_compiler.py      SC 两段式编译器（KS-7.1 / VER-18）
 src/kernel/pipeline.py         内核提交管线（结构→条件→追加；冲突完整重求值 VER-2/3）
@@ -119,7 +120,7 @@ tests/conformance/test_integrity.py        v0.3 加固的完整性守卫（经 i
 bootstrap/checklists/          _schema + VER-20/24/26/27/28/29（P-14 证据留档）
 ```
 
-## CLI 命令 ×11 与护栏 ×2
+## CLI 命令 ×12 与护栏 ×2
 
 | 命令 | 语义 | 失败行为 |
 |---|---|---|
@@ -134,6 +135,7 @@ bootstrap/checklists/          _schema + VER-20/24/26/27/28/29（P-14 证据留�
 | `release` | 发布闸门（fail-closed） | 任一关失败 → 不出制品 |
 | `draft <file>` | 需求 DSL → 草案（编译把关） | 未全绿 → 不落盘 |
 | `draft promote <f>` | 草案晋升正典（GOV-1 提案强制） | 目标已存在 → 拒绝；走 GOV-3 |
+| `manual [--out F]` | 领域说明书：八类声明 → 可读文档（人读 + LLM 上下文注入） | 派生视图；缺省打印到 stdout |
 
 护栏一：`bootstrap --stage 1` 强制 `--appointment-ref`——拒绝合成创制任命（GOV-1）。
 护栏二：实例携带规范副本 + 登记条目 ID，副本哈希 = 登记哈希，改动即 FROZEN-TEXT-MUTATED（INV-12）。

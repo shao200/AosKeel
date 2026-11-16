@@ -27,7 +27,7 @@ Canonical specification: *AOS: Ontology-Based Agent System Development Specifica
 | Individual / triple | Event-derived state / 8-field append-only event | `src/kernel/projection.py`, `src/kernel/store.py` |
 | *(none)* | `ActionType`, capability list, session stream, genesis window | `spec/ontology/actions/`, `config/capabilities.yaml`, `src/kernel/session.py`, `src/kernel/genesis.py` |
 
-The full **seven-part guide** is Chinese (clause-faithful terminology) and is copied into every instance by `aos init`; it is also linked from the [GitHub entry page](../README.md#6-guided-learning).
+The full **nine-part guide** is Chinese (clause-faithful terminology) and is copied into every instance by `aos init`; it is also linked from the [GitHub entry page](../README.md#6-guided-learning).
 
 | Guide | Coverage |
 |---|---|
@@ -36,10 +36,11 @@ The full **seven-part guide** is Chinese (clause-faithful terminology) and is co
 | [02 Architecture](guide/02-architecture.md) | AX→KS→P→INV→BOOT→GOV→VER derivation, four event streams, accident-based patterns |
 | [03 Implementation](guide/03-implementation.md) | Registration, SC compiler, submission pipeline, restricted interpreter, upcasting, gates |
 | [04 Tutorial](guide/04-tutorial.md) | install → init → BOOT-0 → draft/promote → generate → submit → test/release (real outputs) |
-| [05 Reference](guide/05-reference.md) | CLI ×11, file map, T01–T26, VER-1..33 wiring, exceptions, FAQ |
+| [05 Reference](guide/05-reference.md) | CLI ×12, file map, T01–T26, VER-1..33 wiring, exceptions, FAQ |
 | [06 Formal semantics](guide/06-formal-semantics.md) | Description logic, open vs closed world, ontology engineering, OWL↔AOS limits |
 | [07 Kernel walkthrough](guide/07-kernel-walkthrough.md) | Executable Python: rejection paths, full re-evaluation, projection, decision audit |
 | [08 Enterprise app guide](guide/08-enterprise-app-guide.md) | Full build-out: modeling → AI drafting & promotion → generation → ingestion → agent wiring → release → what you must build yourself |
+| [09 Structure & trajectory](guide/09-structure-and-trajectory.md) | Project structure map, clause-ID lookup, the standard development trajectory, permission model, stuck points |
 
 ## What this template provides — and what it does not (read this first)
 
@@ -80,12 +81,12 @@ docs/SPEC-FINGERPRINT.md       Clause fingerprint manifest (second canonical art
 docs/ARTIFACT-REGISTRY.md      Artifact registry (append-only, GOV-2.3; instances re-register)
 docs/POSITIONING.md            Positioning: SDD / AI software factory / ontology — mapping and gap map
 docs/RUNBOOK.md                BOOT-2/3 workflow scaffolding (GOV-3 version channel / GOV-2.5 dichotomy / mandatory index)
-docs/guide/                    Theory + tutorial guide (7 files; copied by init; see "Theory and guided learning" above)
+docs/guide/                    Theory + tutorial guide (9 parts + index; copied by init; see "Theory and guided learning" above)
 docs/TEMPLATE-LOCK.md          Written by init: version binding
 config/capabilities.yaml       Capability list, three sections (fixed / generated / provenance)
 config/verification.yaml       VER-1..33 clause-to-test wiring (load-bearing)
 spec/                          Eight declaration kinds (objects/links/actions/contexts/aggregates/mappings/processes/invariants)
-src/cli/main.py                Table-driven CLI entry (11 commands, see below; startup self-check refuses a wrongly installed wheel)
+src/cli/main.py                Table-driven CLI entry (12 commands, see below; startup self-check refuses a wrongly installed wheel)
 src/kernel/registration.py     Registration pipeline (KS-7.2 five steps, P-5 single writer; loads the eight declaration kinds)
 src/kernel/sc_compiler.py      Two-phase SC compiler (KS-7.1 / VER-18)
 src/kernel/pipeline.py         Kernel submission pipeline (structural -> conditional -> append; full re-evaluation on conflict, VER-2/3)
@@ -120,7 +121,7 @@ tests/conformance/test_integrity.py        Integrity guards for the v0.3 hardeni
 bootstrap/checklists/          _schema + VER-20/24/26/27/28/29 (P-14 evidence records)
 ```
 
-## CLI commands ×11 and guardrails ×2
+## CLI commands ×12 and guardrails ×2
 
 | Command | Semantics | Failure behavior |
 |---|---|---|
@@ -135,6 +136,7 @@ bootstrap/checklists/          _schema + VER-20/24/26/27/28/29 (P-14 evidence re
 | `release` | Release gate (fail-closed) | Any failed step → no artifact |
 | `draft <file>` | Requirements DSL → draft (compiler-gated) | Not all green → nothing written |
 | `draft promote <f>` | Promote draft to canonical (GOV-1 proposal mandatory) | Target exists → refuse; use GOV-3 |
+| `manual [--out F]` | Domain manual: eight declaration kinds → readable doc (human + LLM context) | Derived view; prints to stdout by default |
 
 Guardrail 1: `bootstrap --stage 1` requires `--appointment-ref` — refuses to synthesize a founding appointment (GOV-1).
 Guardrail 2: an instance carries a specification copy + registry entry ID; copy hash = registry hash, so any change yields FROZEN-TEXT-MUTATED (INV-12).

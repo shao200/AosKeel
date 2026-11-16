@@ -54,7 +54,8 @@ print(dict(store.streams))            # 尚未写入
 from pprint import pprint
 
 P = {"contract_id": "C-1", "status": "pending", "amount": 500000}
-ev = kernel.submit("ApproveContract", dict(P), "contract_steward")
+ev = kernel.submit("ApproveContract", dict(P), "contract_steward",
+                   roles=("contract_steward",))   # 角色证据必须出示（P-10/INV-4）
 
 print({
     "event_id": ev.event_id,
@@ -102,10 +103,12 @@ from kernel.errors import (StructuralRejected, ConditionalRejected,
 
 cases = [
     ("结构失败", lambda: kernel.submit(
-        "ApproveContract", {"status": "pending"}, "contract_steward"),
+        "ApproveContract", {"status": "pending"}, "contract_steward",
+        roles=("contract_steward",)),
      StructuralRejected),
     ("条件失败", lambda: kernel.submit(
-        "ApproveContract", dict(P, status="void"), "contract_steward"),
+        "ApproveContract", dict(P, status="void"), "contract_steward",
+        roles=("contract_steward",)),
      ConditionalRejected),
     ("未注册能力", lambda: kernel.submit("NukeEverything", {}, "agent"),
      UnregisteredAction),
@@ -180,7 +183,8 @@ def racing(*a, **k):
     return real_commit(*a, **k)
 
 k2.store.commit = racing
-ev2 = k2.submit("ApproveContract", dict(P), "contract_steward")
+ev2 = k2.submit("ApproveContract", dict(P), "contract_steward",
+                roles=("contract_steward",))
 
 pipeline.run_structural, pipeline.eval_boolean = orig_struct, orig_bool
 print("计数:", cnt)
@@ -313,7 +317,8 @@ store 审计: {'appended': 2, 'structurally-rejected': 1}
 def test_conditional_failure_appends_nothing():
     k, store = _kernel()
     with pytest.raises(ConditionalRejected):
-        k.submit("ApproveContract", dict(PARAMS, status="void"), "contract_steward")
+        k.submit("ApproveContract", dict(PARAMS, status="void"), "contract_steward",
+                 roles=("contract_steward",))
     assert "domain:ContractAggregate" not in store.streams       # 失败不追加
     assert k.interpreter_audit[-1]["result"] is False            # 失败也留痕
 ```

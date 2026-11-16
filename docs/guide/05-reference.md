@@ -2,7 +2,7 @@
 
 > 信息性文档。真实口径以 [aos-spec.md](../aos-spec.md)、[verification.yaml](../../config/verification.yaml) 与源码为准。
 
-## 1. CLI 命令 ×11
+## 1. CLI 命令 ×12
 
 | 命令 | 作用 | 失败行为 |
 |---|---|---|
@@ -17,6 +17,7 @@
 | `aos release` | 发布闸门（fail-closed） | 任一关失败 → 不出制品 |
 | `aos draft <file> [--name N]` | 需求 DSL → 草案（编译把关） | 未全绿 → 不落盘 |
 | `aos draft promote <f> --proposal-ref SPEC-…` | 草案晋升正典 + 能力清单同步 | 目标已存在 / 无提案 → 拒绝 |
+| `aos manual [--out F]` | 领域说明书：spec/ 八类声明 → 可读文档（派生视图，非真源） | 缺省打印 stdout；`--out` 落盘 |
 
 > **实例内命令**：`aos` 控制台脚本的 `ROOT` 锁在模板源码树。实例里一律用 `python src/cli/main.py <command>`。详见 [教程 §1](04-tutorial.md)。
 
@@ -34,7 +35,7 @@
 | `config/capabilities.yaml` | 能力清单三段式（固定段/生成段/provenance） |
 | `config/verification.yaml` | VER-1..33 布线（承重件；单一读取点 `tools/wiring.py`） |
 | `spec/` | 八类声明 + `drafts/`（工作区，不入实例） |
-| `src/cli/main.py` | 11 命令分发；`main()` 兼容 console script 无参调用 |
+| `src/cli/main.py` | 12 命令分发；`main()` 兼容 console script 无参调用 |
 | `src/kernel/registration.py` | 注册五步，生成段唯一写者（P-5） |
 | `src/kernel/sc_compiler.py` | SC 两段式编译（Check AST / BooleanFunctionRef） |
 | `src/kernel/pipeline.py` | 提交管线 + 冲突完整重求值 |
