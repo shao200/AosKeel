@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "src"))
 from tools.hash_spec import (canonical_digest, _entries, register as hs_register,
                              verify as hs_verify, supersede as hs_supersede)
-from tools import fingerprint, wiring
+from tools import fingerprint, wiring, gate_history
 from kernel import registration
 USAGE = """\
 用法: aos <command>
@@ -39,6 +39,8 @@ USAGE = """\
   audit export <events.jsonl> [--out F]
                         统一审计导出：追加证据 + 决策引用 → 链式 audit_id JSONL
                         （只读派生件；进程内台账用 tools.audit_export.export）
+  metrics               闸门度量：dist/gate-history.jsonl → 通过率 / 各关失败 /
+                        漂移计数 / 连续通过（派生证据件，不参与判定）
 """
 
 
@@ -71,22 +73,32 @@ def _require_source_tree() -> int | None:
 
 
 def cmd_verify() -> int:
+    gates: dict[str, str] = {}                  # 度量留档：每关结果入 gate-history
     print("[1/3] 结构层（指纹 GOV-2.4）")
     failures = fingerprint.check()
     if failures:
         print("  STRUCTURAL-MISMATCH（GOV-2.5）:")
         for f in failures: print(f"    - {f}")
+        gates["structural"] = "FAIL"; gate_history.record("verify", gates)
         return 1
+    gates["structural"] = "PASS"
     print("  OK —— 附录 F 十节三元组在场")
     print("[2/3] 密码学层（分离式哈希 GOV-2.3）")
-    if hs_verify() != 0: return 1
+    if hs_verify() != 0:
+        gates["cryptographic"] = "FAIL"; gate_history.record("verify", gates)
+        return 1
+    gates["cryptographic"] = "PASS"
     print("[3/3] 注册层（declared == registered，KS-7.2 / INV-13）")
     try:
         gen = registration.run_pipeline()
         n = len(gen["write_actions"]) + len(gen["channel_writes"])
         print(f"  OK —— {n} 条能力一致（含 provenance 回溯）")
+        gates["registered"] = "PASS"
     except registration.RegistrationFailed as e:
-        print(f"  REGISTRATION-FAILED: {e}"); return 1
+        print(f"  REGISTRATION-FAILED: {e}")
+        gates["registered"] = "FAIL"; gate_history.record("verify", gates)
+        return 1
+    gate_history.record("verify", gates)
     print("VERIFY-OK: 三关连续通过 —— 结构 / 密码学 / 注册")
     return 0
 
@@ -319,6 +331,7 @@ def main(argv: list[str] | None = None) -> int:
             if unknown:
                 raise UsageError(f"manual 不支持参数 {unknown} —— {usage}")
             return manual_main(out)
+        if cmd == "metrics":  return gate_history.report()
         if cmd == "audit":
             from tools.audit_export import main as audit_main
             return audit_main(rest)

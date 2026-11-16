@@ -74,6 +74,10 @@ def main() -> int:
     report = run_gate()
     for s in report["steps"]:
         print(f"  [{'PASS' if s['ok'] else 'FAIL'}] {s['step']}: {s['detail']}")
+    from tools import gate_history                     # 度量留档（派生件，不判定）
+    gate_history.record("release",
+                        {s["step"]: "PASS" if s["ok"] else "FAIL"
+                         for s in report["steps"]})
     if not report["ok"]:
         print("RELEASE-REFUSED: 闸门未全绿 —— 不出制品（fail-closed，VER-27 前置）")
         return 1
