@@ -33,6 +33,11 @@ class FileStore(EventStore):
                        rec["transaction_time"], rec["action_id"], rec["principal"])
             self.streams.setdefault(ev.stream_id, []).append(ev)
             self._next_id = max(self._next_id, ev.event_id + 1)
+            # 重放同时重建追加证据：appended 审计可从持久事件日志机械导出；
+            # structurally-rejected 与解释器评估审计只随进程存在（诚实边界）。
+            self.audit.append({"kind": "appended", "event_id": ev.event_id,
+                               "stream": ev.stream_id, "action": ev.action_id,
+                               "tx": ev.transaction_time})
     # ---------- 唯一追加路径的写穿：内存校验通过后才落盘 ----------
     def _append(self, stream_id, expected_version, event_type, payload,
                 action_id, principal) -> Event:

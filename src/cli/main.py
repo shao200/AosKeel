@@ -36,6 +36,9 @@ USAGE = """\
                         派生件非真源；缺省打印到 stdout，--out 落盘
   impact <target>       变更影响分析（事前咨询）：声明名 / spec 路径 / ObjectType.prop
                         → 反向引用图报告；不进闸门，缺目标 → 拒绝
+  audit export <events.jsonl> [--out F]
+                        统一审计导出：追加证据 + 决策引用 → 链式 audit_id JSONL
+                        （只读派生件；进程内台账用 tools.audit_export.export）
 """
 
 
@@ -316,6 +319,9 @@ def main(argv: list[str] | None = None) -> int:
             if unknown:
                 raise UsageError(f"manual 不支持参数 {unknown} —— {usage}")
             return manual_main(out)
+        if cmd == "audit":
+            from tools.audit_export import main as audit_main
+            return audit_main(rest)
         if cmd == "impact":
             from tools.impact import report as impact_report
             return impact_report(

@@ -109,9 +109,12 @@ class Kernel:
                 ok = eval_boolean(act.conditional, env)
             except Exception as e:                     # 求值失败也是评估 —— 照记审计（KS-3.3）
                 self.interpreter_audit.append(
-                    {**record_evaluation(act.conditional, env, False), "error": str(e)})
+                    {**record_evaluation(act.conditional, env, False),
+                     "expression": act.conditional, "tx": _now(), "error": str(e)})
                 raise
-            self.interpreter_audit.append(record_evaluation(act.conditional, env, ok))
+            self.interpreter_audit.append(
+                {**record_evaluation(act.conditional, env, ok),
+                 "expression": act.conditional, "tx": _now()})
             if not ok:
                 raise ConditionalRejected(
                     f"条件校验未通过（KS-7.1 第二段）：{act.conditional}；不追加（VER-2）")
