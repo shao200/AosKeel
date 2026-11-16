@@ -15,6 +15,7 @@ suites:
 # 只把修补后的守卫测试纳入同一条布线，使其真正进入发布闸门。
 integrity_paths:
   - { id: INTEGRITY-1, path: tests/conformance/test_integrity.py }
+  - { id: INTEGRITY-2, path: tests/conformance/test_init_root_completeness.py }
 ver:
   - { id: VER-1,  clause: KS-1.2,      kind: auto, path: tests/conformance/test_event_schema.py }
   - { id: VER-2,  clause: KS-7.2,      kind: auto, path: tests/conformance/test_pipeline_order.py }

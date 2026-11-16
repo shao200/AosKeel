@@ -322,7 +322,7 @@ def test_conditional_failure_appends_nothing():
 
 1. **断言行为，不断言好心情**：拒绝路径要同时断言"抛了正确的异常"与"流未被污染"；
 2. **计数要精确到阶段**：冲突重求值断言 `struct == 2 and bool == 2`，不要写 `calls >= 2`；
-3. **元数据断言要区分环境**：`pyproject.toml`、`ARTIFACT-REGISTRY.md` 只存在于模板根，实例侧不应硬读——模板已按此原则修正。
+3. **元数据断言要区分环境**：`ARTIFACT-REGISTRY.md` 只存在于模板根（实例自行登记，init 不复制），实例侧不应硬读——模板已按此原则修正；`pyproject.toml` 自 init 根层完整性修复起随实例复制（依赖与 pytest 配置声明）。
 
 ---
 

@@ -104,6 +104,33 @@ def cmd_init(target: str) -> int:
     rows = _entries()
     art_id = rows[-1].split("|")[1].strip() if rows else "NOT-REGISTERED"
     spec_ver = "v2.0.0"
+    # 根层文件：.gitattributes 的 `* -text` 是 GOV-2.3 字节精确防线的一部分，
+    # 实例缺失时换行转换可破坏冻结哈希；pyproject/.gitignore 直接复制。
+    for f in (".gitattributes", ".gitignore", "pyproject.toml"):
+        src_f = ROOT / f
+        if src_f.exists():
+            shutil.copy2(src_f, dst / f); copied += 1
+    # 实例 README 由 init 生成（模板 README 描述的是模板自身，不复制）
+    (dst / "README.md").write_bytes((
+        f"# {dst.name} —— AOS 实例\n\n"
+        f"template 0.3 × spec {spec_ver} × registry {art_id}"
+        f"（绑定详情见 docs/TEMPLATE-LOCK.md）\n\n"
+        "## 快速开始\n\n"
+        "```powershell\n"
+        "python src/cli/main.py bootstrap --stage 0   # 实例自行登记（首个 AOS-ART 条目）\n"
+        "python src/cli/main.py verify                # 三关：指纹 → 哈希 → declared==registered\n"
+        "python src/cli/main.py test                  # 按 config/verification.yaml 布线执行\n"
+        "```\n\n"
+        "## 先做 BOOT-0\n\n"
+        "新实例未登记时 `pytest` 会有约 7 项失败（release gate / spec_ref 类）——"
+        "这是 GOV-1 设计行为：实例不合成登记与合法性。`bootstrap --stage 0` 后全绿。\n\n"
+        "## 运行形态\n\n"
+        "实例内命令一律经 `python src/cli/main.py <command>`；"
+        "`aos` 控制台入口锚定模板根，不指向实例。\n\n"
+        "## 学习路径\n\n"
+        "docs/guide/README.md（指南索引）· docs/README.zh-CN.md（项目全貌）· "
+        "docs/aos-spec.md（冻结正典，勿改：GOV-2.3）\n"
+    ).encode("utf-8"))
     snap_ok = not fingerprint.check((dst / "docs/aos-spec.md").read_text(encoding="utf-8"))
     lock = (f"# TEMPLATE-LOCK（init 时写入；版本绑定）\n\n"
             f"- template_version: 0.3\n- spec_version: {spec_ver}\n"

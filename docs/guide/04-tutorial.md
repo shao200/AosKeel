@@ -49,11 +49,11 @@ cd my-org-system
 预期：
 
 ```
-INITIALIZED: ...\my-org-system（106 文件；TEMPLATE-LOCK: template 0.3 × v2.0.0 × AOS-ART-001）
+INITIALIZED: ...\my-org-system（113 文件；TEMPLATE-LOCK: template 0.3 × v2.0.0 × AOS-ART-001）
 下一步: cd 实例 && python src/cli/main.py bootstrap --stage 0
 ```
 
-实例携带：八类声明样例、源码、测试、工具、布线配置、指南（`docs/guide/`）、CI 模板、`TEMPLATE-LOCK`（版本绑定）。**不携带**：`ARTIFACT-REGISTRY.md`（自行登记）、`TEMPLATE-LOCK.md` 原稿（由 init 写入）、`pyproject.toml` 与根目录 README（属模板自身元数据）。
+实例携带：八类声明样例、源码、测试、工具、布线配置、指南（`docs/guide/`）、CI 模板、根层文件（`.gitattributes` 的 `* -text` 字节精确防线、`.gitignore`、`pyproject.toml` 依赖声明）、生成的实例 README（首屏指向 BOOT-0）、`TEMPLATE-LOCK`（版本绑定）。**不携带**：`ARTIFACT-REGISTRY.md`（自行登记）、`TEMPLATE-LOCK.md` 原稿（由 init 写入）、模板 README（描述模板自身，实例 README 由 init 生成）。
 
 因此后续所有实例内命令用：
 
