@@ -97,6 +97,8 @@ pprint(dict(ev.payload))
 
 ## 2. 四条拒绝路径：失败发生在哪一步
 
+注意"条件失败"一例：§1 已把 C-1 投影为 `status=pending`，此处再自报 `status="void"` 属**改口谎报**——条件对物化投影求值（P-16），拒绝以 `SNAPSHOT-CONTRADICTION` 形态出现，异常类型仍是 `ConditionalRejected`。
+
 ```python
 from kernel.errors import (StructuralRejected, ConditionalRejected,
                            UnregisteredAction, DirectWriteForbidden)
@@ -128,9 +130,9 @@ print("条件审计末条结果:", kernel.interpreter_audit[-1]["result"])
 
 ```
 结构失败: REFUSED — STRUCTURAL-FAIL: contract_id 必填（exists）
-条件失败: REFUSED — 条件校验未通过（KS-7.1 第二段）：snapshot.status == 'pending' and ...
+条件失败: REFUSED — SNAPSHOT-CONTRADICTION: status 自报 void ≠ 权威投影 pending ——
 未注册能力: REFUSED — NukeEverything 未注册 —— 不注册即不可执行（INV-1 / P-1）
-直写陷阱: REFUSED — INV-1: 禁止 Action 之外的事件写入路径 —— 已产生 structurally-rejected 审计记录
+直写陷阱: REFUSED — INV-1: 禁止 Action 之外的事件写入路径 —— 已产生 structurally-rejected 
 流长度: 1
 条件审计末条结果: False
 ```
@@ -141,7 +143,7 @@ print("条件审计末条结果:", kernel.interpreter_audit[-1]["result"])
 |---|---|---|---|
 | 能力核查 | `UnregisteredAction` / `UnknownAction` | 否 | 无写审计（根本没进存储） |
 | 结构校验 | `StructuralRejected` | 否 | 无 interpreter audit（结构先于条件） |
-| 条件求值 | `ConditionalRejected` | 否 | **有** interpreter audit，`result=False`，含表达式与快照哈希 |
+| 条件求值 | `ConditionalRejected`（含 `SNAPSHOT-CONTRADICTION` 改口拦截） | 否 | **有** interpreter audit，`result=False`：矛盾记 `kind=snapshot-contradiction`，正常求值记表达式与快照哈希 |
 | 存储流规则 | `StreamRuleViolation` / `StoreRejection` | 否 | store audit 恰一条 `structurally-rejected` |
 | 直写绕过 | `DirectWriteForbidden` | 否 | store audit 恰一条 `structurally-rejected` |
 | 版本冲突 | `VersionConflict` | 重求值后追加 | 冲突本身不记拒绝审计；成功追加记 `appended` |

@@ -3,6 +3,9 @@ spec_ref: AOS-ART-001 · 重放纯度: 无谓词、无宿主函数（KS-3.4 / R1
 声明外字段进 _undeclared —— 语义漂移可见而非静默丢弃（KS-4.3 / GOV-6）。
 """
 
+REDUCERS: dict = {}    # 聚合 → 投影 reducer（pipeline 条件快照物化，只读）
+IDENTITIES: dict = {}  # 聚合 → 实例标识属性（params 定位聚合实例）
+
 CONTRACT_DECLARED_PROPS = frozenset(['status', 'amount', 'party_refs'])
 CONTRACT_IDENTITY = "contract_id"
 def reduce_contract(state, ev):
@@ -14,3 +17,6 @@ def reduce_contract(state, ev):
         elif k not in ['projection_ref', 'session_ref', 'transaction_time', 'valid_time'] and not k.startswith("_"):
             obj.setdefault("_undeclared", {})[k] = v   # 声明外 → 漂移可见
     return state
+
+REDUCERS.setdefault("ContractAggregate", reduce_contract)
+IDENTITIES.setdefault("ContractAggregate", 'contract_id')

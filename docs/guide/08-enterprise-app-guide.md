@@ -161,13 +161,14 @@ python src/cli/main.py release     # fail-closed：三关+布线全绿+骨架零
 
 ## 阶段 7 · 实例侧必须自建的生产件（诚实边界）
 
-脚手架交付的是**内核参考实现**。投产前，五件事必须补齐：
+脚手架交付的是**内核参考实现**。投产前，四件事必须补齐：
 
 1. **持久事件存储**——模板 `EventStore` 是内存 dict；`kernel/filestore.py` 已给 FileStore **参考实现**（JSONL 追加 + 重放，拒绝不落盘，单写进程模型，守卫见 `tests/conformance/test_filestore.py`）。装配只换一处：`Kernel(FileStore("data/events.jsonl"), SessionChannel(), compile_all())`。多进程/多实例生产并发须以数据库实现同一协议（streams 只读 + commit 唯一写面 + audit 只增），并自行取证 append-only 与审计持久性（数据库仅经摄取 Action 或映射进入本体，见阶段 4）；
 2. **主体身份接入**——T03 主体身份来自平台 authN（SSO/LDAP），生产环境 `principal` 参数不可信自报；`roles` 证据同样必须由认证层解析后出示，调用方自报的 `roles` 与自报的 `principal` 一样不可信；
 3. **权限强制点已归位（模板层）**——`Kernel.submit` 在单一写路径上强制 `permissions.roles`：出示的角色与声明角色不相交即 `PermissionDenied`，在触达存储与评估之前（fail-closed，P-10/INV-4）；实例侧剩余职责只是把 authN 结果接到 `roles` 参数上；
-4. **条件求值物化投影**——当前条件在调用方参数快照上求值而非权威投影状态（评审已知裂缝），高风险域须接投影快照后再求值；
-5. **BOOT-2/3 治理工作流与 Identity Context**——模板层明示未实装，治理闭环依赖组织流程。
+4. **BOOT-2/3 治理工作流与 Identity Context**——模板层明示未实装，治理闭环依赖组织流程。
+
+> 评审裂缝修复进度：条件求值物化投影**已落地（模板层）**——`Kernel._evaluate` 经 `materialize()` 在当轮版本视图上重放聚合流折叠权威投影后再求条件（P-16 / KS-1.4）：自报字段与投影矛盾 → `SNAPSHOT-CONTRADICTION` 拒绝（改口无效），未自报字段以权威值回填；守卫见 `tests/negative/test_snapshot_materialization.py`。剩余的诚实边界是**示例域状态建模**：`ApproveContract` 等示例 Action 仍把 `status` 当自报快照字段携带，真实域应让状态只由事件导出、Action 不再透传声明外快照。
 
 ---
 

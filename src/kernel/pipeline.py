@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """src/kernel/pipeline.py —— 内核提交管线（KS-7.2 运行时 / VER-2 / VER-3）。
-submit：能力核查 → 结构（Check AST）→ 条件（受限解释器，快照一次捕获 R2）→
-追加（VersionConflict → 重新执行上述整条评估管线再追加，重试有界防爆炸）。
+submit：能力核查 → 结构（Check AST）→ 条件（物化投影快照 + 受限解释器，
+快照一次捕获 R2）→ 追加（VersionConflict → 重新执行上述整条评估管线再追加，重试有界防爆炸）。
 "完整重求值"是 KS-1.4 / VER-3 的硬要求：冲突后不得只换 expected_version
 重试追加，结构与条件必须在新的版本视图上重新评估（每轮各留 KS-3.3 审计）。
 条件失败不追加（VER-2 顺序判据）；结构失败先于条件失败（评估顺序即管线）。
@@ -24,6 +24,35 @@ from interpreter.audit import record_evaluation
 MAX_REEVAL = 3
 def _now() -> str:
     return dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
+def materialize(store, act, params: dict) -> tuple[dict, dict | None]:
+    """条件快照的物化投影半边（P-16 / KS-1.4）：每次评估在当轮版本视图上
+    重放聚合流折叠权威状态，改口（谎报）在此拦截而非带入解释器。
+    返回 (snapshot, contradiction)：
+    - 实体未投影 → 回退 params 作初始观测（首次观测无权威可对照）；
+    - 实体已投影：k∈ent 且 k∈claims 且不等 → contradiction；k∈ent 未 claim → 权威值。
+    无 reducer / 无 identity 的域（模板层未生成物）整体回退 params。"""
+    try:
+        from generated import reducers as _g
+    except ImportError:
+        _g = None
+    reduce = getattr(_g, "REDUCERS", {}).get(act.aggregate) if _g else None
+    ident = getattr(_g, "IDENTITIES", {}).get(act.aggregate) if _g else None
+    if reduce is None or not ident or ident not in params:
+        return {k: params.get(k) for k in act.snapshot_keys}, None
+    state: dict = {}
+    for ev in store.streams.get(act.stream) or []:
+        state = reduce(state, ev)
+    ent = state.get(params[ident]) or {}
+    contradiction = None
+    snap: dict = {}
+    for k in act.snapshot_keys:
+        if k in ent:
+            if k in params and params[k] != ent[k] and contradiction is None:
+                contradiction = {"key": k, "claim": params[k], "authority": ent[k]}
+            snap[k] = ent[k]                      # 权威值优先（谎报被拒后仍进审计 env）
+        else:
+            snap[k] = params.get(k)
+    return snap, contradiction
 class Kernel:
     def __init__(self, store, session, compiled: dict):
         self.store, self.session, self.compiled = store, session, compiled
@@ -56,15 +85,25 @@ class Kernel:
     def _evaluate(self, act, params: dict, principal: str):
         """一次完整评估：结构 → 条件。版本冲突时由 submit 重新调用本方法，
         而非仅以新 expected_version 重试追加（KS-1.4 / VER-3）。每轮都留
-        KS-3.3 评估审计；条件快照来自调用方 params（模板层不物化投影）。"""
+        KS-3.3 评估审计；条件快照经 materialize() 物化投影求值（P-16），
+        调用方自报字段与权威投影矛盾 → SNAPSHOT-CONTRADICTION 拒绝。"""
         try:
             run_structural(act.structural, params)     # 1 结构（KS-7.1 第一段）
         except ValueError as e:
             raise StructuralRejected(str(e)) from e
         if act.conditional:                            # 2 条件（快照一次捕获，R2）
-            snap_keys = act.snapshot_keys        # 来源分类在编译期定死（R2）
-            env = {"snapshot": {k: params.get(k) for k in snap_keys},
-                   "principal": {"role": principal}}
+            snap, contra = materialize(self.store, act, params)
+            if contra is not None:
+                self.interpreter_audit.append({
+                    "kind": "snapshot-contradiction",
+                    "expression": act.conditional,
+                    "snapshot": snap, "result": False, "tx": _now(),
+                    **contra})                          # KS-3.3：拒绝也要留评估痕迹
+                raise ConditionalRejected(
+                    f"SNAPSHOT-CONTRADICTION: {contra['key']} 自报 {contra['claim']} ≠ "
+                    f"权威投影 {contra['authority']} —— 条件对物化投影求值，"
+                    f"改口无效（P-16 / KS-1.4）；不追加（VER-2）")
+            env = {"snapshot": snap, "principal": {"role": principal}}
             try:
                 ok = eval_boolean(act.conditional, env)
             except Exception as e:                     # 求值失败也是评估 —— 照记审计（KS-3.3）

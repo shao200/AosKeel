@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "src"))
 from kernel.sc_compiler import run_structural
+from kernel.pipeline import materialize
 from interpreter.boolean_profile import eval_boolean
 def dryrun(kernel, action_type: str, params: dict, principal: str,
            roles: tuple[str, ...] = ()) -> dict:
@@ -35,9 +36,14 @@ def dryrun(kernel, action_type: str, params: dict, principal: str,
         report["reason"] = f"structural: {e}"
         return report
     if act.conditional:                                 # 条件（R2 快照；不入评估审计）
-        snap_keys = act.snapshot_keys            # 来源分类在编译期定死（R2）
-        env = {"snapshot": {k: params.get(k) for k in snap_keys},
-               "principal": {"role": principal}}
+        snap, contra = materialize(kernel.store, act, params)
+        if contra is not None:
+            report["checks"]["conditional"] = "fail"
+            report["reason"] = (
+                f"snapshot-contradiction: {contra['key']} 自报 {contra['claim']} ≠ "
+                f"权威投影 {contra['authority']}（P-16 / KS-1.4）")
+            return report
+        env = {"snapshot": snap, "principal": {"role": principal}}
         try:
             ok = eval_boolean(act.conditional, env)
         except Exception as e:
