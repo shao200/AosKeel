@@ -68,6 +68,7 @@ def test_handler_uses_same_pipeline():
     mod = _load("actions.py")
     k = Kernel(EventStore(), SessionChannel(), compile_all())
     ev = mod.approve_contract(k, "contract_steward", contract_id="C-1",
+                              roles=("contract_steward",),
                               status="pending", amount=500000)   # 快照字段经 **snapshot 透传
     assert ev.stream_id == "domain:ContractAggregate"  # 动态：走同一条管线
 def test_uncompilable_declarations_block_generation(monkeypatch):

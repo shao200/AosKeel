@@ -24,7 +24,7 @@ class AgentRuntime:
             raise PermissionDenied(
                 f"{self.agent_id} 无 {action_type} 权限 —— "
                 f"能力面是能力清单的严格子集，无绕行（P-10 / INV-1）")
-        return self.kernel.submit(action_type, params, self.agent_id)   # 同一条管线
+        return self.kernel.submit(action_type, params, self.agent_id, roles=self.roles)
     def record_decision(self, *args, **kwargs):
         """Agent 亦可记录决策：同一 record_decision 入口（KS-2.5 双引用同等强制）。"""
         return self.kernel.record_decision(*args, **kwargs)

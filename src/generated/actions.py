@@ -3,20 +3,20 @@ spec_ref: AOS-ART-001 · 再生成: aos generate --force（正常路径先改 sp
 禁止手改；所有写路径必经 kernel.submit（INV-1），结构/条件校验由提交管线强制。
 """
 
-def approve_contract(kernel, principal, *, contract_id, approver_comment=None, **snapshot):
+def approve_contract(kernel, principal, *, contract_id, approver_comment=None, roles=(), **snapshot):
     """ApproveContract（provenance: SPEC-2026-014）
     结构: exists contract_id; max_len approver_comment 2000
     条件: 由提交管线 R10 解释器强制（快照输入 R2 经 **snapshot 透传）
     """
     payload = {"contract_id": contract_id, "approver_comment": approver_comment}
     payload.update(snapshot)                    # 快照字段（R2）不属签名，透传
-    return kernel.submit("ApproveContract", payload, principal)
+    return kernel.submit("ApproveContract", payload, principal, roles=roles)
 
-def void_contract(kernel, principal, *, contract_id, void_reason=None, **snapshot):
+def void_contract(kernel, principal, *, contract_id, void_reason=None, roles=(), **snapshot):
     """VoidContract（provenance: SPEC-2026-014）
     结构: exists contract_id; max_len void_reason 500
     条件: 由提交管线 R10 解释器强制（快照输入 R2 经 **snapshot 透传）
     """
     payload = {"contract_id": contract_id, "void_reason": void_reason}
     payload.update(snapshot)                    # 快照字段（R2）不属签名，透传
-    return kernel.submit("VoidContract", payload, principal)
+    return kernel.submit("VoidContract", payload, principal, roles=roles)

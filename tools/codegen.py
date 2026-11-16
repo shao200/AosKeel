@@ -48,14 +48,14 @@ def _render_actions(actions: list[dict]) -> str:
         payload = "{" + ", ".join(f'"{k}": {k}' for k in decl_params) + "}"
         rules = "; ".join((a.get("submission_criteria", {}) or {}).get("structural", []))
         lines += [
-            f"def {_snake(name)}(kernel, principal, *, {', '.join(kwargs) or '**_'}, **snapshot):",
+            f"def {_snake(name)}(kernel, principal, *, {', '.join(kwargs) or '**_'}, roles=(), **snapshot):",
             f'    """{name}（provenance: {prov}）',
             f"    结构: {rules or '（无声明结构规则）'}",
             f"    条件: 由提交管线 R10 解释器强制（快照输入 R2 经 **snapshot 透传）",
             '    """',
             f'    payload = {payload}',
             f'    payload.update(snapshot)                    # 快照字段（R2）不属签名，透传',
-            f'    return kernel.submit("{name}", payload, principal)',
+            f'    return kernel.submit("{name}", payload, principal, roles=roles)',
             ""]
     return "\n".join(lines)
 _KERNEL_FIELDS = {"valid_time", "projection_ref", "session_ref", "transaction_time"}

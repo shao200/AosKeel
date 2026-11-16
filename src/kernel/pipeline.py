@@ -16,7 +16,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "src"))
 from kernel.errors import (UnregisteredAction, StructuralRejected, ConditionalRejected,
-                           DecisionRefIncomplete, VersionConflict, BudgetExceeded)
+                           DecisionRefIncomplete, VersionConflict, BudgetExceeded,
+                           PermissionDenied)
 from kernel.sc_compiler import run_structural
 from interpreter.boolean_profile import eval_boolean
 from interpreter.audit import record_evaluation
@@ -27,10 +28,19 @@ class Kernel:
     def __init__(self, store, session, compiled: dict):
         self.store, self.session, self.compiled = store, session, compiled
         self.interpreter_audit: list[dict] = []        # KS-3.3：评估审计留档
-    def submit(self, action_type: str, params: dict, principal: str):
+    def submit(self, action_type: str, params: dict, principal: str,
+               roles: tuple[str, ...] = ()):
         act = self.compiled.get(action_type)
         if act is None:
             raise UnregisteredAction(f"{action_type} 未注册 —— 不注册即不可执行（INV-1 / P-1）")
+        required = set(act.permissions.get("roles", []))
+        if required and not (required & set(roles)):
+            # P-10/INV-4 单一写路径强制：声明了角色的 Action，角色证据缺失即拒
+            # （fail-closed：未提供 == 无权，不默认放行）。主体→角色映射属平台
+            # authN（T03 在本体之外），由调用方（如 AgentRuntime）出示。
+            raise PermissionDenied(
+                f"{action_type} 要求角色 {sorted(required)}，出示 {sorted(set(roles)) or '∅'}"
+                " —— 权限在触达存储与评估之前拒绝（P-10 / INV-4 / VER-2 顺序）")
         stream = act.stream                            # 3 追加；版本冲突 → 完整重求值
         payload = dict(params)
         payload.setdefault("valid_time", _now())

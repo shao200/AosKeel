@@ -32,7 +32,7 @@ def test_kernel_reevals_on_conflict():
             raise VersionConflict("并发写入（模拟）")            # 快照过期
         return real_commit(action_id, stream, expected_version, event_type, payload, principal)
     k.store.commit = racing
-    ev = k.submit("VoidContract", {"contract_id": "c-1"}, "svc")
+    ev = k.submit("VoidContract", {"contract_id": "c-1"}, "svc", roles=("contract_steward",))
     assert calls["n"] >= 2 and ev is not None                   # 重求值后成功
 def test_reeval_bounded_fail_closed():
     """竞争过热 → BudgetExceeded，不无限重试（R8 fail-closed）。"""
@@ -41,4 +41,4 @@ def test_reeval_bounded_fail_closed():
         raise VersionConflict("永久冲突（模拟）")
     k.store.commit = always_conflict
     with pytest.raises(BudgetExceeded):
-        k.submit("VoidContract", {"contract_id": "c-1"}, "svc")
+        k.submit("VoidContract", {"contract_id": "c-1"}, "svc", roles=("contract_steward",))

@@ -39,14 +39,14 @@ def test_step_failure_triggers_compensation():
                            "idempotent": True}]}})
     calls = {"n": 0}
     real_submit = k.submit
-    def flaky(action_type, params, principal):
+    def flaky(action_type, params, principal, roles=()):
         calls["n"] += 1
         if calls["n"] == 2:
-            return real_submit(action_type, dict(params, contract_id=None), principal)
-        return real_submit(action_type, params, principal)     # 第二步结构失败
+            return real_submit(action_type, dict(params, contract_id=None), principal, roles=roles)
+        return real_submit(action_type, params, principal, roles=roles)     # 第二步结构失败
     k.submit = flaky
     with pytest.raises(StructuralRejected):
-        saga.run("TwoStep", PARAMS, "contract_steward")
+        saga.run("TwoStep", PARAMS, "contract_steward", roles=("contract_steward",))
     assert [c["action"] for c in saga.compensation_log] == ["VoidContract"]  # 补偿已执行
     assert k.store.streams["domain:ContractAggregate"][1].action_id == "VoidContract"
 def test_compensation_is_registered_action():

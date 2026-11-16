@@ -60,7 +60,7 @@ def test_conflict_reevaluates_full_pipeline(monkeypatch):
         return real(*a)
 
     monkeypatch.setattr(k.store, "commit", racing)
-    ev = k.submit("ApproveContract", PARAMS, "contract_steward")
+    ev = k.submit("ApproveContract", PARAMS, "contract_steward", roles=("contract_steward",))
     assert ev is not None and counts["commit"] == 2
     assert counts["struct"] == counts["commit"], "结构校验未随重求值重跑（KS-1.4）"
     assert counts["bool"] == counts["commit"], "条件求值未随重求值重跑（KS-1.4）"

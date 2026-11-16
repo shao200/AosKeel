@@ -15,7 +15,7 @@ def test_audit_triple_recorded_per_evaluation():
     k = _kernel()
     before = len(k.interpreter_audit)
     try:                                                        # 条件可能拒绝——审计照记
-        k.submit("ApproveContract", {"contract_id": "c-audit", "status": "pending"}, "svc")
+        k.submit("ApproveContract", {"contract_id": "c-audit", "status": "pending"}, "svc", roles=("contract_steward",))
     except Exception:
         pass
     assert len(k.interpreter_audit) > before

@@ -41,21 +41,22 @@ class SagaRunner:
                 return comp
         return None
     _current: str = ""
-    def run(self, process: str, params: dict, principal: str) -> list:
+    def run(self, process: str, params: dict, principal: str,
+            roles: tuple[str, ...] = ()) -> list:
         if process not in self.processes:
             raise SagaInvalid(f"PROCESS-UNKNOWN: {process}（P-9：编排唯一合法出口 = Process 声明）")
         self._current = process
         completed: list[str] = []
         try:
             for step in self.processes[process]["steps"]:
-                self.kernel.submit(step["action"], params, principal)
+                self.kernel.submit(step["action"], params, principal, roles=roles)
                 completed.append(step["action"])
             return completed
         except Exception:
             for done in reversed(completed):            # 已完成步逆序补偿
                 comp = self._compensation_for(done)
                 if comp:
-                    rec = self.kernel.submit(comp["action"], params, principal)
+                    rec = self.kernel.submit(comp["action"], params, principal, roles=roles)
                     self.compensation_log.append({"for": done, "action": comp["action"],
                                                   "event_id": rec.event_id})
             raise                                        # 编排失败即整体失败（fail-closed）
