@@ -56,3 +56,26 @@ def test_registry_still_excluded(tmp_path):
     dst = _init(tmp_path)
     assert not (dst / "docs/ARTIFACT-REGISTRY.md").exists()
     assert (dst / "docs/TEMPLATE-LOCK.md").is_file()
+
+
+def test_domain_manual_generated_in_instance(tmp_path):
+    """领域说明书由 init 生成（派生件，真源 = 实例自身 spec/）。"""
+    dst = _init(tmp_path)
+    manuals = [p for p in (dst / "docs").rglob("DOMAIN-MANUAL.md")]
+    assert len(manuals) == 1, f"说明书应恰有一份且位于 docs/ 顶层: {manuals}"
+    text = manuals[0].read_text(encoding="utf-8")
+    for anchor in ("上下文", "动作", "不变量"):
+        assert anchor in text, f"说明书缺章节锚点 {anchor}"
+
+
+def test_author_local_docs_not_carried(tmp_path):
+    """REVIEW-* 作者本地评审文档不得进入实例。"""
+    dst = _init(tmp_path)
+    leaked = [p.name for p in (dst / "docs").rglob("REVIEW-*") if p.is_file()]
+    assert not leaked, f"作者本地文档泄漏进实例: {leaked}"
+
+
+def test_structure_guide_carried(tmp_path):
+    """09 结构与轨迹指南随 init 到位 —— 实例用户第一眼的项目地图。"""
+    dst = _init(tmp_path)
+    assert (dst / "docs/guide/09-structure-and-trajectory.md").is_file()

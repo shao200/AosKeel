@@ -32,6 +32,8 @@ USAGE = """\
                         --name N 命名草案；编译不过逐条报告，不落盘
   draft promote <f>     草案晋升正典（--proposal-ref SPEC-YYYY-NNN 强制，GOV-1）
                         目标已存在 → 拒绝（GOV-3 通道）；晋升含 apply_generated（P-5）
+  manual [--out F]      领域说明书：spec/ 八类声明 → 可读文档（人读 + LLM 上下文注入）
+                        派生件非真源；缺省打印到 stdout，--out 落盘
 """
 
 
@@ -96,8 +98,10 @@ def cmd_init(target: str) -> int:
         if not src_dir.exists(): continue
         for p in src_dir.rglob("*"):
             if p.is_dir() or any(part in EXCLUDE for part in p.parts): continue
-            if p.name in ("ARTIFACT-REGISTRY.md", "TEMPLATE-LOCK.md"):
-                continue                     # 实例自行登记（GOV-2.3）；LOCK 由本命令写入
+            if p.name in ("ARTIFACT-REGISTRY.md", "TEMPLATE-LOCK.md",
+                          "DOMAIN-MANUAL.md") or p.name.startswith("REVIEW-"):
+                continue     # 实例自行登记（GOV-2.3）；LOCK/说明书由本命令生成；
+                             # 作者本地评审文档不随实例外发
             rel = p.relative_to(ROOT)
             (dst / rel).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(p, dst / rel); copied += 1
@@ -115,11 +119,17 @@ def cmd_init(target: str) -> int:
         f"# {dst.name} —— AOS 实例\n\n"
         f"template 0.3 × spec {spec_ver} × registry {art_id}"
         f"（绑定详情见 docs/TEMPLATE-LOCK.md）\n\n"
+        "## 先读两份地图\n\n"
+        "- **docs/DOMAIN-MANUAL.md** —— 领域说明书（init 自动生成）：本域有什么概念、"
+        "谁能改、什么条件会拒绝、违约怎么办。声明变更后 `python src/cli/main.py manual --out docs/DOMAIN-MANUAL.md` 重生成。\n"
+        "- **docs/guide/09-structure-and-trajectory.md** —— 项目结构与开发轨迹："
+        "每个目录为什么在这、扩展一个自己领域的完整走法、AI 怎么接。\n\n"
         "## 快速开始\n\n"
         "```powershell\n"
         "python src/cli/main.py bootstrap --stage 0   # 实例自行登记（首个 AOS-ART 条目）\n"
         "python src/cli/main.py verify                # 三关：指纹 → 哈希 → declared==registered\n"
         "python src/cli/main.py test                  # 按 config/verification.yaml 布线执行\n"
+        "python src/cli/main.py manual                # 打印领域说明书\n"
         "```\n\n"
         "## 先做 BOOT-0\n\n"
         "新实例未登记时 `pytest` 会有约 7 项失败（release gate / spec_ref 类）——"
@@ -127,6 +137,11 @@ def cmd_init(target: str) -> int:
         "## 运行形态\n\n"
         "实例内命令一律经 `python src/cli/main.py <command>`；"
         "`aos` 控制台入口锚定模板根，不指向实例。\n\n"
+        "提交动作需要出示角色证据（P-10/INV-4 单一写路径强制）：\n\n"
+        "```python\n"
+        "kernel.submit(\"ApproveContract\", params, \"alice\",\n"
+        "              roles=(\"contract_steward\",))   # 未出示 = 无权（fail-closed）\n"
+        "```\n\n"
         "## 学习路径\n\n"
         "构建企业应用全程指南：docs/guide/08-enterprise-app-guide.md"
         "（建模 → AI 起草与晋升 → 生成 → 外部接入 → Agent 装配 → 签发 → 自建清单）\n\n"
@@ -142,6 +157,12 @@ def cmd_init(target: str) -> int:
             f"- 规范副本哈希绑定登记条目 {art_id}；实例内 aos verify 校验"
             f"副本哈希 = 登记哈希，改动即 FROZEN-TEXT-MUTATED（INV-12）\n"
             f"- 下一步: aos bootstrap --stage 0（实例自行登记为首个 AOS-ART 条目）\n")
+    # 领域说明书：init 即生成，用户第一眼看到"本域能做什么/谁说了算/哪里会拒绝"
+    try:
+        from tools.domain_manual import render as _render_manual
+        (dst / "docs/DOMAIN-MANUAL.md").write_bytes(_render_manual().encode("utf-8"))
+    except Exception as e:                               # 派生视图不阻断实例化
+        print(f"WARN: 领域说明书生成失败（{e}）—— 可稍后 aos manual --out docs/DOMAIN-MANUAL.md")
     (dst / "docs/TEMPLATE-LOCK.md").write_bytes(lock.encode("utf-8"))
     print(f"INITIALIZED: {dst}（{copied} 文件；TEMPLATE-LOCK: template 0.3 × {spec_ver} × {art_id}）")
     print("下一步: cd 实例 && python src/cli/main.py bootstrap --stage 0")
@@ -276,6 +297,14 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
             print(f"DRAFT-OK: {report['draft']}（人确认后执行 aos draft promote）")
             return 0
+        if cmd == "manual":
+            from tools.domain_manual import main as manual_main
+            usage = "用法: aos manual [--out docs/DOMAIN-MANUAL.md]"
+            out = _value(rest, "--out", usage)
+            unknown = [a for a in rest if a != "--out" and a != out]
+            if unknown:
+                raise UsageError(f"manual 不支持参数 {unknown} —— {usage}")
+            return manual_main(out)
         if cmd == "test":
             suite = _value(rest, "--suite", "用法: aos test [--suite S]")
             return cmd_test(suite)
