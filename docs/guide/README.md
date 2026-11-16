@@ -55,7 +55,7 @@ docs/guide/              本指南（信息性；随 aos init 复制到实例）
 
 1. **AOS 不是知识图谱系统**：它不提供 RDF 三元组存储与 SPARQL 查询；事实以 append-only 事件流承载，读经只读投影。TBox/ABox 是**教学类比**，不是项目术语。
 2. **模板不制造治理世界事件**：创制任命、steward 资格、红队与审批是现实世界的事件，模板只记录其引用，不合成（GOV-1）。`bootstrap --stage 2/3` 返回拒绝即是这条边界的可执行形态。
-3. **事件存储是纯内存**：`EventStore` 进程退出即失；生产实例须自接持久化并自行证明 append-only 与审计持久性。wheel 也不是可安装交付物——唯一受支持形态是源码树 + `pip install -e .`。
+3. **事件存储本体是纯内存**：`EventStore` 进程退出即失；`kernel/filestore.py` 提供 FileStore 持久化**参考实现**（JSONL 追加 + 启动重放，单写进程模型），生产实例仍须自行证明 append-only 与审计持久性。wheel 也不是可安装交付物——唯一受支持形态是源码树 + `pip install -e .`。
 
 ## 最短入口
 

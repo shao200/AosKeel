@@ -49,7 +49,7 @@ cd my-org-system
 预期：
 
 ```
-INITIALIZED: ...\my-org-system（117 文件；TEMPLATE-LOCK: template 0.3 × v2.0.0 × AOS-ART-001）
+INITIALIZED: ...\my-org-system（119 文件；TEMPLATE-LOCK: template 0.3 × v2.0.0 × AOS-ART-001）
 下一步: cd 实例 && python src/cli/main.py bootstrap --stage 0
 ```
 
@@ -287,7 +287,7 @@ RELEASED: 制品清单已落档 ...\dist\RELEASE-MANIFEST.json
 2. 不要清理 `build/` / `dist/` / `*.egg-info` 来"保持干净"——`.gitignore` 已覆盖；唯一跟踪的 `dist/RELEASE-MANIFEST.json` 是**签发证据**。
 3. 不要期待实例里 `aos ...` 作用于实例——控制台脚本指向模板根；实例内用 `python src/cli/main.py`。
 4. 不要把〔强〕项标记为通过——VER-20/24/26/27/28/29 需要运行系统上的人工执行与 evidence/judge/signer 留档。
-5. 不要把模板当生产运行时——`EventStore` 纯内存，无持久化；生产实例须自接数据库并自行证明 append-only。
+5. 不要把模板当生产运行时——`EventStore` 纯内存；`kernel/filestore.py` 的 `FileStore` 是持久化**参考实现**（JSONL 追加 + 重放，单写进程模型），生产实例仍须自行证明 append-only 与审计持久性。
 
 ---
 

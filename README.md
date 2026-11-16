@@ -179,7 +179,7 @@ The guide ships in Chinese to preserve clause-level terminology exactly; it is c
 - **No proof of compliance.** `mandatory` clauses require human execution on a running system, with evidence, judge and signer. The template never marks them passed for you.
 - **No manufactured legitimacy.** Stewards and founding appointments are world events; the template records them, never synthesizes them (GOV-1).
 - **Source-tree delivery.** The wheel does not carry `docs/spec/config` and the startup self-check refuses it. Wheel-installability is an open P2 item.
-- **In-memory event store.** `EventStore` is a dict: no persistence across process restarts. Production instances must supply their own durable, append-only store.
+- **In-memory event store.** `EventStore` is a dict: no persistence across process restarts. `kernel/filestore.py` ships a FileStore **reference implementation** (JSONL append + replay, single-writer process model); durable multi-process storage remains an instance-side duty under the same protocol.
 - **Structural fingerprint is weak by design.** It checks clause counts and anchors; the cryptographic hash layer is the strong guarantee.
 - **Chinese frozen canon.** `aos-spec.md` and the other canonical documents are frozen Chinese text and are not translated; only the READMEs are bilingual.
 

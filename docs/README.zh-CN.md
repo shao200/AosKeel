@@ -90,6 +90,7 @@ src/kernel/registration.py     注册期管线（KS-7.2 五步，P-5 单写者�
 src/kernel/sc_compiler.py      SC 两段式编译器（KS-7.1 / VER-18）
 src/kernel/pipeline.py         内核提交管线（结构→条件→追加；冲突完整重求值 VER-2/3）
 src/kernel/store.py            本体事件日志（append-only；INV-1 写路径闭环）
+src/kernel/filestore.py        FileStore：持久化参考实现（JSONL 追加 + 重放；单写进程模型）
 src/kernel/session.py          会话事件流（KS-2.2 物理分离存储 / VER-4）
 src/kernel/genesis.py          创世窗口状态机（KS-8；熄灭不可逆）
 src/kernel/projection.py       投影与决策输入（P-16；可重建 / 会话禁入）
@@ -145,7 +146,7 @@ bootstrap/checklists/          _schema + VER-20/24/26/27/28/29（P-14 证据留�
 | 边界 | 事实 | 代价 / 实例侧职责 |
 |---|---|---|
 | 交付形态 | 模板以**源码树**交付：`pip install -e .`（之后用 `aos ...`）或 `python -m src.cli.main`。wheel 不含 `docs/spec/config`，启动自检明确拒绝，**不是可安装制品** | 若要 wheel 可安装，须重构 ROOT 解析与数据文件打包（P2，本版未做） |
-| 事件存储 | `EventStore` 为**纯内存** dict，进程退出即失，无持久化 | 生产实例须自接数据库并自行证明 append-only 与审计持久性 |
+| 事件存储 | `EventStore` 为**纯内存** dict，进程退出即失；`kernel/filestore.py` 提供 **FileStore 持久化参考实现**（JSONL 追加 + 启动重放，单写进程模型，拒绝不落盘） | 生产多进程部署须以数据库实现同一协议（streams 只读 · commit 唯一写面 · audit 只增），并自行证明 append-only 与审计持久性 |
 | 结构层指纹 | 核对"条数 + 首锚 + 末锚"，**不校验中间条款内容**；强保证来自密码学层全文哈希（GOV-2.3） | 中间条款被改而首尾不变 → 结构层 PASS，靠哈希层拦截；这是附录 F 清单定义的取舍 |
 | BOOT-2/3 | 模板只给脚手架与检查表，`bootstrap --stage 2/3` 返回拒绝 | 治理工作流与 Identity Context 验收属实例侧世界事件（GOV-1） |
 | 〔强〕项 | VER-20/24/26/27/28/29 只有 checklist/support，不进 auto 套件 | 人工执行 + evidence / judge / signer 留档，模板不伪装通过 |

@@ -40,6 +40,7 @@
 | `src/kernel/sc_compiler.py` | SC 两段式编译（Check AST / BooleanFunctionRef） |
 | `src/kernel/pipeline.py` | 提交管线 + 冲突完整重求值 |
 | `src/kernel/store.py` | 本体事件日志（append-only） |
+| `src/kernel/filestore.py` | FileStore：持久化参考实现（JSONL 追加 + 重放；单写进程模型） |
 | `src/kernel/session.py` | 会话事件流（物理分离） |
 | `src/kernel/projection.py` | 只读投影与重放 |
 | `src/kernel/{detector,upcasting,merge,saga,dryrun,governance,genesis,errors}.py` | 探测器 / 读时升级 / 归并史 / 编排 / 演练 / 治理 / 创世窗口 / 类型化异常 |
@@ -153,7 +154,7 @@
 不是。AosKeel 是模板生成系统——交付源码树 + 规范 + 脚手架，实例侧仍需接数据库、实现治理工作流与 Agent 业务逻辑。
 
 **Q2：为什么 `EventStore` 是内存实现？**
-模板层只演示 append-only 语义与门控逻辑；持久化是实例侧职责。不要把它当生产存储。
+模板层只演示 append-only 语义与门控逻辑；持久化是实例侧职责。`kernel/filestore.py` 的 `FileStore` 是持久化**参考实现**（JSONL 追加 + 重放，单写进程模型），不是生产存储。
 
 **Q3：为什么 `verify` 通过仍不能宣称合规？**
 结构层只是弱在场证明；强保证来自全文哈希。〔强〕项必须在运行系统上人工执行并留 evidence/judge/signer，模板不伪装通过。

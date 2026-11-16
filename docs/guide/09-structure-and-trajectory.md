@@ -15,8 +15,8 @@ spec/            ★ 真源（TBox）。你要开发 = 主要在这里写。八�
                     注册管线是唯一出口；generated 段能力清单由机器单写（P-5），
                     永远不要手改 config/capabilities.yaml 的生成段。
 src/kernel/      守护机器·运行时。submit 唯一写路径（能力→权限→结构→条件→追加）、
-                    EventStore 八字段 append-only、投影重放、探测器、Saga、
-                    创世窗口。理解系统"怎么跑"= 读 pipeline.py + store.py。
+                    EventStore 八字段 append-only（filestore.py 给持久化参考实现）、
+                    投影重放、探测器、Saga、创世窗口。理解系统"怎么跑"= 读 pipeline.py + store.py。
 src/interpreter/ 守护机器·沙箱。规则表达式的合法词汇表在这里（白名单 + 拒绝面）。
 src/generated/   真源的代码影子。aos generate 的产物，带 provenance 头，
                     手改会被字节比对拦截——改行为请回 spec/。

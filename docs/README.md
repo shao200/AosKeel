@@ -91,6 +91,7 @@ src/kernel/registration.py     Registration pipeline (KS-7.2 five steps, P-5 sin
 src/kernel/sc_compiler.py      Two-phase SC compiler (KS-7.1 / VER-18)
 src/kernel/pipeline.py         Kernel submission pipeline (structural -> conditional -> append; full re-evaluation on conflict, VER-2/3)
 src/kernel/store.py            Ontological event log (append-only; INV-1 closed write path)
+src/kernel/filestore.py        FileStore: persistence reference (JSONL append + replay; single-writer)
 src/kernel/session.py          Session event stream (KS-2.2 physically separated store / VER-4)
 src/kernel/genesis.py          Genesis window state machine (KS-8; extinguishing is irreversible)
 src/kernel/projection.py       Projections and decision inputs (P-16; rebuildable / sessions excluded)
@@ -146,7 +147,7 @@ Guardrail 2: an instance carries a specification copy + registry entry ID; copy 
 | Boundary | Fact | Cost / instance-side duty |
 |---|---|---|
 | Delivery shape | The template ships as a **source tree**: `pip install -e .` (then `aos ...`) or `python -m src.cli.main`. The wheel contains no `docs/spec/config`, and the startup self-check explicitly refuses it — **it is not an installable artifact** | Making the wheel installable requires reworking ROOT resolution and data-file packaging (P2, not done in this version) |
-| Event store | `EventStore` is an **in-memory** dict; state is lost on process exit, no persistence | Production instances must connect a database and prove append-only semantics and audit durability themselves |
+| Event store | `EventStore` is an **in-memory** dict; state is lost on process exit. `kernel/filestore.py` ships a **FileStore reference implementation** (JSONL append + replay-on-start, single-writer process model, rejections never reach the file) | Production multi-process deployments must implement the same protocol on a database (streams read-only · commit sole write face · audit append-only) and prove append-only and audit durability themselves |
 | Structural fingerprint | Checks "clause count + first anchor + last anchor" and **does not verify intermediate clause content**; the strong guarantee comes from the full-text hash of the cryptographic layer (GOV-2.3) | Changing a middle clause while keeping both anchors → structural layer passes, hash layer catches it; this is the trade-off defined by the Appendix F manifest |
 | BOOT-2/3 | The template supplies only scaffolding and checklists; `bootstrap --stage 2/3` returns a refusal | Governance workflow and Identity Context acceptance are instance-side world events (GOV-1) |
 | `mandatory` clauses | VER-20/24/26/27/28/29 have only checklist/support entries and never enter the auto suites | Human execution + evidence / judge / signer records; the template never pretends they passed |

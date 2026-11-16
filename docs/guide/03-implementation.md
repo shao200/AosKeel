@@ -142,7 +142,7 @@ channel_writes:                # 生成段：会话通道写入，强制主体�
 - 特定事件类型有唯一写者约束：`InvariantViolation@*` 只能由 `RaiseInvariantViolation` 写，`MergeDeclared@*` 只能由 `DeclareIdentityMerge` 写；
 - 决策事件只能在决策流且带 `projection_ref` + `session_ref`（KS-2.5 / VER-7 / VER-33）。
 
-**工程边界（不是隐藏缺陷）**：进程退出即失，无持久化。生产实例必须自接数据库，并自行证明 append-only 与审计持久性。
+**工程边界与参考实现**：`EventStore` 本体是纯内存（进程退出即失）；`src/kernel/filestore.py` 提供 **FileStore 参考实现**——单一 JSONL 文件、写路径只有追加一行、启动时以文件为准重放重建流；拒绝（版本冲突/未知能力/直写陷阱）发生在落盘之前，文件不留半行。参考实现是**单写进程模型**：多进程并发需实例侧加锁，或直接以数据库实现同一协议（`streams` 只读 + `commit` 唯一写面 + `audit` 只增）；数据库本身不消除 append-only 证明义务，仍需实例自行取证。
 
 ### 4.2 读时升级（upcasting）
 
