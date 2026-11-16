@@ -4,7 +4,7 @@ conditional：受限布尔表达式 → BooleanFunctionRef（仅引用，运行�
 不编译宿主函数、不注册谓词性代码（P-1：不注册谓词性代码，注册数据）。
 """
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from kernel.errors import RegistrationFailed
 STRUCTURAL_OPS = {"exists", "references", "max_len"}
 @dataclass(frozen=True)
@@ -24,6 +24,7 @@ class CompiledAction:
     stream: str
     provenance: str
     dry_run: bool
+    effects: dict = field(default_factory=dict)  # T24 副作用：内核书写进事件载荷的状态效果
 def _compile_structural(rules: list, action_type: str) -> tuple[Check, ...]:
     checks = []
     for rule in rules or []:
@@ -51,6 +52,15 @@ def compile_action(decl: dict, provenance: str) -> CompiledAction:
                 f"SC-COMPILE-FAIL: {action_type} 条件表达式必须起于 "
                 f"snapshot./principal.（R2），实得 '{first}'")
     agg = str(aggregate)
+    effects = decl.get("effects") or {}
+    if not isinstance(effects, dict):
+        raise RegistrationFailed(
+            f"SC-COMPILE-FAIL: {action_type} effects 须为映射（T24 副作用声明）")
+    clash = set(effects) & set(decl.get("params") or {})
+    if clash:
+        raise RegistrationFailed(
+            f"SC-COMPILE-FAIL: {action_type} effects 与 params 同字段重名 {sorted(clash)} "
+            f"—— 状态效果只能由内核书写，不得同时接受调用方自报（双事实源）")
     declared_inputs = tuple(cond.get("snapshot_inputs", []) or [])
     return CompiledAction(
         action_type=action_type, aggregate=agg,
@@ -61,7 +71,8 @@ def compile_action(decl: dict, provenance: str) -> CompiledAction:
         permissions=decl.get("permissions") or {},
         stream=f"domain:{agg}",
         provenance=provenance,
-        dry_run=bool((decl.get("dry_run") == "required")))
+        dry_run=bool((decl.get("dry_run") == "required")),
+        effects=dict(effects))
 def run_structural(checks: tuple[Check, ...], params: dict) -> None:
     """结构校验执行（内核提交时；KS-7.1 第一段）。"""
     for c in checks:

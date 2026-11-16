@@ -20,6 +20,7 @@ def dryrun(kernel, action_type: str, params: dict, principal: str,
     if act is None:                                     # INV-1
         report["reason"] = "unregistered: 不注册即不可执行（INV-1）"
         return report
+    report["effects"] = dict(act.effects)               # T24：演练呈现声明的状态效果
     required = set(act.permissions.get("roles", []))
     if required and not (required & set(roles)):        # 能力/权限（与 submit 同序）
         report["checks"]["capability"] = "fail"

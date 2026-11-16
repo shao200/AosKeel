@@ -13,6 +13,7 @@ write_actions:
   - { id: RaiseInvariantViolation, class: domain, gated_by: detector_only, provenance: genesis }
   - { id: DeclareIdentityMerge, class: domain, gated_by: merge_only, provenance: genesis }
   - { id: ApproveContract, class: domain, gated_by: sc_full, provenance: SPEC-2026-014 }
+  - { id: RegisterContract, class: domain, gated_by: sc_full, provenance: SPEC-2026-014 }
   - { id: VoidContract, class: domain, gated_by: sc_full, provenance: SPEC-2026-014 }
 channel_writes:
   - { id: SessionAppend, stream: session, principal_required: true, provenance: genesis }

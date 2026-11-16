@@ -121,6 +121,41 @@ def _validate_spec() -> list[str]:
         for c in d.get("compensations", []) or []:
             if not c.get("action"):
                 failures.append(f"COMPENSATION-INCOMPLETE: {d.get('process', p.name)}（P-9）")
+    failures += _validate_effects()
+    return failures
+def _validate_effects() -> list[str]:
+    """T24 副作用执行点的声明校验（注册期拒绝优于运行时拒绝）：
+    effects 键 MUST 是聚合根 object 的声明属性（identity 除外——标识不可被效果改写），
+    枚举类型的效果值 MUST 落在声明值域内。"""
+    failures: list[str] = []
+    objects: dict[str, dict] = {}
+    for p in sorted((SPEC_DIR / "ontology" / "objects").glob("*.yaml")):
+        d = _load_yaml(p)
+        objects[d.get("object_type", p.name)] = d
+    roots = {}
+    for p in sorted((SPEC_DIR / "aggregates").glob("*.yaml")):
+        d = _load_yaml(p)
+        roots[d.get("aggregate", p.name)] = d.get("root")
+    adir = SPEC_DIR / "ontology" / "actions"
+    for p in sorted(adir.glob("*.yaml")) if adir.exists() else []:
+        d = _load_yaml(p)
+        effects = d.get("effects") or {}
+        if not effects:
+            continue
+        aid = d.get("action_type", p.name)
+        obj = objects.get(roots.get(d.get("aggregate", ""), "")) or {}
+        props = obj.get("properties", {}) or {}
+        identity = obj.get("identity")
+        for key, val in effects.items():
+            if key == identity:
+                failures.append(f"EFFECTS-ILLEGAL-TARGET: {aid} 效果键 {key} 是实例标识（不可改写）")
+            elif key not in props:
+                failures.append(f"EFFECTS-UNDECLARED-PROP: {aid} 效果键 {key} 不在聚合根 "
+                                f"{obj.get('object_type', '?')} 的声明属性内（T24 / AX-5）")
+            elif (props[key] or {}).get("type") == "enum" \
+                    and val not in (props[key] or {}).get("values", []):
+                failures.append(f"EFFECTS-VALUE-OUT-OF-DOMAIN: {aid} 效果值 {val!r} "
+                                f"不在 {key} 的声明枚举值域内")
     return failures
 # ---------- 步骤 4+5：生成 + 对账 ----------
 def _compute_generated() -> dict:

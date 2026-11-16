@@ -73,6 +73,7 @@ class Kernel:
         stream = act.stream                            # 3 追加；版本冲突 → 完整重求值
         payload = dict(params)
         payload.setdefault("valid_time", _now())
+        payload.update(act.effects)   # T24 副作用：状态效果由声明书写，非调用方自报
         for _ in range(MAX_REEVAL):
             self._evaluate(act, params, principal)     # 1+2 每轮重跑（KS-1.4 / VER-3）
             try:

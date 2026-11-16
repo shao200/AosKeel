@@ -17,14 +17,14 @@ from kernel.errors import DirectWriteForbidden
 PARAMS = {"contract_id": "C-1", "status": "pending", "amount": 500000}
 def _kernel(store) -> Kernel:
     return Kernel(store, SessionChannel(), compile_all())
-def _submit(k) -> None:
-    k.submit("ApproveContract", dict(PARAMS), "alice",
+def _submit(k, cid="C-1") -> None:
+    k.submit("ApproveContract", dict(PARAMS, contract_id=cid), "alice",
              roles=("contract_steward",))
 def test_replay_rebuilds_eight_field_events(tmp_path):
     p = tmp_path / "events.jsonl"
     k = _kernel(FileStore(p))
     _submit(k)
-    _submit(k)
+    _submit(k, "C-2")                        # 不同实体：T24 效果后同实体重复 approve 应被语义拒绝
     rebuilt = FileStore(p)                     # "新进程"：只信文件
     for stream in rebuilt.streams:
         for a, b in zip(k.store.streams[stream], rebuilt.streams[stream]):

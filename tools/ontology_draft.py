@@ -19,6 +19,7 @@
       参数: contract_id(必填), approver_comment(选填)
       结构: exists contract_id; max_len approver_comment 2000
       条件: snapshot.status == 'pending'
+      效果: status=approved
 """
 from __future__ import annotations
 import sys
@@ -46,7 +47,7 @@ def parse_requirements(text: str) -> dict:
             objects.append(cur); continue
         if s.startswith("动作:"):
             cur = {"action_type": s.split(":", 1)[1].strip(), "aggregate": "",
-                   "params": {}, "structural": [], "conditional": []}
+                   "params": {}, "structural": [], "conditional": [], "effects": {}}
             actions.append(cur); continue
         if s.startswith("聚合体:"):                                   # 与动作块内的"聚合:"键区分
             cur = {"aggregate": s.split(":", 1)[1].strip(),
@@ -66,6 +67,11 @@ def parse_requirements(text: str) -> dict:
                         cur["params"][name.strip()] = bool(req.startswith("必填"))
             elif key == "结构": cur["structural"] += [x.strip() for x in val.split(";") if x.strip()]
             elif key == "条件": cur["conditional"].append(val)
+            elif key == "效果":
+                for part in val.split(";"):
+                    p, eq, q = part.strip().partition("=")
+                    if eq and p.strip():
+                        cur["effects"][p.strip()] = _scalar(q.strip())
         elif cur.get("object_type"):
             if key == "标识": cur["identity"] = val
             elif key == "属性":
@@ -79,6 +85,14 @@ def parse_requirements(text: str) -> dict:
     return {"objects": objects, "actions": actions, "aggregates": aggregates}
 # ---------- 2. 把关（编译不过的草案不被写出） ----------
 import re as _re
+def _scalar(v: str):
+    """效果值字面量：整数/浮点归型，其余保持字符串（enum 状态用）。"""
+    for cast in (int, float):
+        try:
+            return cast(v)
+        except ValueError:
+            pass
+    return v
 def _cond_block(conditional: list[str]) -> dict:
     """条件段字典形态（与正典声明一致）：expression + snapshot_inputs（R2 快照声明）。"""
     expr = " and ".join(conditional) or None
@@ -87,7 +101,7 @@ def _cond_block(conditional: list[str]) -> dict:
     inputs = sorted(set(_re.findall(r"snapshot\.(\w+)", expr)))
     return {"expression": expr, "snapshot_inputs": inputs}
 def _action_decl(a: dict, provenance: str) -> dict:
-    return {"action_type": a["action_type"], "provenance": provenance,
+    decl = {"action_type": a["action_type"], "provenance": provenance,
             "aggregate": a["aggregate"],
             "params": {k: {"type": "string", "required": req}
                        for k, req in a["params"].items()},
@@ -95,6 +109,9 @@ def _action_decl(a: dict, provenance: str) -> dict:
                                     "conditional": _cond_block(a["conditional"])},
             "permissions": {"roles": [], "contexts": []},
             "audit": "required"}
+    if a.get("effects"):
+        decl["effects"] = a["effects"]
+    return decl
 def validate_draft(decls: dict) -> list[str]:
     failures = []
     aggregates = {p.stem.replace(".aggregate", "") for p in

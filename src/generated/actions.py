@@ -12,6 +12,15 @@ def approve_contract(kernel, principal, *, contract_id, approver_comment=None, r
     payload.update(snapshot)                    # 快照字段（R2）不属签名，透传
     return kernel.submit("ApproveContract", payload, principal, roles=roles)
 
+def register_contract(kernel, principal, *, contract_id, amount, party_refs=None, roles=(), **snapshot):
+    """RegisterContract（provenance: SPEC-2026-014）
+    结构: exists contract_id; exists amount
+    条件: 由提交管线 R10 解释器强制（快照输入 R2 经 **snapshot 透传）
+    """
+    payload = {"contract_id": contract_id, "amount": amount, "party_refs": party_refs}
+    payload.update(snapshot)                    # 快照字段（R2）不属签名，透传
+    return kernel.submit("RegisterContract", payload, principal, roles=roles)
+
 def void_contract(kernel, principal, *, contract_id, void_reason=None, roles=(), **snapshot):
     """VoidContract（provenance: SPEC-2026-014）
     结构: exists contract_id; max_len void_reason 500

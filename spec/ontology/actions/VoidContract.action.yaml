@@ -9,6 +9,8 @@ submission_criteria:
     - "exists contract_id"
     - "max_len void_reason 500"
 permissions: { roles: [contract_steward], contexts: [ContractContext] }   # P-10
+effects:                               # T24 副作用：作废效果由声明书写
+  status: void
 audit: required
 compensation: true                    # P-9：补偿 = 追加补偿事件；补偿本身是 Action
 idempotent: true                      # 幂等（P-9 补偿要求）

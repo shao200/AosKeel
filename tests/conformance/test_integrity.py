@@ -60,7 +60,11 @@ def test_conflict_reevaluates_full_pipeline(monkeypatch):
         return real(*a)
 
     monkeypatch.setattr(k.store, "commit", racing)
-    ev = k.submit("ApproveContract", PARAMS, "contract_steward", roles=("contract_steward",))
+    # 用 RegisterContract 演示重求值：ApproveContract 的效果（T24 effects）会把
+    # 投影推向 approved，二次同值 approve 在语义上就该被拒 —— 重求值判据必须
+    # 落在一个"两轮条件都为真"的能力上，注册的 amount 上限条件满足这一点。
+    ev = k.submit("RegisterContract", {"contract_id": "C-1", "amount": 500000},
+                  "contract_steward", roles=("contract_steward",))
     assert ev is not None and counts["commit"] == 2
     assert counts["struct"] == counts["commit"], "结构校验未随重求值重跑（KS-1.4）"
     assert counts["bool"] == counts["commit"], "条件求值未随重求值重跑（KS-1.4）"

@@ -12,5 +12,7 @@ submission_criteria:
     expression: "snapshot.status == 'pending' and snapshot.amount < 10**6"
     snapshot_inputs: [status, amount, principal.role]
 permissions: { roles: [contract_steward], contexts: [ContractContext] }   # P-10
+effects:                               # T24 副作用：status 由声明书写进事件，调用方不自报
+  status: approved
 audit: required
 dry_run: required                     # P-12：高风险 Action 须演练

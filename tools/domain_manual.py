@@ -82,6 +82,8 @@ def render() -> str:
         L += [f"- 结构校验：{'; '.join(sc.get('structural', []) or []) or '（无）'}",
               f"- 条件校验：`{cond.get('expression', '（无）')}`"
               f"（快照输入：{', '.join(map(str, cond.get('snapshot_inputs', []) or []))}）",
+              f"- 状态效果（T24，内核书写进事件，勿自报）："
+              f"{a.get('effects') or '（无）'}",
               f"- 权限角色：{', '.join(map(str, perm.get('roles', []) or [])) or '（未声明）'}"
               f"；上下文：{', '.join(map(str, perm.get('contexts', []) or [])) or '-'}",
               f"- 审计：{a.get('audit', '-')}；演练要求：{a.get('dry_run', '-')}；"

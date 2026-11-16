@@ -1,0 +1,18 @@
+action_type: RegisterContract
+provenance: SPEC-2026-014             # 治理提案产物（KS-8.2）
+aggregate: ContractAggregate
+params:
+  contract_id: { type: ref, required: true }
+  amount:      { type: decimal, required: true }        # INV-8 决策依据属性，由初始观测载入
+  party_refs:  { type: list, required: false }
+submission_criteria:
+  structural:
+    - "exists contract_id"
+    - "exists amount"
+  conditional:                         # 与 ApproveContract 同额度上限（示例口径一致）
+    expression: "snapshot.amount < 10**6"
+    snapshot_inputs: [amount]
+effects:                               # T24 副作用：实体经此 Action 才进入权威投影
+  status: pending
+permissions: { roles: [contract_steward], contexts: [ContractContext] }   # P-10
+audit: required
