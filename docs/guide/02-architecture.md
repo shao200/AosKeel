@@ -72,7 +72,7 @@ AX 五条公理 → KS 内核语义(30) → P 模式(17) → INV 全局不变量
 |---|---|---|---|
 | Object | `spec/ontology/objects/` | 对象类型、标识、属性及决策相关性 | T01、INV-8 |
 | Link | `spec/ontology/links/` | 结构性链接（零属性/遍历透明/系统写入） | T09、P-4、VER-21 |
-| Action | `spec/ontology/actions/` | 状态变更契约：参数、SC、权限、副作用、审计 | T24、P-1、KS-7 |
+| Action | `spec/ontology/actions/` | 状态变更契约：参数、SC、权限、副作用（effects，T24 执行点）、审计 | T24、P-1、KS-7 |
 | Context | `spec/contexts/` | 通用语言、steward、投影延迟预算 | P-3、P-16、VER-12 |
 | Aggregate | `spec/aggregates/` | 聚合根、流、求值预算、不变量归属 | P-2、R8 |
 | Invariant | `spec/invariants/` | 不变量三元组：声明 + 违规语义 + 修复绑定 | T10、P-6、INV-3 |

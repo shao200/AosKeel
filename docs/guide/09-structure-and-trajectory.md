@@ -21,7 +21,7 @@ src/interpreter/ 守护机器·沙箱。规则表达式的合法词汇表在这�
 src/generated/   真源的代码影子。aos generate 的产物，带 provenance 头，
                     手改会被字节比对拦截——改行为请回 spec/。
 src/agents/      AI 接入面。Agent 能力子集 + 同一条管线（无特权通道）。
-tools/           守护机器·签发。指纹、哈希、骨架生成、布线、发布闸门、领域说明书。
+tools/           守护机器·签发。指纹、哈希、骨架生成、布线、发布闸门、领域说明书、影响分析、审计导出、闸门度量。
 config/          治理台账。capabilities.yaml=能力清单（对账对象）；
                     verification.yaml=VER↔测试布线（闸门的分组依据）。
 tests/           条款的证据。conformance=应然行为；negative=禁止面必拒；
@@ -79,6 +79,8 @@ python src/cli/main.py verify                 # declared==registered 必须重�
 
 > 注意 `generate --force` 不是可选项：promote 改声明后骨架会漂移，漂移状态下测试报 `CodegenDrift`。看到成片的 codegen ERROR，先跑 generate。
 
+> 改一条既有声明前先问"会牵动谁"：`python src/cli/main.py impact ApproveContract`（或 `impact Contract.status`）给出反向引用图的事前报告——上游引用位、下游依赖、能力清单与测试提及。它是咨询不是闸门：三关与布线照旧事后拦截。
+
 ### 第 2 步：实现效果层（reducers）
 
 `src/generated/reducers.py` 给出物化骨架；你写纯 reducer（事件 → 状态），纪律：**无 I/O、无时钟、无宿主调用**（KS-3.4 重放纯度，`test_replay_purity` 会抓）。
@@ -109,8 +111,7 @@ agent = AgentRuntime(kernel, "agent-1", ("contract_steward",))
 def propose(context_md: str, request: str) -> tuple[str, dict]:
     """LLM 插槽：输入 = 领域说明书（manual 输出）+ 用户请求；
     输出 = (action_type, params)。概率只提议（AX-2）——这里什么都不保证。"""
-    return "ApproveContract", {"contract_id": "C-9", "status": "pending",
-                               "amount": 100}
+    return "ApproveContract", {"contract_id": "C-9"}   # 状态不在提议里：效果由声明书写
 
 at, params = propose(open("docs/DOMAIN-MANUAL.md", encoding="utf-8").read(),
                      "帮我批准 C-9")

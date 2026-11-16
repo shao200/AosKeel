@@ -50,7 +50,7 @@ python src/cli/main.py verify                 # 三关首跑
 | `ontology/links/*.link.yaml` | 概念间什么结构关系？ | same_as（系统写、零业务语义、跨上下文同一性） |
 | `aggregates/ClaimAggregate.aggregate.yaml` | 一致性边界与并发单位？ | 流 `domain:ClaimAggregate` + 求值预算 ≤10⁵（R8） |
 | `contexts/ClaimsContext.context.yaml` | 谁拥有哪块语义？ | **steward 必填**（P-3）+ 投影延迟预算（P-16） |
-| `ontology/actions/*.action.yaml` | **世界允许怎样被改变？** | SettleClaim：参数+条件+权限+审计+演练 |
+| `ontology/actions/*.action.yaml` | **世界允许怎样被改变？** | SettleClaim：参数+条件+效果+权限+审计+演练 |
 | `invariants/*.invariant.yaml` | 什么必须永远为真？ | "已结案金额 ≤ 保额"（三元组：声明+违规语义+修复绑定） |
 | `mappings/*.mapping.yaml` | 外部数据怎样进入？ | 核心保单视图（语义损耗必须显式声明，KS-4） |
 | `processes/*.process.yaml` | 跨聚合流程怎样编排？ | 理赔-支付-退单（补偿必须是指册 Action，P-9） |
@@ -68,6 +68,8 @@ submission_criteria:
   conditional:
     expression: "snapshot.status == 'approved' and snapshot.amount <= snapshot.coverage"
     snapshot_inputs: [status, amount, coverage, principal.role]
+effects:
+  status: settled          # T24 副作用：结案状态由声明书写进事件，调用方不自报
 permissions: { roles: [claims_settler], contexts: [ClaimsContext] }
 audit: required
 dry_run: required          # 高风险动作：先演练后执行（P-12）
@@ -105,6 +107,7 @@ python src/cli/main.py draft promote spec/drafts/claims.yaml --proposal-ref SPEC
   参数: claim_id(必填)
   结构: exists claim_id
   条件: snapshot.status == 'approved'
+  效果: status=settled
 ```
 
 晋升后注册管线单写更新能力清单（P-5），`declared == registered` 对账必然全绿。
@@ -117,7 +120,7 @@ python src/cli/main.py draft promote spec/drafts/claims.yaml --proposal-ref SPEC
 python src/cli/main.py generate    # 声明 → src/generated/actions.py + reducers.py
 ```
 
-骨架带 provenance 头，手改后禁静默覆盖（字节比对）。`reducers.py`——事件如何改变投影状态——就是声明的**效果语义实现处**。注意：形式化目前只覆盖前置条件（提交条件），效果层是脚手架留给工程团队的真实工作量所在（见"阶段 7"与 06 §7 边界）。
+骨架带 provenance 头，手改后禁静默覆盖（字节比对）。`reducers.py`——事件如何改变投影状态——就是声明的**效果语义实现处**。当前形式化覆盖两块：前置条件（提交条件 SC）与简单字段状态变更（`effects`，T24 副作用执行点，由内核书写进事件载荷）；跨字段聚合、集合整形等复杂投影逻辑仍留在 `reducers.py`，是脚手架留给工程团队的真实工作量所在（见"阶段 7"与 06 §7 边界）。
 
 ---
 
@@ -155,6 +158,10 @@ python src/cli/main.py verify      # 三关：指纹 → 哈希 → declared==re
 python src/cli/main.py release     # fail-closed：三关+布线全绿+骨架零漂移 → RELEASE-MANIFEST
 ```
 
+改一条既有声明之前，先做事前核对：`python src/cli/main.py impact ApproveContract`（声明名 / spec 路径 / `ObjectType.prop` 皆可）——输出反向引用图报告：上游引用位、下游依赖、能力清单在场性与测试提及文件。它是"版本与变更治理"的事前半边，与三关（事后漂移检测）互补；咨询性工具，不放行也不拦截（守卫：INTEGRITY-6）。
+
+证据侧同样有两条派生通道：`python src/cli/main.py audit export events.jsonl --out audit.jsonl` 把追加证据、评估审计与决策三引用合成**一条链式台账**（audit_id 逐条串接，改动即断链可查，守卫：INTEGRITY-7）；`python src/cli/main.py metrics` 读 `dist/gate-history.jsonl`（verify/release 每次运行自动留档）报通过率、各关失败与漂移计数（守卫：INTEGRITY-8）。两者都是只读派生件——真源仍是事件日志与登记，判定仍归三关与布线。
+
 5 个〔强〕项（VER-20/24/26/27/28/29 中的人工部分）指向 `bootstrap/checklists/`——由人执行、留证据、签字；模板永远不代签"通过"。
 
 ---
@@ -168,7 +175,7 @@ python src/cli/main.py release     # fail-closed：三关+布线全绿+骨架零
 3. **权限强制点已归位（模板层）**——`Kernel.submit` 在单一写路径上强制 `permissions.roles`：出示的角色与声明角色不相交即 `PermissionDenied`，在触达存储与评估之前（fail-closed，P-10/INV-4）；实例侧剩余职责只是把 authN 结果接到 `roles` 参数上；
 4. **BOOT-2/3 治理工作流与 Identity Context**——模板层明示未实装，治理闭环依赖组织流程。
 
-> 评审裂缝修复进度：条件求值物化投影**已落地（模板层）**——`Kernel._evaluate` 经 `materialize()` 在当轮版本视图上重放聚合流折叠权威投影后再求条件（P-16 / KS-1.4）：自报字段与投影矛盾 → `SNAPSHOT-CONTRADICTION` 拒绝（改口无效），未自报字段以权威值回填；守卫见 `tests/negative/test_snapshot_materialization.py`。剩余的诚实边界是**示例域状态建模**：`ApproveContract` 等示例 Action 仍把 `status` 当自报快照字段携带，真实域应让状态只由事件导出、Action 不再透传声明外快照。
+> 评审裂缝修复进度：条件求值物化投影**已落地（模板层）**——`Kernel._evaluate` 经 `materialize()` 在当轮版本视图上重放聚合流折叠权威投影后再求条件（P-16 / KS-1.4）：自报字段与投影矛盾 → `SNAPSHOT-CONTRADICTION` 拒绝（改口无效），未自报字段以权威值回填；守卫见 `tests/negative/test_snapshot_materialization.py`。**示例域状态建模也已落地**：Action 新增声明式 `effects`（T24 副作用执行点），`RegisterContract` → `ApproveContract` → `VoidContract` 的状态全部由事件导出，示例 Action 不再要求调用方自报 `status`；守卫见 `tests/conformance/test_effects_derivation.py`（INTEGRITY-5）。剩余边界：跨字段聚合类效果仍属 `reducers.py` 工程工作量（阶段 3）。
 
 ---
 

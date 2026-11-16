@@ -2,7 +2,7 @@
 
 > 信息性文档。真实口径以 [aos-spec.md](../aos-spec.md)、[verification.yaml](../../config/verification.yaml) 与源码为准。
 
-## 1. CLI 命令 ×12
+## 1. CLI 命令 ×15
 
 | 命令 | 作用 | 失败行为 |
 |---|---|---|
@@ -18,6 +18,9 @@
 | `aos draft <file> [--name N]` | 需求 DSL → 草案（编译把关） | 未全绿 → 不落盘 |
 | `aos draft promote <f> --proposal-ref SPEC-…` | 草案晋升正典 + 能力清单同步 | 目标已存在 / 无提案 → 拒绝 |
 | `aos manual [--out F]` | 领域说明书：spec/ 八类声明 → 可读文档（派生视图，非真源） | 缺省打印 stdout；`--out` 落盘 |
+| `aos impact <target>` | 变更影响分析：声明名 / spec 路径 / `ObjectType.prop` → 反向引用图报告（事前咨询，不进闸门） | 目标不可解析 → `IMPACT-UNKNOWN` exit 1 |
+| `aos audit export <events.jsonl> [--out F]` | 统一审计台账：追加证据 + 评估审计 + 决策引用 → 链式 `audit_id` JSONL（只读派生件） | 缺路径 / 文件不存在 → 拒绝 |
+| `aos metrics` | 闸门度量：`dist/gate-history.jsonl` → 次数 / 通过率 / 各关失败 / 漂移计数 / 连续通过 | 空台账 → `METRICS-EMPTY`（exit 0） |
 
 > **实例内命令**：`aos` 控制台脚本的 `ROOT` 锁在模板源码树。实例里一律用 `python src/cli/main.py <command>`。详见 [教程 §1](04-tutorial.md)。
 
@@ -35,7 +38,7 @@
 | `config/capabilities.yaml` | 能力清单三段式（固定段/生成段/provenance） |
 | `config/verification.yaml` | VER-1..33 布线（承重件；单一读取点 `tools/wiring.py`） |
 | `spec/` | 八类声明 + `drafts/`（工作区，不入实例） |
-| `src/cli/main.py` | 12 命令分发；`main()` 兼容 console script 无参调用 |
+| `src/cli/main.py` | 15 命令分发；`main()` 兼容 console script 无参调用 |
 | `src/kernel/registration.py` | 注册五步，生成段唯一写者（P-5） |
 | `src/kernel/sc_compiler.py` | SC 两段式编译（Check AST / BooleanFunctionRef） |
 | `src/kernel/pipeline.py` | 提交管线 + 冲突完整重求值 |
@@ -47,7 +50,7 @@
 | `src/interpreter/` | 受限解释器（布尔档 / 映射档 / 审计） |
 | `src/agents/runtime.py` | Agent 能力面（清单严格子集） |
 | `src/generated/` | 生成物（actions.py / reducers.py / __init__.py） |
-| `tools/` | `hash_spec` / `fingerprint` / `wiring` / `codegen` / `release_gate` / `ontology_draft` |
+| `tools/` | `hash_spec` / `fingerprint` / `wiring` / `codegen` / `release_gate` / `ontology_draft` / `domain_manual` / `impact` / `audit_export` / `gate_history` |
 | `tests/` | conformance / negative / golden / genesis / invariants / replay / redteam |
 | `bootstrap/checklists/` | 〔强〕项检查表（VER-20/24/26/27/28/29） |
 

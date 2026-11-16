@@ -92,7 +92,7 @@ Five axioms drive the whole design: **AX-1** events are the source of truth and 
 
 1. **Declare** the domain in `spec/` (eight YAML kinds — never edit generated code as the source of truth).
 2. **Register**: the five-step pipeline compiles structural checks and conditions, validates links/contexts, and publishes the capability list. A failure blocks startup.
-3. **Submit**: `Kernel.submit()` runs capability + role-evidence check → structural validation → conditional evaluation → append. Declared roles must be presented (`roles=…`); missing evidence = refused before the store is touched (P-10 / INV-4, fail-closed). A version conflict reruns the *entire* evaluation, not just the append.
+3. **Submit**: `Kernel.submit()` runs capability + role-evidence check → structural validation → conditional evaluation → append. The appended event carries the action's *declared* state effects (T24 副作用 — status is written by the declaration, never asserted by the caller). Declared roles must be presented (`roles=…`); missing evidence = refused before the store is touched (P-10 / INV-4, fail-closed). A version conflict reruns the *entire* evaluation, not just the append.
 4. **Check**: three gates — structural fingerprint → cryptographic hash → `declared == registered`. Any failure exits non-zero.
 5. **Release**: a fail-closed gate chains the wired test suites and skeleton byte check; only then is `dist/RELEASE-MANIFEST.json` written.
 
@@ -119,14 +119,18 @@ from kernel.pipeline import Kernel
 from kernel.errors import ConditionalRejected
 
 kernel = Kernel(EventStore(), SessionChannel(), compile_all())
-params = {"contract_id": "C-1", "status": "pending", "amount": 500000}
 
-ev = kernel.submit("ApproveContract", dict(params), "alice",
+# Entities enter the authoritative projection through a declared action;
+# status is written by the action's declared effects (T24), never self-reported.
+kernel.submit("RegisterContract", {"contract_id": "C-1", "amount": 500000},
+              "alice", roles=("contract_steward",))
+
+ev = kernel.submit("ApproveContract", {"contract_id": "C-1"}, "alice",
                    roles=("contract_steward",))
-print(ev.event_type, ev.stream_id)     # ApproveContract@1 domain:ContractAggregate
+print(ev.event_type, ev.payload["status"])   # ApproveContract@1 approved
 
 try:
-    kernel.submit("ApproveContract", dict(params, status="void"), "alice",
+    kernel.submit("ApproveContract", {"contract_id": "C-1"}, "alice",
                   roles=("contract_steward",))
 except ConditionalRejected:
     print("refused — no event appended; audit retained")

@@ -40,7 +40,7 @@ print(dict(store.streams))            # 尚未写入
 实测输出：
 
 ```
-['ApproveContract', 'VoidContract']
+['ApproveContract', 'RegisterContract', 'VoidContract']
 {}
 ```
 
@@ -53,8 +53,12 @@ print(dict(store.streams))            # 尚未写入
 ```python
 from pprint import pprint
 
-P = {"contract_id": "C-1", "status": "pending", "amount": 500000}
-ev = kernel.submit("ApproveContract", dict(P), "contract_steward",
+R = {"contract_id": "C-1", "amount": 500000}
+# 实体先经 RegisterContract 进入权威投影（effects 书写 status=pending，T24）
+kernel.submit("RegisterContract", dict(R), "contract_steward",
+              roles=("contract_steward",))
+# 审批不再自报 status——条件对物化投影求值，状态效果由声明书写进事件
+ev = kernel.submit("ApproveContract", {"contract_id": "C-1"}, "contract_steward",
                    roles=("contract_steward",))   # 角色证据必须出示（P-10/INV-4）
 
 print({
@@ -71,12 +75,13 @@ pprint(dict(ev.payload))
 实测输出（时间字段已缩写）：
 
 ```
-{'event_id': 1, 'stream_id': 'domain:ContractAggregate',
- 'expected_version': 0, 'event_type': 'ApproveContract@1',
+{'event_id': 2, 'stream_id': 'domain:ContractAggregate',
+ 'expected_version': 1, 'event_type': 'ApproveContract@1',
  'action_id': 'ApproveContract', 'principal': 'contract_steward'}
-{'contract_id': 'C-1', 'status': 'pending', 'amount': 500000,
- 'valid_time': '<ts>'}
+{'contract_id': 'C-1', 'status': 'approved', 'valid_time': '<ts>'}
 ```
+
+`payload['status']` 是 `approved`——不是调用方写的（本次提交根本没有 status 参数），而是声明的 `effects` 由内核书写（T24 副作用执行点）。状态只由事件导出。
 
 **八字段逐项口径**（KS-1.2）：
 
@@ -86,7 +91,7 @@ pprint(dict(ev.payload))
 | `stream_id` | Action 声明的 `aggregate` | `domain:ContractAggregate`；一 Action 一聚合（P-1） |
 | `expected_version` | 提交前读取的流长度 | 乐观并发；冲突触发完整重求值 |
 | `event_type` | Action + schema 版本 | 必须含 `@1`（KS-5.1），缺版本即 `SCHEMA-FAIL` |
-| `payload` | 调用参数 + `valid_time` | `MappingProxyType` 只读，无 update 路径 |
+| `payload` | 调用参数 + `valid_time` + 声明效果（T24，内核书写） | `MappingProxyType` 只读，无 update 路径 |
 | `transaction_time` | 平台维护 | 调用方不可提供；必须 ≥ `valid_time`（KS-6.1） |
 | `action_id` | 提交入口参数 | 必在 `write_actions` 段（INV-13） |
 | `principal` | 提交入口参数 | 主体归属；审计可追溯 |
@@ -97,7 +102,7 @@ pprint(dict(ev.payload))
 
 ## 2. 四条拒绝路径：失败发生在哪一步
 
-注意"条件失败"一例：§1 已把 C-1 投影为 `status=pending`，此处再自报 `status="void"` 属**改口谎报**——条件对物化投影求值（P-16），拒绝以 `SNAPSHOT-CONTRADICTION` 形态出现，异常类型仍是 `ConditionalRejected`。
+注意"条件失败"一例：§1 已把 C-1 注册并批准（权威投影 `status=approved`，状态由事件导出），此处再自报 `status="pending"` 属**过时谎报**——条件对物化投影求值（P-16），拒绝以 `SNAPSHOT-CONTRADICTION` 形态出现，异常类型仍是 `ConditionalRejected`。
 
 ```python
 from kernel.errors import (StructuralRejected, ConditionalRejected,
@@ -105,12 +110,12 @@ from kernel.errors import (StructuralRejected, ConditionalRejected,
 
 cases = [
     ("结构失败", lambda: kernel.submit(
-        "ApproveContract", {"status": "pending"}, "contract_steward",
+        "ApproveContract", {}, "contract_steward",
         roles=("contract_steward",)),
      StructuralRejected),
     ("条件失败", lambda: kernel.submit(
-        "ApproveContract", dict(P, status="void"), "contract_steward",
-        roles=("contract_steward",)),
+        "ApproveContract", {"contract_id": "C-1", "status": "pending"},
+        "contract_steward", roles=("contract_steward",)),
      ConditionalRejected),
     ("未注册能力", lambda: kernel.submit("NukeEverything", {}, "agent"),
      UnregisteredAction),
@@ -130,10 +135,10 @@ print("条件审计末条结果:", kernel.interpreter_audit[-1]["result"])
 
 ```
 结构失败: REFUSED — STRUCTURAL-FAIL: contract_id 必填（exists）
-条件失败: REFUSED — SNAPSHOT-CONTRADICTION: status 自报 void ≠ 权威投影 pending ——
+条件失败: REFUSED — SNAPSHOT-CONTRADICTION: status 自报 pending ≠ 权威投影 approved ——
 未注册能力: REFUSED — NukeEverything 未注册 —— 不注册即不可执行（INV-1 / P-1）
 直写陷阱: REFUSED — INV-1: 禁止 Action 之外的事件写入路径 —— 已产生 structurally-rejected 
-流长度: 1
+流长度: 2
 条件审计末条结果: False
 ```
 
@@ -148,7 +153,7 @@ print("条件审计末条结果:", kernel.interpreter_audit[-1]["result"])
 | 直写绕过 | `DirectWriteForbidden` | 否 | store audit 恰一条 `structurally-rejected` |
 | 版本冲突 | `VersionConflict` | 重求值后追加 | 冲突本身不记拒绝审计；成功追加记 `appended` |
 
-`流长度: 1` 证明四条拒绝路径**都没有污染权威状态**——失败不追加（VER-2）。`条件审计末条结果: False` 证明失败也有留痕（KS-3.3）：这正是"可审计"与"只记成功日志"的差别。
+`流长度: 2` 证明四条拒绝路径**都没有污染权威状态**——失败不追加（VER-2）。`条件审计末条结果: False` 证明失败也有留痕（KS-3.3）：这正是"可审计"与"只记成功日志"的差别。
 
 > 曾出现过的缺陷：一次版本冲突会记两条 `structurally-rejected`。现已统一到 `store.commit` 的单一拒绝口，实测一次拒绝恰一条审计。守卫见 `tests/conformance/test_integrity.py`。
 
@@ -156,7 +161,7 @@ print("条件审计末条结果:", kernel.interpreter_audit[-1]["result"])
 
 ## 3. 版本冲突：整条管线重求值，而不是重试追加
 
-这是最容易被实现错的一环。下面的探针**故意制造一次并发写入**：第一次 `commit` 先真实写入（使流版本前进）再抛 `VersionConflict`，观察结构和条件是否被重新执行。
+这是最容易被实现错的一环。下面的探针**故意制造一次并发写入**：第一次 `commit` 先真实写入（使流版本前进）再抛 `VersionConflict`，观察结构和条件是否被重新执行。探针用 `RegisterContract` 而非 `ApproveContract`：后者的效果（`status=approved`）会把投影推向终态，重求值轮的条件本就该不过——重求值判据必须落在"两轮条件都为真"的能力上。
 
 ```python
 import kernel.pipeline as pipeline
@@ -185,7 +190,7 @@ def racing(*a, **k):
     return real_commit(*a, **k)
 
 k2.store.commit = racing
-ev2 = k2.submit("ApproveContract", dict(P), "contract_steward",
+ev2 = k2.submit("RegisterContract", dict(R), "contract_steward",
                 roles=("contract_steward",))
 
 pipeline.run_structural, pipeline.eval_boolean = orig_struct, orig_bool
@@ -298,8 +303,8 @@ print("解释器审计条数:", len(kernel.interpreter_audit))
 实测输出：
 
 ```
-store 审计: {'appended': 2, 'structurally-rejected': 1}
-解释器审计条数: 2
+store 审计: {'appended': 3, 'structurally-rejected': 1}
+解释器审计条数: 3
 ```
 
 | 账本 | 持有者 | 记录内容 | 覆盖阶段 |
@@ -307,7 +312,7 @@ store 审计: {'appended': 2, 'structurally-rejected': 1}
 | `store.audit` | `EventStore` | `appended` / `structurally-rejected`，含 event_id、stream、action、时间 | 存储层：追加、流规则、版本冲突、直写陷阱 |
 | `kernel.interpreter_audit` | `Kernel` | 条件表达式、快照哈希、求值结果（失败带 `error`），含版本 | 评估层：每次条件布尔求值（含失败） |
 
-`appended=2` 对应成功提交与决策事件；`structurally-rejected=1` 对应直写陷阱；条件失败**不进** store 审计（它没到存储层），但**进**解释器审计。查问题时先确定要看哪个账本。
+`appended=3` 对应注册、审批与决策三次追加；`structurally-rejected=1` 对应直写陷阱；条件失败**不进** store 审计（它没到存储层），但**进**解释器审计。查问题时先确定要看哪个账本。
 
 ---
 
@@ -319,8 +324,10 @@ store 审计: {'appended': 2, 'structurally-rejected': 1}
 def test_conditional_failure_appends_nothing():
     k, store = _kernel()
     with pytest.raises(ConditionalRejected):
-        k.submit("ApproveContract", dict(PARAMS, status="void"), "contract_steward",
-                 roles=("contract_steward",))
+        # C-9 从未注册：权威投影无实体，status 回填为 None，条件不过
+        # （新口径：状态自报已无意义——谎报走 SNAPSHOT-CONTRADICTION，见 INTEGRITY-4/5）
+        k.submit("ApproveContract", {"contract_id": "C-9", "amount": 1},
+                 "contract_steward", roles=("contract_steward",))
     assert "domain:ContractAggregate" not in store.streams       # 失败不追加
     assert k.interpreter_audit[-1]["result"] is False            # 失败也留痕
 ```

@@ -35,7 +35,7 @@
 | [02 体系逻辑](guide/02-architecture.md) | AX→KS→P→INV→BOOT→GOV→VER 推导链、四条事件流、事故反证模式 |
 | [03 实现方法](guide/03-implementation.md) | 注册、SC 编译、提交管线、受限解释器、升级、闸门 |
 | [04 实操教程](guide/04-tutorial.md) | install → init → BOOT-0 → draft/promote → generate → 提交 → test/release（实测输出） |
-| [05 速查手册](guide/05-reference.md) | CLI ×12、文件地图、T01–T26、VER-1..33 布线、异常、FAQ |
+| [05 速查手册](guide/05-reference.md) | CLI ×15、文件地图、T01–T26、VER-1..33 布线、异常、FAQ |
 | [06 形式语义](guide/06-formal-semantics.md) | 描述逻辑、开放/封闭世界、本体工程方法、OWL↔AOS 翻译边界 |
 | [07 内核实操](guide/07-kernel-walkthrough.md) | 可运行 Python：拒绝路径、完整重求值、投影、决策审计 |
 | [08 企业应用构建指南](guide/08-enterprise-app-guide.md) | 完整构建路径：建模 → AI 起草与晋升 → 生成 → 外部接入 → Agent 装配 → 签发 → 实例侧自建清单 |
@@ -85,10 +85,10 @@ docs/TEMPLATE-LOCK.md          init 时写入版本绑定
 config/capabilities.yaml       能力清单三段式（固定段/生成段/provenance）
 config/verification.yaml       VER-1..33 实文布线（承重件）
 spec/                          八类声明样例（objects/links/actions/contexts/aggregates/mappings/processes/invariants）
-src/cli/main.py                命令表驱动入口（12 命令，见下表；启动自检拒绝误装 wheel）
+src/cli/main.py                命令表驱动入口（15 命令，见下表；启动自检拒绝误装 wheel）
 src/kernel/registration.py     注册期管线（KS-7.2 五步，P-5 单写者；装载 spec/ 八类声明）
 src/kernel/sc_compiler.py      SC 两段式编译器（KS-7.1 / VER-18）
-src/kernel/pipeline.py         内核提交管线（结构→条件→追加；冲突完整重求值 VER-2/3）
+src/kernel/pipeline.py         内核提交管线（结构→条件→追加，事件载荷携带声明式 T24 副作用；冲突完整重求值 VER-2/3）
 src/kernel/store.py            本体事件日志（append-only；INV-1 写路径闭环）
 src/kernel/filestore.py        FileStore：持久化参考实现（JSONL 追加 + 重放；单写进程模型）
 src/kernel/session.py          会话事件流（KS-2.2 物理分离存储 / VER-4）
@@ -112,6 +112,10 @@ tools/wiring.py                  verification.yaml 唯一读取点（pyyaml；�
 tools/codegen.py                 声明 → 代码骨架生成器（aos generate；手改检测，provenance 头）
 tools/release_gate.py            发布闸门（aos release；fail-closed，VER-27 前置）
 tools/ontology_draft.py          需求 DSL → 本体草案（aos draft；编译把关，晋升须治理提案）
+tools/domain_manual.py           领域说明书渲染器（aos manual；派生视图，非真源）
+tools/impact.py                  变更影响分析（aos impact；反向引用图，纯咨询）
+tools/audit_export.py              统一审计导出（aos audit export；链式 audit_id JSONL，只读）
+tools/gate_history.py              闸门度量台账（dist/gate-history.jsonl；aos metrics）
 docs/samples/requirements-sample.txt  需求 DSL 样例（draft 入口）
 src/generated/                   生成物：actions.py（INV-1 封装 submit）+ reducers.py（纯函数，漂移可见）
 tests/negative/test_forbidden.py            forbidden × 负向测试（每项恰一用例）
@@ -121,7 +125,7 @@ tests/conformance/test_integrity.py        v0.3 加固的完整性守卫（经 i
 bootstrap/checklists/          _schema + VER-20/24/26/27/28/29（P-14 证据留档）
 ```
 
-## CLI 命令 ×12 与护栏 ×2
+## CLI 命令 ×15 与护栏 ×2
 
 | 命令 | 语义 | 失败行为 |
 |---|---|---|
@@ -137,6 +141,9 @@ bootstrap/checklists/          _schema + VER-20/24/26/27/28/29（P-14 证据留�
 | `draft <file>` | 需求 DSL → 草案（编译把关） | 未全绿 → 不落盘 |
 | `draft promote <f>` | 草案晋升正典（GOV-1 提案强制） | 目标已存在 → 拒绝；走 GOV-3 |
 | `manual [--out F]` | 领域说明书：八类声明 → 可读文档（人读 + LLM 上下文注入） | 派生视图；缺省打印到 stdout |
+| `impact <target>` | 变更影响分析：声明名 / spec 路径 / `ObjectType.prop` → 反向引用图报告（事前咨询，不进闸门） | 目标不可解析 → `IMPACT-UNKNOWN` exit 1 |
+| `audit export <events.jsonl>` | 统一审计台账：追加证据 + 评估审计 + 决策引用 → 链式 `audit_id` JSONL（只读派生件） | 缺路径 / 事件日志不存在 → 拒绝 |
+| `metrics` | 闸门度量（`dist/gate-history.jsonl`）：运行次数、通过率、各关失败、漂移计数、连续通过 | 空台账 → `METRICS-EMPTY` 提示（exit 0） |
 
 护栏一：`bootstrap --stage 1` 强制 `--appointment-ref`——拒绝合成创制任命（GOV-1）。
 护栏二：实例携带规范副本 + 登记条目 ID，副本哈希 = 登记哈希，改动即 FROZEN-TEXT-MUTATED（INV-12）。

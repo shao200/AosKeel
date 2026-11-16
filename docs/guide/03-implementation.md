@@ -47,9 +47,13 @@ submission_criteria:
   conditional:
     expression: "snapshot.status == 'pending' and snapshot.amount < 10**6"
     snapshot_inputs: [status, amount, principal.role]
+effects:
+  status: approved         # T24 副作用：状态效果由声明书写，非调用方自报
 ```
 
 **不注册谓词性代码，注册数据**（P-1）：把整段宿主函数塞进声明，在编译期就会被拒。
+
+**effects（T24 副作用执行点）**：Action 声明的状态效果在提交时由内核写入事件载荷（`payload.update(act.effects)`），投影折叠后即为新的权威状态——状态只由事件导出，调用方不再自报 `status`。注册期双重把关：效果键 MUST 属于聚合根 object 的声明属性且枚举值不越值域（`EFFECTS-UNDECLARED-PROP` / `EFFECTS-VALUE-OUT-OF-DOMAIN`）；效果键与 params 重名在编译期即拒（`SC-COMPILE-FAIL`，同字段双事实源）。示例域基线：`RegisterContract` 让实体进入权威投影（effects: status=pending），`ApproveContract` → approved，`VoidContract` → void。守卫：`tests/conformance/test_effects_derivation.py`（INTEGRITY-5）。
 
 ### 1.2 第 3 步：结构化校验清单（逐项可测）
 
@@ -63,6 +67,7 @@ submission_criteria:
 | 语义损耗声明 | Mapping 必声明 `semantic_loss_declared` | KS-4 | 静默丢字段 → 拒绝 |
 | 补偿完整性 | Process 每个 compensation 必带 action | P-9 | 空补偿 → 拒绝 |
 | 求值路径 | provenance 必填（创世熄灭后须 SPEC 提案号） | KS-8.2 | 无出处 → 拒绝 |
+| 副作用合法域 | effects 键 ∈ 聚合根声明属性（identity 除外）、枚举值不越值域、与 params 不同名 | T24 / AX-5 | `status: ratified`（值域外）→ 拒绝 |
 
 ### 1.3 第 4–5 步：能力清单三段式与单写者
 
@@ -102,7 +107,7 @@ channel_writes:                # 生成段：会话通道写入，强制主体�
 | 0.5 权限（角色证据） | 声明了 `permissions.roles` 的 Action：出示的 `roles` 与之相交才放行；未出示 = 无权（fail-closed） | `PermissionDenied`，在触达存储与评估之前（P-10 / INV-4） | 无（零接触） |
 | 1 结构 | `run_structural(Check AST, params)` | `StructuralRejected` | 无（结构失败不进解释器） |
 | 2 条件 | `eval_boolean(BooleanFunctionRef, env)` | `ConditionalRejected`；求值异常照记审计 | `record_evaluation`：版本 + 快照哈希 + 结果（KS-3.3） |
-| 3 追加 | `store.commit(action_id, stream, expected_version, ...)` | `StoreRejection` / `StreamRuleViolation` | 一条拒绝恰一条审计（不双记） |
+| 3 追加 | `payload.update(act.effects)` 后 `store.commit(action_id, stream, expected_version, ...)`——状态效果随声明进事件载荷（T24） | `StoreRejection` / `StreamRuleViolation` | 一条拒绝恰一条审计（不双记） |
 
 **版本冲突 = 完整重求值（KS-1.4 / VER-3）**：`VersionConflict` 后不是换 `expected_version` 重试追加，而是重新执行**结构 + 条件 + 追加**整条管线，每轮各留审计；重试有界（有界防爆炸），超限 `BudgetExceeded` → fail-closed。
 

@@ -31,7 +31,7 @@ aos test                            # 布线套件自检
 
 ```
 VERIFY-OK: 三关连续通过 —— 结构 / 密码学 / 注册
-套件 gate: {...} ｜ 选中 28 项，可执行 28，缺失 0，〔强〕项未布线 6
+套件 gate: {...} ｜ 选中 35 项，可执行 35，缺失 0，〔强〕项未布线 6
 ```
 
 若 `aos` 报 `TypeError: main() missing 1 required positional argument: 'argv'`：依赖了旧版入口，重装 `pip install -e .`。
@@ -49,7 +49,7 @@ cd my-org-system
 预期：
 
 ```
-INITIALIZED: ...\my-org-system（119 文件；TEMPLATE-LOCK: template 0.3 × v2.0.0 × AOS-ART-001）
+INITIALIZED: ...\my-org-system（128 文件；TEMPLATE-LOCK: template 0.3 × v2.0.0 × AOS-ART-001）
 下一步: cd 实例 && python src/cli/main.py bootstrap --stage 0
 ```
 
@@ -80,7 +80,7 @@ DRY-RUN: 检查表 —— 指纹 PASS ｜ 登记 已有（幂等重跑，无写�
 [2/3] 密码学层（分离式哈希 GOV-2.3）
 OK       computed sha256:e6884aedc60e171e…
 [3/3] 注册层（declared == registered，KS-7.2 / INV-13）
-  OK —— 6 条能力一致（含 provenance 回溯）
+  OK —— 7 条能力一致（含 provenance 回溯）
 VERIFY-OK: 三关连续通过 —— 结构 / 密码学 / 注册
 BOOT-0-DONE: 内核部署 + 能力清单发布 + 工件哈希登记（附录 E 激活）
 ```
@@ -95,7 +95,7 @@ BOOT-0-DONE: 内核部署 + 能力清单发布 + 工件哈希登记（附录 E �
 |---|---|---|
 | Object | `spec/ontology/objects/Contract.object.yaml` | 有哪些对象类型、标识是什么、哪些属性参与决策 |
 | Link | `spec/ontology/links/same_as.link.yaml` | 跨上下文链接是否零属性、遍历透明、无 Action 绑定 |
-| Action | `spec/ontology/actions/*.action.yaml` | 参数、结构/条件 SC、权限、审计、补偿 |
+| Action | `spec/ontology/actions/*.action.yaml` | 参数、结构/条件 SC、副作用（effects）、权限、审计、补偿 |
 | Context | `spec/contexts/ContractContext.context.yaml` | 通用语言、steward、投影延迟预算 |
 | Aggregate | `spec/aggregates/ContractAggregate.aggregate.yaml` | 聚合根、事件流、求值预算、不变量列表 |
 | Invariant | `spec/invariants/NoOrphanContract.invariant.yaml` | 声明 + 违规语义 + 修复绑定（三元组缺一不可） |
@@ -174,7 +174,7 @@ CODEGEN-DRIFT-REFUSED: 生成物与手改内容不一致（字节级）: ['actio
 
 ```
 GENERATED: ['__init__.py', 'actions.py', 'reducers.py']
-｜ actions: ['ApproveContract', 'CreateOrder', 'VoidContract'] ｜ objects: ['Contract', 'Order']
+｜ actions: ['ApproveContract', 'CreateOrder', 'RegisterContract', 'VoidContract'] ｜ objects: ['Contract', 'Order']
 ```
 
 生成物带 provenance 头；声明外字段进入 `_undeclared`，漂移可见。
@@ -199,24 +199,27 @@ from kernel.errors import StructuralRejected, ConditionalRejected, UnregisteredA
 
 k = Kernel(EventStore(), SessionChannel(), compile_all())
 
-# 成功：权限（角色证据）→ 结构 → 条件 → 追加
-ev = k.submit("ApproveContract",
-              {"contract_id": "C-1", "status": "pending", "amount": 500000},
+# 实体进入权威投影：RegisterContract，effects 书写 status=pending（T24）
+k.submit("RegisterContract", {"contract_id": "C-1", "amount": 500000},
+         "alice", roles=("contract_steward",))
+
+# 成功：权限（角色证据）→ 结构 → 条件（物化投影）→ 追加（载荷带声明效果）
+ev = k.submit("ApproveContract", {"contract_id": "C-1"},
               "alice", roles=("contract_steward",))
-print("APPENDED:", ev.stream_id, ev.action_id,
-      ev.payload["valid_time"] <= ev.transaction_time)   # True
+print("APPENDED:", ev.stream_id, ev.action_id, ev.payload["status"],
+      ev.payload["valid_time"] <= ev.transaction_time)   # approved True
 
 # 结构失败：缺 contract_id，绝不进条件、绝不追加
 try:
-    k.submit("ApproveContract", {"status": "pending"},
+    k.submit("ApproveContract", {},
              "alice", roles=("contract_steward",))
 except StructuralRejected as e:
     print("STRUCTURAL:", e)
 
-# 条件失败：status=void → 不追加，但审计留痕
+# 条件失败：C-2 未注册，权威投影无 status → 条件不过，不追加，但审计留痕
+# （状态不再由调用方自报——谎报进不了条件，改口走 SNAPSHOT-CONTRADICTION）
 try:
-    k.submit("ApproveContract",
-             {"contract_id": "C-2", "status": "void", "amount": 1},
+    k.submit("ApproveContract", {"contract_id": "C-2", "amount": 1},
              "alice", roles=("contract_steward",))
 except ConditionalRejected as e:
     print("CONDITIONAL:", e)

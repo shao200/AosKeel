@@ -208,6 +208,8 @@ submission_criteria:
   conditional:
     expression: "snapshot.status == 'pending' and snapshot.amount < 10**6"
     snapshot_inputs: [status, amount, principal.role]
+effects:
+  status: approved                     # T24 副作用：批准后状态由声明书写，非调用方自报
 permissions: { roles: [contract_steward], contexts: [ContractContext] }
 audit: required
 dry_run: required
@@ -220,7 +222,7 @@ dry_run: required
 | 能力核查 | `ApproveContract` 是否在 `write_actions` | `UnregisteredAction` / `UnknownAction` | 否 |
 | 结构 | `exists contract_id`、`max_len` | `StructuralRejected` | 否 |
 | 条件 | 快照一次捕获，`status=pending and amount<10**6` | `ConditionalRejected` + interpreter audit | 否 |
-| 追加 | schema 版本、valid_time 域、expected_version | `VersionConflict`（完整重求值）/ `ValidTimeViolation` | 冲突后重评估再追加 |
+| 追加 | schema 版本、valid_time 域、expected_version；载荷并入声明效果（T24） | `VersionConflict`（完整重求值）/ `ValidTimeViolation` | 冲突后重评估再追加 |
 | 不变量 | 聚合级不变量写时阻断 | `InvariantViolated` | 否 |
 
 **关键差异**：DL 公理是**陈述性**的——违反意味着模型不成立；AOS 的 Action 契约是**操作性**的——违反意味着**这次变更请求被拒绝，并留下一条可重放的拒绝记录**。前者判定真假，后者决定世界是否改变。

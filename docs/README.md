@@ -36,7 +36,7 @@ The full **nine-part guide** is Chinese (clause-faithful terminology) and is cop
 | [02 Architecture](guide/02-architecture.md) | AX→KS→P→INV→BOOT→GOV→VER derivation, four event streams, accident-based patterns |
 | [03 Implementation](guide/03-implementation.md) | Registration, SC compiler, submission pipeline, restricted interpreter, upcasting, gates |
 | [04 Tutorial](guide/04-tutorial.md) | install → init → BOOT-0 → draft/promote → generate → submit → test/release (real outputs) |
-| [05 Reference](guide/05-reference.md) | CLI ×12, file map, T01–T26, VER-1..33 wiring, exceptions, FAQ |
+| [05 Reference](guide/05-reference.md) | CLI ×15, file map, T01–T26, VER-1..33 wiring, exceptions, FAQ |
 | [06 Formal semantics](guide/06-formal-semantics.md) | Description logic, open vs closed world, ontology engineering, OWL↔AOS limits |
 | [07 Kernel walkthrough](guide/07-kernel-walkthrough.md) | Executable Python: rejection paths, full re-evaluation, projection, decision audit |
 | [08 Enterprise app guide](guide/08-enterprise-app-guide.md) | Full build-out: modeling → AI drafting & promotion → generation → ingestion → agent wiring → release → what you must build yourself |
@@ -89,7 +89,7 @@ spec/                          Eight declaration kinds (objects/links/actions/co
 src/cli/main.py                Table-driven CLI entry (12 commands, see below; startup self-check refuses a wrongly installed wheel)
 src/kernel/registration.py     Registration pipeline (KS-7.2 five steps, P-5 single writer; loads the eight declaration kinds)
 src/kernel/sc_compiler.py      Two-phase SC compiler (KS-7.1 / VER-18)
-src/kernel/pipeline.py         Kernel submission pipeline (structural -> conditional -> append; full re-evaluation on conflict, VER-2/3)
+src/kernel/pipeline.py         Kernel submission pipeline (structural -> conditional -> append with declared T24 effects; full re-evaluation on conflict, VER-2/3)
 src/kernel/store.py            Ontological event log (append-only; INV-1 closed write path)
 src/kernel/filestore.py        FileStore: persistence reference (JSONL append + replay; single-writer)
 src/kernel/session.py          Session event stream (KS-2.2 physically separated store / VER-4)
@@ -113,6 +113,10 @@ tools/wiring.py                Sole reader of verification.yaml (pyyaml; missing
 tools/codegen.py               Declarations -> code skeleton generator (aos generate; hand-edit detection, provenance header)
 tools/release_gate.py          Release gate (aos release; fail-closed, VER-27 prerequisite)
 tools/ontology_draft.py        Requirements DSL -> ontology draft (aos draft; compiler-gated, promotion requires a governance proposal)
+tools/domain_manual.py           Domain manual renderer (aos manual; derived view, not a source of truth)
+tools/impact.py                  Change impact analysis (aos impact; reverse reference graph, advisory only)
+tools/audit_export.py              Unified audit export (aos audit export; chained audit_id JSONL, read-only)
+tools/gate_history.py              Gate-run metrics ledger (dist/gate-history.jsonl; aos metrics)
 docs/samples/requirements-sample.txt   Requirements DSL sample (draft entry point)
 src/generated/                 Generated artifacts: actions.py (INV-1 wraps submit) + reducers.py (pure functions, drift visible)
 tests/negative/test_forbidden.py            forbidden x negative tests (exactly one case per item)
@@ -122,7 +126,7 @@ tests/conformance/test_integrity.py        Integrity guards for the v0.3 hardeni
 bootstrap/checklists/          _schema + VER-20/24/26/27/28/29 (P-14 evidence records)
 ```
 
-## CLI commands ×12 and guardrails ×2
+## CLI commands ×15 and guardrails ×2
 
 | Command | Semantics | Failure behavior |
 |---|---|---|
@@ -138,6 +142,9 @@ bootstrap/checklists/          _schema + VER-20/24/26/27/28/29 (P-14 evidence re
 | `draft <file>` | Requirements DSL → draft (compiler-gated) | Not all green → nothing written |
 | `draft promote <f>` | Promote draft to canonical (GOV-1 proposal mandatory) | Target exists → refuse; use GOV-3 |
 | `manual [--out F]` | Domain manual: eight declaration kinds → readable doc (human + LLM context) | Derived view; prints to stdout by default |
+| `impact <target>` | Change impact analysis: declaration name / spec path / `ObjectType.prop` → reverse-reference report (advisory, not a gate) | Unresolvable target → `IMPACT-UNKNOWN` exit 1 |
+| `audit export <events.jsonl>` | Unified audit ledger: appended evidence + evaluation audit + decision refs → chained `audit_id` JSONL (read-only derived artifact) | Missing path / unknown events file → refuse |
+| `metrics` | Gate metrics from `dist/gate-history.jsonl`: runs, pass rate, per-gate failures, drift count, streak | Empty ledger → `METRICS-EMPTY` advisory (exit 0) |
 
 Guardrail 1: `bootstrap --stage 1` requires `--appointment-ref` — refuses to synthesize a founding appointment (GOV-1).
 Guardrail 2: an instance carries a specification copy + registry entry ID; copy hash = registry hash, so any change yields FROZEN-TEXT-MUTATED (INV-12).
