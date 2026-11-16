@@ -19,6 +19,7 @@ integrity_paths:
   - { id: INTEGRITY-3, path: tests/conformance/test_filestore.py }
   - { id: INTEGRITY-4, path: tests/negative/test_snapshot_materialization.py }
   - { id: INTEGRITY-5, path: tests/conformance/test_effects_derivation.py }
+  - { id: INTEGRITY-6, path: tests/conformance/test_impact.py }
 ver:
   - { id: VER-1,  clause: KS-1.2,      kind: auto, path: tests/conformance/test_event_schema.py }
   - { id: VER-2,  clause: KS-7.2,      kind: auto, path: tests/conformance/test_pipeline_order.py }

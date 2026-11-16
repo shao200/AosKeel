@@ -34,6 +34,8 @@ USAGE = """\
                         目标已存在 → 拒绝（GOV-3 通道）；晋升含 apply_generated（P-5）
   manual [--out F]      领域说明书：spec/ 八类声明 → 可读文档（人读 + LLM 上下文注入）
                         派生件非真源；缺省打印到 stdout，--out 落盘
+  impact <target>       变更影响分析（事前咨询）：声明名 / spec 路径 / ObjectType.prop
+                        → 反向引用图报告；不进闸门，缺目标 → 拒绝
 """
 
 
@@ -314,6 +316,10 @@ def main(argv: list[str] | None = None) -> int:
             if unknown:
                 raise UsageError(f"manual 不支持参数 {unknown} —— {usage}")
             return manual_main(out)
+        if cmd == "impact":
+            from tools.impact import report as impact_report
+            return impact_report(
+                _positional(rest, 0, "用法: aos impact <声明路径|声明名|ObjectType.prop>"))
         if cmd == "test":
             suite = _value(rest, "--suite", "用法: aos test [--suite S]")
             return cmd_test(suite)
