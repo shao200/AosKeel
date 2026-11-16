@@ -99,7 +99,7 @@ src/kernel/dryrun.py           演练模拟器（P-12；可重复、零副作用
 src/agents/runtime.py          AGENT 能力面（P-10；清单严格子集，无特权通道）
 src/kernel/governance.py       治理层（GOV-4 生效重跑；失败 = 阻断 + governance 类违规对象）
 src/kernel/errors.py           类型化异常（异常类型即条款的运行时形态）
-src/interpreter/boolean_profile.py   布尔档受限解释器（R10 AST 白名单 / VER-8）
+src/interpreter/boolean_profile.py   布尔档受限解释器（R10 AST 白名单，含 dunder 属性拦截——R1 输入封闭 / VER-8）
 src/interpreter/mapping_profile.py   映射档受限解释器（R11 无谓词分派 / VER-9）
 src/interpreter/audit.py       解释器审计（KS-3.3 版本身份 + 快照哈希）
 tools/hash_spec.py             分离式哈希（密码学层唯一执行点，GOV-2.3）

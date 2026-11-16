@@ -21,6 +21,14 @@ def test_no_dynamic_import_or_reflection():
     for expr in ("__import__('os')", "getattr(snapshot, 'status')"):
         with pytest.raises(InterpreterRejected):
             eval_boolean(expr, ENV)
+def test_no_dunder_attribute_chain():
+    """dunder 属性链（__class__/__base__/__mro__）可遍历类型结构 —— R1 输入封闭禁止。"""
+    for expr in ("snapshot.status.__class__ == snapshot.amount.__class__",
+                 "snapshot.status.__class__.__name__ == 'str'",
+                 "snapshot.status.__class__.__base__ is not None",
+                 "principal.role.__class__.__mro__ == ()"):
+        with pytest.raises(InterpreterRejected, match="ATTRIBUTE-FORBIDDEN"):
+            eval_boolean(expr, ENV)
 def test_undeclared_name_rejected():
     with pytest.raises(InterpreterRejected, match="UNDECLARED-NAME"):
         eval_boolean("snapshot.undefined_field == 1", ENV)     # R1：拒绝谓词性猜测

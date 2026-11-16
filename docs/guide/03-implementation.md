@@ -120,7 +120,7 @@ channel_writes:                # 生成段：会话通道写入，强制主体�
 
 | 模块 | 职责 | 分布 |
 |---|---|---|
-| `src/interpreter/boolean_profile.py` | AST 节点白名单 + 调用函数白名单 + 深度上限；`__builtins__` 置空 | R10 / VER-8 |
+| `src/interpreter/boolean_profile.py` | AST 节点白名单 + 调用函数白名单 + dunder 属性拦截（`__` 前缀属性访问即拒，R1 输入封闭）+ 深度上限；`__builtins__` 置空 | R10 / VER-8 |
 | `src/interpreter/mapping_profile.py` | `rename / drop / const` 三算子，纯数据驱动；结构上无谓词分派入口 | R11 / VER-9 |
 | `src/interpreter/audit.py` | 记录（解释器版本, 快照哈希, 结果） | KS-3.3 / VER-11 |
 

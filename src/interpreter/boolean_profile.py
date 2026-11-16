@@ -31,6 +31,10 @@ def _lint(node, depth: int = 0) -> None:
             raise InterpreterRejected(f"CALL-FORBIDDEN: {name} 不在布尔档函数白名单（R10）")
     if isinstance(node, ast.Name) and node.id in _FORBIDDEN_NAMES:
         raise InterpreterRejected(f"NAME-FORBIDDEN: {node.id}（R1 输入封闭 / R4-R6 无时钟）")
+    if isinstance(node, ast.Attribute) and node.attr.startswith("__"):
+        # dunder 属性链（__class__/__base__ 等）可遍历类型结构 —— R1 输入封闭禁止
+        raise InterpreterRejected(
+            f"ATTRIBUTE-FORBIDDEN: {node.attr} dunder 属性访问（R1 输入封闭）")
     for child in ast.iter_child_nodes(node):
         _lint(child, depth + 1)
 def eval_boolean(expr: str, env: dict) -> bool:

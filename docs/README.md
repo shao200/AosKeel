@@ -100,7 +100,7 @@ src/kernel/dryrun.py           Dry-run simulator (P-12; repeatable, zero side ef
 src/agents/runtime.py          AGENT capability surface (P-10; strict subset of the list, no privileged channel)
 src/kernel/governance.py       Governance layer (GOV-4 re-run on effect; failure = block + governance violation object)
 src/kernel/errors.py           Typed exceptions (exception types are the runtime form of clauses)
-src/interpreter/boolean_profile.py   Boolean-profile restricted interpreter (R10 AST whitelist / VER-8)
+src/interpreter/boolean_profile.py   Boolean-profile restricted interpreter (R10 AST whitelist incl. dunder-attribute ban, R1 input closure / VER-8)
 src/interpreter/mapping_profile.py   Mapping-profile restricted interpreter (R11 no predicate dispatch / VER-9)
 src/interpreter/audit.py       Interpreter audit (KS-3.3 version identity + snapshot hash)
 tools/hash_spec.py             Separated hashing (sole cryptographic-layer executor, GOV-2.3)
