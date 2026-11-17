@@ -53,7 +53,7 @@ INITIALIZED: ...\my-org-system（128 文件；TEMPLATE-LOCK: template 0.3 × v2.
 下一步: cd 实例 && python src/cli/main.py bootstrap --stage 0
 ```
 
-实例携带：八类声明样例、源码、测试（含 `tests/README.md` 测试组织与新增契约）、工具、布线配置、指南（`docs/guide/`，含 09 结构与开发轨迹）、CI 模板、根层文件（`.gitattributes` 的 `* -text` 字节精确防线、`.gitignore`、`pyproject.toml` 依赖声明）、生成的实例 README（首屏指向 BOOT-0 与 `docs/DOMAIN-MANUAL.md`）、`TEMPLATE-LOCK`（版本绑定）、`docs/DOMAIN-MANUAL.md`（init 从实例 spec/ 生成的领域说明书）。**不携带**：`ARTIFACT-REGISTRY.md`（自行登记）、`TEMPLATE-LOCK.md` 原稿（由 init 写入）、模板 README（描述模板自身，实例 README 由 init 生成）、`REVIEW-*` 作者本地文档、模板侧 DOMAIN-MANUAL 拷贝（派生件一律实例侧重生成）。
+实例携带：九类声明样例、源码、测试（含 `tests/README.md` 测试组织与新增契约）、工具、布线配置、指南（`docs/guide/`，含 09 结构与开发轨迹）、CI 模板、根层文件（`.gitattributes` 的 `* -text` 字节精确防线、`.gitignore`、`pyproject.toml` 依赖声明）、生成的实例 README（首屏指向 BOOT-0 与 `docs/DOMAIN-MANUAL.md`）、`TEMPLATE-LOCK`（版本绑定）、`docs/DOMAIN-MANUAL.md`（init 从实例 spec/ 生成的领域说明书）。**不携带**：`ARTIFACT-REGISTRY.md`（自行登记）、`TEMPLATE-LOCK.md` 原稿（由 init 写入）、模板 README（描述模板自身，实例 README 由 init 生成）、`REVIEW-*` 作者本地文档、模板侧 DOMAIN-MANUAL 拷贝（派生件一律实例侧重生成）。
 
 因此后续所有实例内命令用：
 
@@ -89,7 +89,7 @@ BOOT-0-DONE: 内核部署 + 能力清单发布 + 工件哈希登记（附录 E �
 
 ---
 
-## 3. 读懂八类声明（建模前必看）
+## 3. 读懂九类声明（建模前必看）
 
 | 声明 | 实例路径 | 你要回答的问题 |
 |---|---|---|
@@ -101,8 +101,9 @@ BOOT-0-DONE: 内核部署 + 能力清单发布 + 工件哈希登记（附录 E �
 | Invariant | `spec/invariants/NoOrphanContract.invariant.yaml` | 声明 + 违规语义 + 修复绑定（三元组缺一不可） |
 | Mapping | `spec/mappings/CRMContract.mapping.yaml` | 字段映射、语义损耗声明、golden 钩子 |
 | Process | `spec/processes/ContractRenewal.process.yaml` | 跨聚合步骤、幂等补偿 |
+| Governance | `spec/governance/ContractDutyMatrix.governance.yaml` | 谁的岗位可以执行哪个动作、在什么条件下（职责授权矩阵） |
 
-**最小可运行域**：一个 Object + 一个 Aggregate + 一个 Action + 一个 Context；其余四类可在真实需求出现时再补（但注册管线对"存在的文件"全量校验，写了就得合规）。
+**最小可运行域**：一个 Object + 一个 Aggregate + 一个 Action + 一个 Context；其余五类可在真实需求出现时再补（但注册管线对"存在的文件"全量校验，写了就得合规）。
 
 ---
 

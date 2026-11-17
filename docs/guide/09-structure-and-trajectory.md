@@ -11,7 +11,7 @@
 一句话总纲：**这个仓库只有四类东西——真源（spec/）、守护真源的机器（src/kernel + interpreter + tools）、真源的证据（tests + config 布线）、以及教人使用它们的文字（docs）。** 你未来的代码只会长在第一类和你自己的业务适配层里。
 
 ```
-spec/            ★ 真源（TBox）。你要开发 = 主要在这里写。八类声明，
+spec/            ★ 真源（TBox）。你要开发 = 主要在这里写。九类声明，
                     注册管线是唯一出口；generated 段能力清单由机器单写（P-5），
                     永远不要手改 config/capabilities.yaml 的生成段。
 src/kernel/      守护机器·运行时。submit 唯一写路径（能力→权限→结构→条件→追加）、
@@ -67,7 +67,7 @@ python src/cli/main.py test                   # 布线全绿
 
 小步走：先一个上下文、一个聚合、2–3 个 Action。两种合法入口：
 
-- **直接写 YAML**（学习期推荐）：仿照 `spec/ontology/actions/ApproveContract.action.yaml` 的八类文件各写一份；
+- **直接写 YAML**（学习期推荐）：仿照 `spec/ontology/actions/ApproveContract.action.yaml` 的九类文件各写一份；
 - **需求 DSL → 把关 → 晋升**（生产期必用）：
 
 ```powershell

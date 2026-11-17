@@ -139,7 +139,7 @@ AOS 不运行 DL reasoner。但经典本体的三类推理需求并没有消失�
 | ① 确定范围与领域 | 领域边界声明 | 上下文边界（ContextType） | `spec/contexts/*.context.yaml`；`docs/POSITIONING.md` |
 | ② 列出能力问题 | Competency Questions | 需求 DSL 样例（按"系统必须能回答什么"写） | `docs/samples/requirements-sample.txt` |
 | ③ 收集与抽取词汇 | 术语表 | T01–T26 唯一术语口径（变体禁入规范性条款） | `docs/aos-spec.md §1.1`；[05-reference.md](05-reference.md) |
-| ④ 建立概念化 | 类 / 关系 / 层次草图 | 八类声明（对象 / 属性 / 链接 / 动作 / 上下文 / 聚合 / 不变量 / 映射 / 流程） | `spec/` 目录；[04-tutorial.md §3](04-tutorial.md) |
+| ④ 建立概念化 | 类 / 关系 / 层次草图 | 九类声明（对象 / 链接 / 动作 / 上下文 / 聚合 / 不变量 / 映射 / 流程 / 治理） | `spec/` 目录；[04-tutorial.md §3](04-tutorial.md) |
 | ⑤ 形式化 | 公理与约束 | `submission_criteria.structural`（Check AST）+ `conditional`（受限布尔 Function）+ 不变量三元组 | `spec/ontology/actions/*.action.yaml` |
 | ⑥ 实现与实例化 | 本体文件 + 实例数据 | 草案 → 晋升 → 代码骨架 → 能力清单 → 事件流 | `aos draft` → `aos draft promote --proposal-ref` → `aos generate --force` |
 | ⑦ 评估与迭代 | 一致性 / 完备性检查 | 三关核对、布线测试、发布闸门、GOV-3 版本通道 | `aos verify` / `aos test` / `aos release` / `aos spec version` |

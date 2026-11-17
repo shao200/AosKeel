@@ -65,7 +65,7 @@ Two further AOS-specific dimensions have no classical counterpart: an **observat
 flowchart TB
     GOV["GOV-1..6 · governance cross-cuts every layer<br/>capability list · artifact hash · genesis window · three gates"]
     subgraph DECL["Declaration layer — blueprint / TBox analogue"]
-      SPEC["spec/ eight declaration kinds<br/>Object · Link · Action · Context · Aggregate · Invariant · Mapping · Process"]
+      SPEC["spec/ nine declaration kinds<br/>Object · Link · Action · Context · Aggregate · Invariant · Mapping · Process · Governance"]
       CAP["capability list<br/>declared == registered"]
       SPEC -->|"registration pipeline (5 steps, single writer)"| CAP
     end
@@ -90,7 +90,7 @@ Five axioms drive the whole design: **AX-1** events are the source of truth and 
 
 ## 4. A five-step runtime loop
 
-1. **Declare** the domain in `spec/` (eight YAML kinds — never edit generated code as the source of truth).
+1. **Declare** the domain in `spec/` (nine YAML kinds, governance included — never edit generated code as the source of truth).
 2. **Register**: the five-step pipeline compiles structural checks and conditions, validates links/contexts, and publishes the capability list. A failure blocks startup.
 3. **Submit**: `Kernel.submit()` runs capability + role-evidence check → structural validation → conditional evaluation → append. The appended event carries the action's *declared* state effects (T24 副作用 — status is written by the declaration, never asserted by the caller). Declared roles must be presented (`roles=…`); missing evidence = refused before the store is touched (P-10 / INV-4, fail-closed). A version conflict reruns the *entire* evaluation, not just the append.
 4. **Check**: three gates — structural fingerprint → cryptographic hash → `declared == registered`. Any failure exits non-zero.

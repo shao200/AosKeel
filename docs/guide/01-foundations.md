@@ -16,7 +16,7 @@
 |---|---|---|
 | "知识渊博但有时会胡说" | LLM 生成的是文本序列，不是受约束的断言 | 断言必须经声明的 Action 追加事件；未注册的能力不存在写路径（INV-1 / INV-13） |
 | 实体关系与边界条件靠语境推断 | 自然语言规范隐含大量未言明前提 | 类型、必填、基数、引用存在性在注册期编译为 Check AST（KS-7.1） |
-| 生成代码"看似合理却偏离业务" | 语义漂移（semantic drift） | 八类声明是唯一语义真相源，`declared == registered` 持续对账（KS-7.2 第 5 步） |
+| 生成代码"看似合理却偏离业务" | 语义漂移（semantic drift） | 九类声明是唯一语义真相源，`declared == registered` 持续对账（KS-7.2 第 5 步） |
 | 无法回答"它当时依据什么做决定" | 推理过程不留痕 | 决策事件双引用（投影标识+transaction_time / 会话事件引用）与解释器审计（KS-2.5 / KS-3.3） |
 | 权限写在提示词里，靠自觉 | 概率性约束不是约束 | Agent 能力面 = 能力清单 ∩ 授权矩阵的**严格子集**，越权在触达存储前拒绝（P-10 / INV-4） |
 
@@ -145,7 +145,7 @@ ContextType / AggregateType / Mapping / ProcessType
 | 公理 / 规则 Axiom | T10 不变量三元组（声明+违规语义+修复绑定）、KS-3 受限解释、KS-7 SC | `spec/invariants/NoOrphanContract.invariant.yaml`；`src/interpreter/` |
 | 个体 Individual | 本体事件日志中的领域对象状态（由事件投影得到） | `src/kernel/store.py`（append-only 流）、`src/kernel/projection.py`（只读视图） |
 | 三元组断言 (S,P,O) | 带版本与出处的**事件**（KS-1.2），非 RDF 三元组 | `Event`：`event_id/stream_id/expected_version/event_type/payload/transaction_time/action_id/principal` |
-| 模式层 TBox | 八类声明（**含 ActionType / ProcessType**） | `spec/` 目录；`src/kernel/registration.py` 五步装载 |
+| 模式层 TBox | 九类声明（**含 ActionType / ProcessType / 治理面声明**） | `spec/` 目录；`src/kernel/registration.py` 五步装载 |
 | 数据层 ABox | 本体事件日志 + 投影 | `src/kernel/store.py` + `src/kernel/projection.py` |
 | 推理引擎 | 受限解释器（布尔档 R10 / 映射档 R11） | `src/interpreter/boolean_profile.py`、`mapping_profile.py`、`audit.py` |
 | 规则变更治理 | GOV-3 提案通道、GOV-2 工件哈希、创世窗口 KS-8 | `aos spec version`、`tools/hash_spec.py`、`src/kernel/genesis.py` |

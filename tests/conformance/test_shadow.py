@@ -68,10 +68,16 @@ def test_unknown_action_refused(tmp_path):
     with pytest.raises(ValueError, match="SHADOW-UNKNOWN-ACTION"):
         shadow_reconcile(f"sqlite:///{db}", str(m))
 def test_readonly_and_canonical_untouched(legacy_db, tmp_path):
-    """源库零改动 + 正典零变化（咨询产物零写入）。"""
+    """源库零改动 + 正典零变化（咨询产物零写入）。
+
+    快照排除 spec/drafts/：它是"工作区，不入实例"的草案区，不是正典——
+    其他测试（import-db 等）在该区落草案属正常行为，不应击穿本断言
+    （否则断言变成对测试执行顺序的隐性依赖）。
+    """
     def snap():
         return {str(p.relative_to(ROOT)): len(p.read_bytes())
-                for p in sorted((ROOT / "spec").rglob("*")) if p.is_file()}
+                for p in sorted((ROOT / "spec").rglob("*")) if p.is_file()
+                and "drafts" not in p.parts}
     before, before_rows = snap(), sqlite3.connect(
         legacy_db[len("sqlite:///"):]).execute(
         "SELECT count(*) FROM t_contract").fetchone()[0]

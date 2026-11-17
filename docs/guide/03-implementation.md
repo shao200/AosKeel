@@ -7,7 +7,7 @@
 AOS 的实现是一条**机械链**，每一步都有可计算的判据与明确的失败形态：
 
 ```
-需求 DSL → 八类声明 → 注册五步 → 能力清单 → 运行时提交管线 → 事件日志/投影
+需求 DSL → 九类声明 → 注册五步 → 能力清单 → 运行时提交管线 → 事件日志/投影
                                       ↓                    ↓
                               三关核对（aos verify）   解释器审计 + 决策双引用
                                       ↓
@@ -24,7 +24,7 @@ AOS 的实现是一条**机械链**，每一步都有可计算的判据与明确
 
 | 步 | 名称 | 输入 → 输出 | 失败形态（判据） | 代码位置 |
 |---|---|---|---|---|
-| 1 | load | `spec/` 八类 YAML → 声明字典 | 缺文件/解析失败 → `RegistrationFailed` | `_load_yaml()` / `load_caps()` |
+| 1 | load | `spec/` 九类 YAML → 声明字典 | 缺文件/解析失败 → `RegistrationFailed` | `_load_yaml()` / `load_caps()` |
 | 2 | compile | Action 声明 → `CompiledAction`（Check AST + BooleanFunctionRef） | SC 编译失败 → 注册失败，逐条报告 | `_load_actions()` / `sc_compiler.compile_action()` |
 | 3 | validate | 各类声明 → 失败清单 | LinkPattern 三项、预算、修复绑定、steward、语义损耗、provenance 任一缺失即拒 | `_validate_spec()` |
 | 4 | register | 编译产物 + 创世内建 → generated 段 | 不落盘，仅计算 | `_compute_generated()` |

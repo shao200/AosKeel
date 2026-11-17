@@ -1,8 +1,8 @@
 # AosKeel —— 基于本体论的 Agent 系统开发模板（AOS Template v0.3）
 
-> **语言 / Language**: **简体中文** · [English (default)](README.md)
+> **语言 / Language**: **简体中文** · [English (default)](../README.md)
 >
-> 中英两版内容一致；默认展示为英文版。
+> 中英两版内容一致；英文完整版在仓库根 [README.md](../README.md)（唯一英文真源，[docs/README.md](README.md) 只是指向它的索引）。
 > 正典规范（[aos-spec.md](aos-spec.md)）为中文冻结文本，未作翻译；`docs/` 下其余文档（POSITIONING / RUNBOOK / SPEC-FINGERPRINT）同样保持中文。
 
 **定位**：规范驱动开发是方法论，AI 软件工厂是组织与流程载体，本体论架构是让前两者在语义层面真正"可执行"的基础设施——本项目是这层基础设施的一个完整、可校验的具体实现（条款级对照与全链路缺口地图见 [POSITIONING.md](POSITIONING.md)）。对标 `npm create vue` / VS 项目模板：从 0 到 1 实例化一个基于本体论的、治理内建的企业级 Agent 系统。
@@ -13,7 +13,7 @@
 
 **AI 本体论是对某领域概念、关系、属性与规则所做的显式、形式化定义。** 数据库只存 `user_id`；本体则要定义"用户"是什么、"购买"意味着什么，以及"支付成功"是"发货"的前置规则。AosKeel 把这套骨架变成机器可校验的契约，让 Agent 的断言与行动有据可依、有规可循。
 
-**TBox / ABox 是教学类比。** 本体是图纸——类、属性、关系、公理；知识图谱是按图纸盖好的大楼——个体与事实。在 AosKeel 中，图纸是 `spec/` 的八类声明，大楼是 append-only 事件日志与可重建的只读投影；**不是** RDF 三元组，也不是 SPARQL 查询。
+**TBox / ABox 是教学类比。** 本体是图纸——类、属性、关系、公理；知识图谱是按图纸盖好的大楼——个体与事实。在 AosKeel 中，图纸是 `spec/` 的九类声明（含治理面声明），大楼是 append-only 事件日志与可重建的只读投影；**不是** RDF 三元组，也不是 SPARQL 查询。
 
 **AOS 的增量。** 经典本体描述"什么为真"；AOS 把 `ActionType` 提升为一等元，于是本体同时约束"谁能改什么、在什么条件下、留下什么审计轨迹"——从描述性本体跃迁为**治理性本体**。另有两层经典本体没有的维度：非权威的观测层（会话事件流），以及作为启动条件的治理（`declared == registered`）。
 
@@ -35,7 +35,7 @@
 | [02 体系逻辑](guide/02-architecture.md) | AX→KS→P→INV→BOOT→GOV→VER 推导链、四条事件流、事故反证模式 |
 | [03 实现方法](guide/03-implementation.md) | 注册、SC 编译、提交管线、受限解释器、升级、闸门 |
 | [04 实操教程](guide/04-tutorial.md) | install → init → BOOT-0 → draft/promote → generate → 提交 → test/release（实测输出） |
-| [05 速查手册](guide/05-reference.md) | CLI ×15、文件地图、T01–T26、VER-1..33 布线、异常、FAQ |
+| [05 速查手册](guide/05-reference.md) | 命令面 ×24、文件地图、T01–T26、VER-1..33 布线、异常、FAQ |
 | [06 形式语义](guide/06-formal-semantics.md) | 描述逻辑、开放/封闭世界、本体工程方法、OWL↔AOS 翻译边界 |
 | [07 内核实操](guide/07-kernel-walkthrough.md) | 可运行 Python：拒绝路径、完整重求值、投影、决策审计 |
 | [08 企业应用构建指南](guide/08-enterprise-app-guide.md) | 完整构建路径：建模 → AI 起草与晋升 → 生成 → 外部接入 → Agent 装配 → 签发 → 实例侧自建清单 |
@@ -51,8 +51,9 @@
 
 ```powershell
 pip install -e .                              # 安装 pyyaml + pytest；或直接 python -m src.cli.main
-aos init my-org-system                        # 实例化（拒绝覆盖已存在目标）
+aos init my-org-system --depth standard       # 实例化 + 能力画像（依赖自动展开；拒绝覆盖已存在目标）
 cd my-org-system
+aos profile                                   # 解析能力画像：拓扑生成序（治理 → cqrs → oauth → 前端）
 aos bootstrap --stage 0                       # BOOT-0：工件哈希登记 + 三关首跑
 aos verify                                    # 三关：结构(指纹) → 密码学(哈希) → 注册(declared==registered)
 python -m pytest -q tests                     # 一致性 + forbidden 双射 + 解释器负向集
@@ -61,13 +62,15 @@ aos test                                      # 按 config/verification.yaml 分
 # —— 全链路生命周期（需求 → 制品）——
 aos draft requirements.txt --name r1          # 需求 DSL → 草案（编译把关，未全绿不落盘）
 aos draft promote spec/drafts/draft-r1.yaml --proposal-ref SPEC-2026-021   # 晋升正典（治理提案强制）
-aos generate                                  # 声明 → 代码骨架（手改检测，provenance 头）
+aos generate                                  # 声明 → 代码骨架（治理→CQRS→OAuth2.1→前端守卫；手改检测）
 aos release                                   # 发布闸门（fail-closed）→ dist/RELEASE-MANIFEST.json
 # —— 旧系统迁徙（绞杀者管线；素材永远先成草案，编译不过不落盘）——
 aos import-db --ddl legacy.sql                # 老库元结构 → 本体草案（只读 schema，凭据不落盘）
+aos extract legacy_code.py --name sem1        # 语义提取：源码/文档 → 草案（确定性参考提取器；LLM 走实例侧适配器契约）
 aos review                                    # 裁决清单（锚点 / 草案候选 / 治理对账，只读咨询）
 aos import-data --dsn sqlite:///db --map M    # 老库数据行 → 创世事件草案（逐行过完整求值链）
 aos shadow --dsn sqlite:///db --map M         # 影子对账（离线双跑）：行 ↔ 事件语义等价
+aos shadow-online probes.ndjson               # 在线双跑对账协议（探针 NDJSON 契约；探针组件属部署侧）
 python tools/console.py                       # WEB 治理控制台壳（白名单 fail-closed，签署类不提供）
 ```
 
@@ -78,21 +81,24 @@ python tools/console.py                       # WEB 治理控制台壳（白名�
 ## 模板树（v0.1 → v0.3）
 
 ```
-README.md                      仓库根首屏入口（英文默认；指向两份完整文档）
-docs/README.md                 英文版（默认；首屏诚实边界 + 快速开始 + 模板树）
-docs/README.zh-CN.md           本文件（简体中文版，内容与英文版一致）
+README.md                      仓库根首屏入口（英文默认、完整版 = 唯一英文真源）
+docs/README.md                 文档索引（薄指针，指向根英文版——防双份漂移）
+docs/README.zh-CN.md           本文件（简体中文完整版，内容与英文版一致）
 docs/aos-spec.md               正典规范 v2.0.0（冻结）
 docs/SPEC-FINGERPRINT.md       条款指纹清单（正典之二，GOV-2.4）
 docs/ARTIFACT-REGISTRY.md      工件登记（append-only，GOV-2.3；实例自行重新登记）
+docs/WHITEPAPER.md             白皮书：五层模型 + 治理面横切 + 十条工程纪律 + 迁徙管线
 docs/POSITIONING.md            项目定位：规范驱动开发 / AI 软件工厂 / 本体论三者的对照与缺口地图
 docs/RUNBOOK.md                BOOT-2/3 工作流脚手架（GOV-3 版本通道 / GOV-2.5 二分 / 〔强〕项索引）
 docs/guide/                    理论与实操指南（九篇 + 索引；随 init 复制；见上文"理论与教程导览"）
 docs/TEMPLATE-LOCK.md          init 时写入版本绑定
 config/capabilities.yaml       能力清单三段式（固定段/生成段/provenance）
-config/verification.yaml       VER-1..33 实文布线（承重件）
-spec/                          八类声明样例（objects/links/actions/contexts/aggregates/mappings/processes/invariants）
-src/cli/main.py                命令表驱动入口（15 命令，见下表；启动自检拒绝误装 wheel）
-src/kernel/registration.py     注册期管线（KS-7.2 五步，P-5 单写者；装载 spec/ 八类声明）
+config/verification.yaml       VER-1..33 实文布线 + INTEGRITY 回归守卫布线（承重件）
+spec/                          九类声明样例（objects/links/actions/contexts/aggregates/mappings/processes/invariants/governance）
+spec/profile.yaml              能力画像声明（capabilities × depth；generate 的拓扑序来源）
+src/cli/main.py                命令表驱动入口（22 命令，见下表；启动自检拒绝误装 wheel）
+src/kernel/registration.py     注册期管线（KS-7.2 五步，P-5 单写者；装载 spec/ 九类声明；角色-职责对账）
+src/kernel/profile.py          能力画像解析（依赖图展开、Kahn 拓扑生成序、锚点核对、fail-closed）
 src/kernel/sc_compiler.py      SC 两段式编译器（KS-7.1 / VER-18）
 src/kernel/pipeline.py         内核提交管线（结构→条件→追加，事件载荷携带声明式 T24 副作用；冲突完整重求值 VER-2/3）
 src/kernel/store.py            本体事件日志（append-only；INV-1 写路径闭环）
@@ -115,54 +121,72 @@ tools/hash_spec.py             分离式哈希（密码学层唯一执行点，G
 tools/fingerprint.py           结构层指纹核对（GOV-2.5 分歧二分）
 tools/verify_capability_list.py  VER-27 支撑（清单完备性）
 tools/wiring.py                  verification.yaml 唯一读取点（pyyaml；缺路径阻断）
-tools/codegen.py                 声明 → 代码骨架生成器（aos generate；手改检测，provenance 头）
+tools/codegen.py                 声明 → 代码骨架生成器（aos generate；Profile 门控 + 手改检测 + 正典零漂移）
+tools/db_import.py               老库元结构 → 本体草案（aos import-db；方言翻译大声报告，凭据不落盘）
+tools/data_import.py             老库数据行 → 创世事件草案（aos import-data；逐行过完整求值链，迁移器不发明事件）
+tools/semantic_extract.py        语义提取契约层（aos extract；确定性参考提取器 + 可插拔 LLM 适配器契约）
+tools/shadow.py                  离线影子对账（aos shadow；行 ↔ 事件语义等价三项）
+tools/shadow_online.py           在线影子对账协议（aos shadow-online；探针契约在内核、探针组件在部署侧）
+tools/review.py                  只读裁决清单（aos review；锚点 roadmap / 草案候选 / 治理对账前置）
+tools/console.py                 WEB 治理控制台壳（subprocess 驱动 CLI；白名单分级 fail-closed，签署类不提供）
 tools/release_gate.py            发布闸门（aos release；fail-closed，VER-27 前置）
 tools/ontology_draft.py          需求 DSL → 本体草案（aos draft；编译把关，晋升须治理提案）
 tools/domain_manual.py           领域说明书渲染器（aos manual；派生视图，非真源）
-tools/impact.py                  变更影响分析（aos impact；反向引用图，纯咨询）
+tools/impact.py                  变更影响分析（aos impact；反向引用图含治理授权边，纯咨询）
 tools/audit_export.py              统一审计导出（aos audit export；链式 audit_id JSONL，只读）
 tools/gate_history.py              闸门度量台账（dist/gate-history.jsonl；aos metrics）
 docs/samples/requirements-sample.txt  需求 DSL 样例（draft 入口）
-src/generated/                   生成物：actions.py（INV-1 封装 submit）+ reducers.py（纯函数，漂移可见）
-tests/negative/test_forbidden.py            forbidden × 负向测试（每项恰一用例）
-tests/negative/test_forbidden_coverage.py   双射断言（P-10）
-tests/conformance/test_declared_registered.py  declared == registered 持续核对（INV-13）
-tests/conformance/test_integrity.py        v0.3 加固的完整性守卫（经 integrity_paths 布线，不构成新 VER 条款）
+src/generated/                   生成物（字节级零漂移 gate 强制）：actions.py + reducers.py +
+                                 command_api.py + query_api.py（CQRS 双端）+
+                                 auth_oauth2.py（OAuth 2.1 IdP + 治理面 claims + DPoP）+
+                                 admin_console.py（前端守卫/表单/页面三张表 + fail-closed 守卫）
+tests/                           一致性 + negative 双射 + golden + genesis + replay + redteam 套件
+                                 + conformance（含 22 条 INTEGRITY 回归守卫，布线执行）
 bootstrap/checklists/          _schema + VER-20/24/26/27/28/29（P-14 证据留档）
 ```
 
-## CLI 命令 ×15 与护栏 ×2
+## CLI 命令 ×22 与护栏 ×3
 
 | 命令 | 语义 | 失败行为 |
 |---|---|---|
-| `init <dir>` | 实例化 + TEMPLATE-LOCK 版本绑定 | 目标已存在 → 拒绝 |
+| `init <dir> [--depth D] [--cap ID] [--no-cap ID]` | 实例化 + 能力画像（依赖自动展开；三档 depth 预设） | 目标已存在 → 拒绝（重铺须 `--force`）；非法 depth/能力 → 实例化前 fail-fast |
+| `profile` | 解析能力画像：依赖展开 + 拓扑生成序 + 锚点核对 | 锚点缺失 → `PROFILE-FAIL` 带待声明清单；环/未知能力 → 拒绝 |
 | `verify` | 三关串联 | 任一失败 → exit 1 |
 | `register <version>` | GOV-2.3 登记 | 同哈希幂等；漂移 → 拒绝（GOV-3） |
 | `bootstrap --stage N` | BOOT-0..3；`--dry-run` 只跑检查表 | 阶段乱序 → 拒绝；2/3 属实例侧 |
 | `test [--suite S]` | 按 verification.yaml 分组 | 套件失败 / 布线路径缺失 → exit 1 |
 | `spec fingerprint` | 独立结构层核对 | 报缺 → exit 1 |
 | `spec version <v>` | GOV-3 版本通道（append-only） | 缺 `--proposal-ref` → 拒绝 |
-| `generate [--force]` | 声明 → 代码骨架（字节级零漂移） | 手改漂移 → 拒绝静默覆盖 |
+| `generate [--force]` | 声明 → 代码骨架（Profile 门控：治理→CQRS→OAuth2.1→前端守卫；字节级零漂移） | 锚点缺失 → `CODEGEN-REFUSED`；手改漂移 → 拒绝静默覆盖 |
 | `release` | 发布闸门（fail-closed） | 任一关失败 → 不出制品 |
 | `draft <file>` | 需求 DSL → 草案（编译把关） | 未全绿 → 不落盘 |
 | `draft promote <f>` | 草案晋升正典（GOV-1 提案强制） | 目标已存在 → 拒绝；走 GOV-3 |
-| `manual [--out F]` | 领域说明书：八类声明 → 可读文档（人读 + LLM 上下文注入） | 派生视图；缺省打印到 stdout |
-| `impact <target>` | 变更影响分析：声明名 / spec 路径 / `ObjectType.prop` → 反向引用图报告（事前咨询，不进闸门） | 目标不可解析 → `IMPACT-UNKNOWN` exit 1 |
+| `import-db --ddl F / --dsn URI` | 老库元结构 → 本体草案（方言翻译大声报告） | 翻译失败 fail-closed 不丢表；无主键表拒绝（AX-4） |
+| `import-data --dsn URI --map F` | 老库行 → 创世事件草案（逐行过完整求值链；迁移器不发明事件） | 脏行 → 完整问题清单 fail-closed；`--skip-failed` 大声跳过 |
+| `extract <file> [--extractor script]` | 语义提取：源码/文档 → 草案（同一三段闸，闸门与来源无关） | 适配器崩溃/坏 schema/无候选 → 大声拒绝零落盘 |
+| `shadow --dsn URI --map F` | 影子对账（离线双跑）：行 ↔ 事件语义等价 | 分歧 → `DIVERGED` 带差异明细（进 review 裁决） |
+| `shadow-online <probes.ndjson>` | 在线双跑对账协议（探针 NDJSON 契约；探针属部署侧） | 坏行 → fail-closed 零静默；空记录 → `PROBE-EMPTY` |
+| `review` | 只读裁决清单（锚点 roadmap / 草案候选 / 治理对账前置） | 只读咨询；晋升建议强制 `--proposal-ref` |
+| `manual [--out F]` | 领域说明书：九类声明 → 可读文档（人读 + LLM 上下文注入） | 派生视图；缺省打印到 stdout |
+| `impact <target>` | 变更影响分析：声明名 / spec 路径 / `ObjectType.prop` → 反向引用图（含治理授权边；事前咨询） | 目标不可解析 → `IMPACT-UNKNOWN` exit 1 |
 | `audit export <events.jsonl>` | 统一审计台账：追加证据 + 评估审计 + 决策引用 → 链式 `audit_id` JSONL（只读派生件） | 缺路径 / 事件日志不存在 → 拒绝 |
 | `metrics` | 闸门度量（`dist/gate-history.jsonl`）：运行次数、通过率、各关失败、漂移计数、连续通过 | 空台账 → `METRICS-EMPTY` 提示（exit 0） |
+| `tools/console.py`（独立进程） | WEB 治理控制台壳：subprocess 驱动上述命令（白名单分级） | 白名单外 / 治理签署类 → 403 拒绝（中文提示） |
 
 护栏一：`bootstrap --stage 1` 强制 `--appointment-ref`——拒绝合成创制任命（GOV-1）。
 护栏二：实例携带规范副本 + 登记条目 ID，副本哈希 = 登记哈希，改动即 FROZEN-TEXT-MUTATED（INV-12）。
+护栏三：所有草案通道（draft / import-db / import-data / extract）产物只进 `spec/drafts/` 或 `data-drafts/`——**草案不是事实**，晋升必须走 GOV-1 提案；凭据（连接串/密钥）永不落盘（有测试锁定）。
 
 ## 运行形态与工程边界（先读，避免误判）
 
 | 边界 | 事实 | 代价 / 实例侧职责 |
 |---|---|---|
-| 交付形态 | 模板以**源码树**交付：`pip install -e .`（之后用 `aos ...`）或 `python -m src.cli.main`。wheel 不含 `docs/spec/config`，启动自检明确拒绝，**不是可安装制品** | 若要 wheel 可安装，须重构 ROOT 解析与数据文件打包（P2，本版未做） |
+| 交付形态 | 模板以**源码树**交付：`pip install -e .`（之后用 `aos ...`）或 `python -m src.cli.main`。**wheel 是构建产物非交付物**（已机器验证 INTEGRITY-20）：`pip wheel .` 可构建（含 src/tools 与 `aos` console script），但不含 `docs/spec/config`——脱离源码树运行输出明确 `REFUSED` | 生产 wheel 交付须重构正典数据打包与 ROOT 解析（有意保持源码树交付：正典声明与代码同版本管理） |
 | 事件存储 | `EventStore` 为**纯内存** dict，进程退出即失；`kernel/filestore.py` 提供 **FileStore 持久化参考实现**（JSONL 追加 + 启动重放，单写进程模型，拒绝不落盘） | 生产多进程部署须以数据库实现同一协议（streams 只读 · commit 唯一写面 · audit 只增），并自行证明 append-only 与审计持久性 |
+| 探针与 LLM 在实例侧 | 在线影子流量的**拦流探针**与 **LLM 服务绑定**（`aos extract --extractor` 适配器契约）都是实例侧职责；内核只提供对账协议与提取契约 | 按部署环境实现探针组件；LLM 调用写进自己的适配器——内核零部署环境依赖、零 LLM 依赖 |
 | 结构层指纹 | 核对"条数 + 首锚 + 末锚"，**不校验中间条款内容**；强保证来自密码学层全文哈希（GOV-2.3） | 中间条款被改而首尾不变 → 结构层 PASS，靠哈希层拦截；这是附录 F 清单定义的取舍 |
 | BOOT-2/3 | 模板只给脚手架与检查表，`bootstrap --stage 2/3` 返回拒绝 | 治理工作流与 Identity Context 验收属实例侧世界事件（GOV-1） |
-| 〔强〕项 | VER-20/24/26/27/28/29 只有 checklist/support，不进 auto 套件 | 人工执行 + evidence / judge / signer 留档，模板不伪装通过 |
+| 〔强〕项 | VER-24/26/27/28/29 的机器可判部分**已布线进测试套件**（replay/redteam/完备性壳）；VER-20（创制验收）保持纯人工 | 人工执行 + evidence / judge / signer 留档不变——接线 ≠ 替代人签，模板不伪装通过 |
 | 字节精确 | 所有写入点为 UTF-8 + LF 字节写入；`.gitattributes * -text` 禁止换行转换 | 生成物/登记/清单被外部工具改成 CRLF 时，`generate`/`release` 以字节级漂移拒绝 |
 
 布线件 `config/verification.yaml` 由 `tools/wiring.py` 统一用 pyyaml 解析：声明了

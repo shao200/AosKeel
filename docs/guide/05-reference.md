@@ -2,25 +2,34 @@
 
 > 信息性文档。真实口径以 [aos-spec.md](../aos-spec.md)、[verification.yaml](../../config/verification.yaml) 与源码为准。
 
-## 1. CLI 命令 ×15
+## 1. CLI 命令 ×22 与护栏 ×3
 
 | 命令 | 作用 | 失败行为 |
 |---|---|---|
-| `aos init <dir>` | 实例化 + `TEMPLATE-LOCK` 版本绑定 | 目标已存在 → 拒绝 |
+| `aos init <dir> [--depth D] [--cap ID] [--no-cap ID]` | 实例化 + 能力画像（依赖自动展开；三档 depth 预设） | 目标已存在 → 拒绝（重铺须 `--force`）；非法 depth/能力 → 实例化前 fail-fast |
+| `aos profile` | 解析能力画像：依赖展开 + 拓扑生成序 + 锚点核对 | 锚点缺失 → `PROFILE-FAIL` 带待声明清单；环/未知能力 → 拒绝 |
 | `aos verify` | 三关串联：结构 → 哈希 → 注册 | 任一失败 → exit 1 |
 | `aos register <version>` | GOV-2.3 工件登记 | 同哈希幂等；漂移 → 拒绝 |
 | `aos bootstrap --stage N` | BOOT-0..3；`--dry-run` 只跑检查表 | 阶段乱序 → 拒绝；2/3 属实例侧 |
 | `aos test [--suite S]` | 按 `verification.yaml` 分组执行 | 套件失败 / 布线路径缺失 / pytest 缺失 → exit 1 |
 | `aos spec fingerprint` | 独立结构层核对（GOV-2.5 二分） | 报缺 → exit 1 |
 | `aos spec version <v> --proposal-ref SPEC-…` | GOV-3 版本通道（append-only） | 缺提案引用 → 拒绝 |
-| `aos generate [--force]` | 声明 → `actions.py` / `reducers.py`（provenance 头） | 手改漂移 → 拒绝静默覆盖 |
+| `aos generate [--force]` | 声明 → 代码骨架（Profile 门控：治理→CQRS→OAuth2.1→前端守卫；字节级零漂移） | 锚点缺失 → `CODEGEN-REFUSED`；手改漂移 → 拒绝静默覆盖 |
 | `aos release` | 发布闸门（fail-closed） | 任一关失败 → 不出制品 |
 | `aos draft <file> [--name N]` | 需求 DSL → 草案（编译把关） | 未全绿 → 不落盘 |
 | `aos draft promote <f> --proposal-ref SPEC-…` | 草案晋升正典 + 能力清单同步 | 目标已存在 / 无提案 → 拒绝 |
-| `aos manual [--out F]` | 领域说明书：spec/ 八类声明 → 可读文档（派生视图，非真源） | 缺省打印 stdout；`--out` 落盘 |
-| `aos impact <target>` | 变更影响分析：声明名 / spec 路径 / `ObjectType.prop` → 反向引用图报告（事前咨询，不进闸门） | 目标不可解析 → `IMPACT-UNKNOWN` exit 1 |
+| `aos import-db --ddl F / --dsn URI` | 老库元结构 → 本体草案（方言翻译大声报告） | 翻译失败 fail-closed 不丢表；无主键表拒绝（AX-4） |
+| `aos import-data --dsn URI --map F` | 老库行 → 创世事件草案（逐行过完整求值链；迁移器不发明事件） | 脏行 → 完整问题清单 fail-closed；`--skip-failed` 大声跳过 |
+| `aos extract <file> [--extractor script]` | 语义提取：源码/文档 → 草案（同一三段闸，闸门与来源无关） | 适配器崩溃/坏 schema/无候选 → 大声拒绝零落盘 |
+| `aos review` | 只读裁决清单（锚点 roadmap / 草案候选 / 治理对账前置） | 只读咨询；晋升建议强制 `--proposal-ref` |
+| `aos shadow --dsn URI --map F` | 影子对账（离线双跑）：行 ↔ 事件语义等价 | 分歧 → `DIVERGED` 带差异明细（进 review 裁决） |
+| `aos shadow-online <probes.ndjson>` | 在线双跑对账协议（探针 NDJSON 契约；探针属部署侧） | 坏行 → fail-closed 零静默；空记录 → `PROBE-EMPTY` |
+| `aos manual [--out F]` | 领域说明书：spec/ 九类声明 → 可读文档（人读 + LLM 上下文注入） | 派生视图；缺省打印 stdout；`--out` 落盘 |
+| `aos impact <target>` | 变更影响分析：声明名 / spec 路径 / `ObjectType.prop` → 反向引用图（含治理授权边；事前咨询，不进闸门） | 目标不可解析 → `IMPACT-UNKNOWN` exit 1 |
 | `aos audit export <events.jsonl> [--out F]` | 统一审计台账：追加证据 + 评估审计 + 决策引用 → 链式 `audit_id` JSONL（只读派生件） | 缺路径 / 文件不存在 → 拒绝 |
 | `aos metrics` | 闸门度量：`dist/gate-history.jsonl` → 次数 / 通过率 / 各关失败 / 漂移计数 / 连续通过 | 空台账 → `METRICS-EMPTY`（exit 0） |
+
+> **护栏 ×3（三条纪律跨命令生效）**：① 晋升通道一律 `--proposal-ref` 强制（GOV-1：CLI 只记录治理结果，不合成正当性）；② 编译不过不落盘（草案三段闸：解析 → 把关 → 晋升）；③ 草案通道产物只进 `drafts/`（工作区），凭据永不落盘（连接串/密钥只进命令行或临时环境）。
 
 > **实例内命令**：`aos` 控制台脚本的 `ROOT` 锁在模板源码树。实例里一律用 `python src/cli/main.py <command>`。详见 [教程 §1](04-tutorial.md)。
 
@@ -37,9 +46,10 @@
 | `docs/guide/` | 本指南（信息性；随 init 复制） |
 | `config/capabilities.yaml` | 能力清单三段式（固定段/生成段/provenance） |
 | `config/verification.yaml` | VER-1..33 布线（承重件；单一读取点 `tools/wiring.py`） |
-| `spec/` | 八类声明 + `drafts/`（工作区，不入实例） |
-| `src/cli/main.py` | 15 命令分发；`main()` 兼容 console script 无参调用 |
+| `spec/` | 九类声明 + `profile.yaml`（能力画像）+ `drafts/`（工作区，不入实例） |
+| `src/cli/main.py` | 22 命令分发；`main()` 兼容 console script 无参调用；启动自检拒绝误装 wheel |
 | `src/kernel/registration.py` | 注册五步，生成段唯一写者（P-5） |
+| `src/kernel/profile.py` | 能力画像解析（依赖图展开、Kahn 拓扑生成序、锚点核对、fail-closed） |
 | `src/kernel/sc_compiler.py` | SC 两段式编译（Check AST / BooleanFunctionRef） |
 | `src/kernel/pipeline.py` | 提交管线 + 冲突完整重求值 |
 | `src/kernel/store.py` | 本体事件日志（append-only） |
@@ -49,9 +59,9 @@
 | `src/kernel/{detector,upcasting,merge,saga,dryrun,governance,genesis,errors}.py` | 探测器 / 读时升级 / 归并史 / 编排 / 演练 / 治理 / 创世窗口 / 类型化异常 |
 | `src/interpreter/` | 受限解释器（布尔档 / 映射档 / 审计） |
 | `src/agents/runtime.py` | Agent 能力面（清单严格子集） |
-| `src/generated/` | 生成物（actions.py / reducers.py / __init__.py） |
-| `tools/` | `hash_spec` / `fingerprint` / `wiring` / `codegen` / `release_gate` / `ontology_draft` / `domain_manual` / `impact` / `audit_export` / `gate_history` |
-| `tests/` | conformance / negative / golden / genesis / invariants / replay / redteam |
+| `src/generated/` | 生成物（字节级零漂移 gate 强制）：actions.py / reducers.py + command_api.py / query_api.py（CQRS 双端）+ auth_oauth2.py（OAuth 2.1 IdP + 治理面 claims + DPoP）+ admin_console.py（前端守卫/表单/页面三张表） |
+| `tools/` | `hash_spec` / `fingerprint` / `wiring` / `codegen` / `db_import` / `data_import` / `semantic_extract` / `shadow` / `shadow_online` / `review` / `console` / `release_gate` / `ontology_draft` / `domain_manual` / `impact` / `audit_export` / `gate_history` |
+| `tests/` | conformance（含 22 条 INTEGRITY 回归守卫）/ negative / golden / genesis / invariants / replay / redteam |
 | `bootstrap/checklists/` | 〔强〕项检查表（VER-20/24/26/27/28/29） |
 
 ---
@@ -129,9 +139,9 @@
 | VER-32 | KS-8.5 | 〔自〕 | `test_genesis_ttl.py` |
 | VER-33 | KS-2.6 | 〔自〕 | `test_decision_stream.py` |
 
-另有 `integrity_paths` 段登记 `tests/conformance/test_integrity.py`（16+ 例修补守卫）。**它不构成新 VER 条款**——冻结条款集仍是 VER-1..33，指纹清单与登记哈希均未改动。
+另有 `integrity_paths` 段登记 `tests/conformance/test_integrity.py` 等 **22 条 INTEGRITY 回归守卫**（INTEGRITY-1..22：工作区清零、能力清单完备性、生成物零漂移、wheel 可安装性、语义提取契约、在线对账协议等）。**它不构成新 VER 条款**——冻结条款集仍是 VER-1..33，指纹清单与登记哈希均未改动。
 
-`aos test` 当前统计：选中 28 / 可执行 28 / 缺失 0 / 〔强〕项未布线 6。
+`aos test` 当前统计：选中 54 / 可执行 54 / 缺失 0 / 〔强〕项未布线 1（VER-20 属实例侧人工留档）。
 
 ---
 
@@ -175,10 +185,13 @@
 因为生成物已存在且与新声明不一致；`--force` 是显式确认覆盖，不是绕过校验。漂移检测仍是字节级。
 
 **Q8：wheel 可安装吗？**
-不可。wheel 不含 `docs/spec/config`，启动自检明确拒绝。唯一受支持形态：源码树 + `pip install -e .`。
+可构建、不作交付。`pip wheel .` 能产出 `.whl`（含 src/tools 与 `aos` console script），但它不含 `docs/spec/config`——脱离源码树运行输出明确 `REFUSED`（机器守卫，INTEGRITY-20）。唯一受支持形态：源码树 + `pip install -e .`（正典声明与代码同版本管理）。
 
 **Q9：能关掉三关核对提速吗？**
 不能。三关 + 闸门是 fail-closed 设计；关掉等于把规范降级为文档。
 
 **Q10：模型变更（新增 Action / 改公理）怎么走？**
 新增 Action：需求 DSL → `aos draft` → `aos draft promote --proposal-ref`（单写者同步能力清单）。改公理/条款：GOV-3 提案 → 新版本登记 → 重跑全链路回归 → 重新签发。不要就地改冻结文本。
+
+**Q11：旧系统迁徙走哪条路？**
+绞杀者管线八步：`init` → `import-db`（老库元结构 → 本体草案）→ `extract`（源码/文档语义提取）→ `review`（人工裁决清单）→ `draft promote`（治理晋升）→ `generate`（代码骨架）→ `import-data` + `shadow` / `shadow-online`（数据行 → 创世事件草案，离线/在线双跑对账）。素材永远先成草案；数据迁徙是事件重放不是表拷贝——每行数据过 `Kernel.submit()` 完整求值链，迁移器不发明事件。
