@@ -11,17 +11,28 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "src"))
 from tools.hash_spec import (canonical_digest, _entries, register as hs_register,
-                             verify as hs_verify, supersede as hs_supersede)
+                             verify as hs_verify, supersede as hs_supersede,
+                             register_declarations as hs_register_declarations,
+                             declaration_digest as hs_declaration_digest,
+                             _decl_entries as hs_decl_entries)
 from tools import fingerprint, wiring, gate_history
 from kernel import registration
 USAGE = """\
 用法: aos <command>
   init <dir>            实例化模板；写 TEMPLATE-LOCK        目标已存在 → 拒绝
-  verify                三关: 指纹 → 哈希 → declared==registered   任一失败 → exit 1
-  register <version>    GOV-2.3 登记                         同哈希幂等；漂移 → 拒绝
+  verify                三关: 指纹 → 哈希(正典+声明摘要) → 注册层  任一失败 → exit 1
+  register <version>    GOV-2.3 正典登记                      同哈希幂等；漂移 → 拒绝
   bootstrap --stage N   BOOT-0..3；--dry-run 只跑检查表不写入  阶段乱序 → 拒绝
   test [--suite S]      按 verification.yaml 分组             套件失败 → exit 1
+  cq [list|run] [CQ-n ...] [--domain D]
+                        能力问题验收（contract 域十张冻结清单）
+                        list 列题；无参或 run 全跑；指定 id 单跑
+                        --domain D 跑实例自定义域（domains/）  任一 FAIL → exit 1
   spec fingerprint      独立结构层核对（GOV-2.5 分歧二分）     报缺 → exit 1
+  spec digest           只读查看 spec/ 声明摘要与登记状态     不写入
+  spec register-declarations <v> [--proposal-ref SPEC-YYYY-NNN]
+                        GOV-2.3-DECL 声明摘要登记（append-only）；不改冻结正典
+                        首次直接登记；后续漂移须带治理提案引用      缺 → 拒绝
   spec version <v>      GOV-3 版本通道：新版本登记（append-only）
                         --proposal-ref SPEC-YYYY-NNN 强制      缺 → 拒绝
   generate [--force]    声明 → 代码骨架（Profile 门控：backend.cqrs →
@@ -115,7 +126,7 @@ def cmd_verify() -> int:
         return 1
     gates["structural"] = "PASS"
     print("  OK —— 附录 F 十节三元组在场")
-    print("[2/3] 密码学层（分离式哈希 GOV-2.3）")
+    print("[2/3] 密码学层（分离式哈希 GOV-2.3：正典 + 声明摘要 双比对）")
     if hs_verify() != 0:
         gates["cryptographic"] = "FAIL"; gate_history.record("verify", gates)
         return 1
@@ -340,11 +351,27 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if cmd == "spec" and rest and rest[0] == "fingerprint":
             return fingerprint.main()
+        if cmd == "spec" and rest and rest[0] == "digest":
+            d = hs_declaration_digest()
+            print(f"DECL-DIGEST: {d or 'NONE'}  "
+                  f"（已登记条目 {len(hs_decl_entries())}；无摘要/未登记时 verify 显式 SKIP）")
+            return 0
+        if cmd == "spec" and rest and rest[0] == "register-declarations":
+            usage_d = ("用法: aos spec register-declarations <version> "
+                       "[--proposal-ref SPEC-YYYY-NNN]")
+            ver = _positional(rest, 1, usage_d)
+            return hs_register_declarations(ver, _value(rest, "--proposal-ref", usage_d) or "")
         if cmd == "spec" and rest and rest[0] == "version":
             usage = "用法: aos spec version <new-version> --proposal-ref SPEC-YYYY-NNN"
             ver = _positional(rest, 1, usage)
             ref = _value(rest, "--proposal-ref", usage)
             return hs_supersede(ver, ref)
+        if cmd == "cq":
+            from tools import cq as cq_tool
+            try:
+                return cq_tool.main(rest)
+            except cq_tool.CQError as e:
+                print(f"CQ-REFUSED: {e}"); return 1
         if cmd == "verify":       return cmd_verify()
         if cmd == "register":
             return hs_register(_positional(rest, 0, "用法: aos register <version>"))

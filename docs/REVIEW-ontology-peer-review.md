@@ -7,6 +7,36 @@
 
 ---
 
+## 〇、评审基线与修订响应（2026-11-17 复核补记）
+
+**历史基线**：本评议正文写于 2026-11-15，材料口径为"spec/ 9 个声明文件 / 41 测试文件 / 约 162 个测试函数"。此后仓库经 `v0.3.0` → `1a745bc` → `2aad3e0` 连续迭代，并经三轮修补，当前规模为 **spec/ 28 份声明（含 10 张 CQ、1 份元 schema、2 份域画像与 3 张自定义域题）/ 70 测试文件 / 353 测试函数，60 条布线**。正文保留原貌以供审计，不就地改写历史意见；下述响应表给出逐条状态。
+
+**复核基线**：`HEAD 2aad3e0` + 三轮修补（声明摘要 AOS-DECL-005，正典哈希仍 `e6884aed…`）。
+
+**第二轮修补（2026-11-17，理论层）**：在第一轮工程面收口后，继续兑现原评议 4/5/6 三条。新增 `spec/competence/CQ-1..10.cq.yaml` + `tools/cq.py`（回答者注册表 + 真实内核夹具 + 可失败断言）、`spec/meta/declaration-schema.yaml` + `registration.validate_meta_schema`，中英 README 补四谱系表；`pipeline.py` 把评估快照本体写入 KS-3.3 审计，使 CQ-4 的"表达式 + 快照 + 结果"由文档宣称变为可核事实。声明摘要按 GOV-2.3-DECL 追加登记（AOS-DECL-003/004），正典哈希仍 `e6884aed…`。
+
+| # | 原修订要求 | 复核判定 | 本轮响应与证据 |
+|---|---|---|---|
+| 1 | Action 补形式化效果 | 部分 | 未扩：`effects` 仍是常量赋值；注册期校验属性/枚举域（`registration._validate_effects`）成立，但无条件效果与双向映射仍缺 |
+| 2 | 权限强制点移入 `Kernel.submit` | 已修 + 加固 | `pipeline.py:65-72` 评估前拒绝已生效；本轮进一步把 `principal.role` 从"主体名字符串"改为内核出示的 `roles` 证据（`test_declaration_execution`） |
+| 3 | 条件求值物化投影 | 部分 | 保持：`materialize()` 重放 reducer + 谎报拦截有效；无 reducer / 无 identity / 首次观测回退 params 是**已披露边界**，未伪称消除 |
+| 4 | 可执行 competence questions | 已修（第二轮） | `spec/competence/CQ-1..10.cq.yaml` + `tools/cq.py` 回答者注册表 + `aos cq`；十题在真实内核夹具上执行，删题/未注册/断言错即 fail-closed；`test_competence_questions` 证明可证伪 |
+| 5 | 元 schema 声明化 + 哈希域扩展 | 已修（第二轮） | 上一轮完成摘要域与第四道；本轮 `spec/meta/declaration-schema.yaml` 声明九类骨架字段与类型，`registration.validate_meta_schema` 注册期执行，专用语义校验保留原位；`test_meta_schema` 守卫 |
+| 6 | 修订 README 学术谱系 | 已修（第二轮） | 中英首屏增四谱系表（描述逻辑 / 动作形式化 / 道义逻辑 / 工业图本体），明确"不是推理机、规划器、三元组库"；guide/01 把 Palantir 降为工业先例；PDDL 引用更正为 McDermott et al. (1998) |
+
+**第三轮修补（2026-11-17，域无关 CQ 定义）**：第二轮虽把十张 CQ 变成可执行契约，但回答者内部仍硬编码 `ContractAggregate` / `ApproveContract` / 治理文件路径，`EXPECTED_IDS` 也写死十题——实例换域必须改 Python。本轮把域参数外提到 `spec/competence/domains/contract.domain.yaml`，夹具改由画像种子声明驱动真实内核，十个回答者改为域无关原语；新增 `audit-review` 域画像与三张自定义域题，证明"只写 YAML 即可定义自己的 CQ"（`aos cq --domain audit-review` 3/3，probe 可为空）。contract 域仍保留十题冻结清单防删题。声明摘要追加登记 AOS-DECL-005，正典哈希仍 `e6884aed…`。
+
+**本轮新发现修补状态**
+
+| 级别 | 发现 | 状态 | 可验证证据 |
+|---|---|---|---|
+| P0 | 声明语义不在密码学冻结域 | 已修 | 副本实验改 `10**6`→`10**9` → `verify` 第四道 MISMATCH；正典哈希不变（`test_declaration_digest`） |
+| P0 | 控制台按首词放行治理写面 | 已修 | 白名单改「首词+子命令」二元组；`spec version` / `spec register-declarations` / `draft promote` 经 HTTP 均 403（`test_console`） |
+| P1 | 死算子、无执行点字段、流名硬编码、principal 证据自报 | 已修 | `references` 注册期拒绝；`dry_run⇒audit`、`contexts` 引用完整性注册期校验；`stream` 取声明；`principal.*` 取内核证据 |
+| P2 | 口径漂移、文献错引、测试写源码树 | 已修 | `tools/doc_metrics.py` 单一权威源（CLI 26 命令面 / 布线 60 条 / INTEGRITY 28 条）+ `test_doc_consistency` 锁住五份消费端；PDDL 文献 #10 更正为 McDermott et al. (1998)；语义提取样例改落 pytest `tmp_path`，`tools/` 源码树零残留 |
+
+---
+
 ## 一、论文/系统摘要（评审者复述）
 
 AosKeel 是一个"规范驱动、治理内建、机器可校验"的 0→1 脚手架，声称以本体论约束 LLM Agent 系统。核心构件为 T01 四元组（ObjectType/Property/LinkType/ActionType）与 T02 四构造（ContextType/AggregateType/Mapping/ProcessType），事实层为八字段 append-only 事件日志（AX-1"事件即真源"），查询层为确定性重放的只读投影。业务规则通过 submission_criteria 编译为受限 AST 布尔函数；启动与发布由三道闸门（结构指纹 → 密码学哈希 → declared==registered 双射）把关。项目自述 TBox/ABox 仅为"教学类比"，不使用 RDF/SPARQL/DL 推理机，并列出六条"诚实边界"。
@@ -112,8 +142,11 @@ AX-5"Schema 即数据"宣称元层也应在声明体系内。核查确认：八�
 7. Gómez-Pérez, A., Fernández-López, M., Cabrerizo, F. J. (2004). *A Methodology Description to Develop Ontologies* (METHONTOLOGY).
 8. McGuinness, D. L. et al. (2014). *Ontology Development 101* 后续谱系与 NeOn Methodology (Suárez-Figueroa et al., 2012).
 9. McCarthy, J. (1963). *Situations, Actions, and Causal Laws*; Kowalski, R., Sergot, M. (1986). *A Logic-Based Calculus of Events*.
-10. Ghemawat, S. / Fox, P. (2003). *PDDL: The Planning Domain Definition Language*（动作模式与前置条件结构之先例）.
+10. McDermott, D., Ghallab, M., Howe, A., Knoblock, C., Ram, A., Veloso, M., Weld, D. & Wilkins, D. (1998). *PDDL — The Planning Domain Definition Language*（AIPS-98 规划竞赛委员会；动作模式 parameters/precondition/effect 结构之先例）. 本条原误署 Ghemawat / Fox (2003)，已于 2026-11-17 复核时更正 —— Ghemawat 以 GFS/MapReduce 著称，非 PDDL 作者。
 11. Snodgrass, R. T. (1992). *Developing Time-Oriented Database Applications in SQL*（双时态建模先例）；Fowler, M. (2005). *Event Sourcing*（模式命名）.
-12. Palantir Technologies. *Foundry Ontology* 产品文档（Object/Link/Action 工业先例，README 引为背书对象）.
+12. Palantir Technologies. *Foundry Ontology* 产品文档（Object/Link/Action 工业先例；第二轮修订后 README 仅作工程形态对照，不再作为理论背书）.
+13. von Wright, G. H. (1951). *Deontic Logic*. Mind 60(237)（许可/义务语义之源）.
+14. Jones, A. J. I. & Carmo, J. (1993). *Deontic Logic and Contrary-to-Duties*. Handbook of Philosophical Logic（规范推理中例外与违例的结构化）.
+15. Reiter, R. (2001). *Knowledge in Action: Logical Foundations for Specifying and Implementing Dynamical Systems*. MIT Press（情境演算与行动理论的系统表述）.
 
 （注：以上文献为本体论/行动形式化领域稳定经典，用于建立评判坐标系；对 AosKeel 的一切事实性论断均来自对被评审仓库文件与代码的直接核查，正文 §3.2 已逐项标注位置。）

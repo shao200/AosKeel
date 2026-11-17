@@ -1,0 +1,7 @@
+id: CQ-AR-3
+question: 投影重建是否仍然确定性一致？（probe 为空，域参数全来自画像）
+answerer: projection.rebuild
+fixture: contract_approved
+probe: {}
+expect: { op: equals, value: { identical: true, dematerialized: true } }
+evidence: "聚合类型/流名/reducer 均由 contract 画像继承，题集零 Python 依赖"

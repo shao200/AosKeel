@@ -1,0 +1,12 @@
+id: CQ-AR-2
+question: 未授权复核角色能否批准？（probe 不写角色，由域画像提供）
+answerer: declaration.permissions
+fixture: contract_approved
+probe: {}
+expect:
+  op: equals
+  value:
+    roles: [contract_steward]
+    authorized: [contract_steward]
+    intruder_denied: true
+evidence: "intruder_role 来自 audit-review 域画像 symbols，非 Python 字面量"

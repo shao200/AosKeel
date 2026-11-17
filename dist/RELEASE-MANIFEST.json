@@ -22,7 +22,7 @@
     {
       "step": "tests",
       "ok": true,
-      "detail": "52 条布线路径全部通过"
+      "detail": "60 条布线路径全部通过"
     },
     {
       "step": "codegen",

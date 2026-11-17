@@ -1,0 +1,46 @@
+# 合同域画像 —— CQ 查询的域参数外置点。
+# 十个回答者原先在此硬编码 ContractAggregate / ApproveContract / 治理文件路径；
+# 现由本声明提供，回答者本身域无关。改本文件即改变所有引用它的 CQ 的查询目标，
+# 且因位于 spec/ 摘要域内，任何改动都受 GOV-2.3-DECL 第四道保护。
+domain: contract
+label: 合同治理样例域
+
+aggregate:
+  type: Contract
+  name: ContractAggregate
+  stream: domain:ContractAggregate
+  reducer: ContractAggregate
+  entity_key: contract_id
+
+actions:
+  register: RegisterContract
+  approve: ApproveContract
+
+declarations:
+  governance: spec/governance/ContractDutyMatrix.governance.yaml
+  link: spec/ontology/links/same_as.link.yaml
+  process: spec/processes/ContractRenewal.process.yaml
+  context: ContractContext
+
+principal:
+  roles: [contract_steward]
+  contexts: [ContractContext]
+
+symbols:
+  approve_action: ApproveContract
+  violation_event: InvariantViolation@1
+  projection_type: Contract
+  invariant_ref: I-1
+  invariant_stream: domain:invariant
+
+# 声明驱动夹具：逐条走真实 Kernel.submit / SessionChannel.append，非 mock。
+fixtures:
+  empty: { events: [], observations: [] }
+  contract_approved:
+    observations:
+      - { principal: observer, payload: { seen: "C-1 pending" } }
+    events:
+      - action: RegisterContract
+        params: { contract_id: C-1, amount: 500000 }
+      - action: ApproveContract
+        params: { contract_id: C-1, approver_comment: ok }

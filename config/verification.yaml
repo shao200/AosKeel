@@ -36,6 +36,12 @@ integrity_paths:
   - { id: INTEGRITY-20, path: tests/conformance/test_installability.py }
   - { id: INTEGRITY-21, path: tests/conformance/test_semantic_extract.py }
   - { id: INTEGRITY-22, path: tests/conformance/test_shadow_online.py }
+  - { id: INTEGRITY-23, path: tests/conformance/test_declaration_digest.py }   # GOV-2.3-DECL 第四道
+  - { id: INTEGRITY-24, path: tests/conformance/test_declaration_execution.py } # P1 声明执行点
+  - { id: INTEGRITY-25, path: tests/conformance/test_doc_consistency.py }       # P2 口径单一权威源
+  - { id: INTEGRITY-26, path: tests/conformance/test_competence_questions.py }  # 第二轮：CQ 可执行契约
+  - { id: INTEGRITY-27, path: tests/conformance/test_meta_schema.py }           # 第二轮：元 schema 声明化
+  - { id: INTEGRITY-28, path: tests/conformance/test_domain_cq.py }             # 第三轮：域无关 CQ 定义
 ver:
   - { id: VER-1,  clause: KS-1.2,      kind: auto, path: tests/conformance/test_event_schema.py }
   - { id: VER-2,  clause: KS-7.2,      kind: auto, path: tests/conformance/test_pipeline_order.py }

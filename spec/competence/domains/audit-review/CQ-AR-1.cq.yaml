@@ -1,0 +1,7 @@
+id: CQ-AR-1
+question: 审计复核视角下 C-1 的权威状态是什么？
+answerer: projection.snapshot
+fixture: contract_approved
+probe: { contract_id: C-1 }
+expect: { op: equals, value: approved }
+evidence: "域画像继承 contract 的聚合/流/reducer；题集由实例 YAML 自定"

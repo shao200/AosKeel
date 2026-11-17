@@ -1,0 +1,10 @@
+# 自定义域示例：审计复核视角。
+# extends: contract 继承内核结构（action/reducer/流/夹具），只覆写差异：
+#   - intruder_role 改为审计视角的未授权角色名；
+#   - 题集放在同目录 audit-review/ 下，完全由 YAML 定义，不改一行 Python。
+# 这是"实例只写声明即可定义自己 CQ"的可运行证明，不是第十类本体声明。
+domain: audit-review
+extends: contract
+label: 审计复核视角（复用合同内核）
+symbols:
+  intruder_role: unauth_reviewer
