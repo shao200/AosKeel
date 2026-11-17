@@ -3,7 +3,7 @@
 > **语言 / Language**: **简体中文** · [English (default)](../README.md)
 >
 > 中英两版内容一致；英文完整版在仓库根 [README.md](../README.md)（唯一英文真源，[docs/README.md](README.md) 只是指向它的索引）。
-> 正典规范（[aos-spec.md](aos-spec.md)）为中文冻结文本，未作翻译；`docs/` 下其余文档（POSITIONING / RUNBOOK / SPEC-FINGERPRINT）同样保持中文。
+> 正典规范（[aos-spec.md](aos-spec.md)）为中文冻结文本，未作翻译；`docs/` 下其余文档（POSITIONING / RUNBOOK / SPEC-FINGERPRINT）同样保持中文。英文读者可看[英文概览](aos-spec.en-overview.md)——它是**非规范导航件**，不翻译正典、不进哈希域，发生冲突以中文正典为准。
 
 **定位**：规范驱动开发是方法论，AI 软件工厂是组织与流程载体，本体论架构是让前两者在语义层面真正"可执行"的基础设施——本项目是这层基础设施的一个完整、可校验的具体实现（条款级对照与全链路缺口地图见 [POSITIONING.md](POSITIONING.md)）。对标 `npm create vue` / VS 项目模板：从 0 到 1 实例化一个基于本体论的、治理内建的企业级 Agent 系统。
 
@@ -16,6 +16,32 @@
 **TBox / ABox 是教学类比。** 本体是图纸——类、属性、关系、公理；知识图谱是按图纸盖好的大楼——个体与事实。在 AosKeel 中，图纸是 `spec/` 的九类声明（含治理面声明），大楼是 append-only 事件日志与可重建的只读投影；**不是** RDF 三元组，也不是 SPARQL 查询。
 
 **AOS 的增量。** 经典本体描述"什么为真"；AOS 把 `ActionType` 提升为一等元，于是本体同时约束"谁能改什么、在什么条件下、留下什么审计轨迹"——从描述性本体跃迁为**治理性本体**。另有两层经典本体没有的维度：非权威的观测层（会话事件流），以及作为启动条件的治理（`declared == registered`）。
+
+**一张图看懂三层模型（全书导航图）。** 下图是对条款的**归纳视图**，不是新增规范层次——效力仍以[正典](aos-spec.md)与[02 体系逻辑](guide/02-architecture.md)的推导链为准：
+
+```mermaid
+flowchart TB
+    GOV["治理面 GOV-1..6 + 能力清单<br/>横切全部层：declared == registered"]
+    subgraph DESC["描述层 / 图纸（TBox 类比）"]
+      OT["ObjectType · Property · LinkType<br/>本体：什么为真"]
+      AT["ActionType · Invariant<br/>变更契约：谁能改什么/何条件/留何审计"]
+    end
+    subgraph FACT["实例层 / 权威事实（ABox 类比）"]
+      EV["append-only 事件日志 · 8 字段 · 无 update/delete"]
+      PR["只读投影 · 可丢弃重建"]
+      EV -->|"确定性重放"| PR
+    end
+    subgraph OBS["观测层 / 非权威"]
+      SE["会话事件流 · Agent 所见/所试"]
+    end
+    GOV -.-> DESC
+    GOV -.-> FACT
+    AT -->|"唯一写路径 commit()"| EV
+    DESC -->|"编译/校验/注册"| FACT
+    SE -.->|"禁止作为权威（KS-2.2）"| PR
+```
+
+三层这样读：**本体 / 描述层**（ObjectType、Property、LinkType）说"什么为真"；`ActionType` 是这一层里把描述性本体变成**治理性本体**的构件——它把"谁能改、什么条件下、留什么审计"编译为可执行契约。**治理面**（GOV-1..6 加能力清单）横切全部层，且是启动条件。**实例层**持有唯一权威事实（不可变事件 + 可重建投影）；物理隔离的**观测层**永不得冒充权威。这正是 LLM 只能提候选、不能写正典的原因：每次写入都必须穿过 `ActionType` 与治理面。
 
 **学术谱系与诚实边界。** 四条传统在此交汇，AosKeel 不等于其中任何一条：
 

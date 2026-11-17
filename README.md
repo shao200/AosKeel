@@ -4,7 +4,7 @@
 
 **A verifiable, 0→1 scaffold for ontology-based Agent systems — specification-driven, governance-built-in, and machine-checkable.**
 
-AosKeel implements the *AOS: Ontology-Based Agent System Development Specification* v2.0.0. It is closer to `npm create vue` than to a runtime product: you instantiate a source tree, declare your domain, and let the compiler and gates decide whether the system is allowed to start. This page gives you the theory and a working entry point; the [full guide](#6-guided-learning) goes deeper.
+AosKeel implements the *AOS: Ontology-Based Agent System Development Specification* v2.0.0. It is closer to `npm create vue` than to a runtime product: you instantiate a source tree, declare your domain, and let the compiler and gates decide whether the system is allowed to start. This page gives you the theory and a working entry point; the [full guide](#6-guided-learning) goes deeper. The frozen canonical spec is a Chinese text; English readers can start from the [non-normative English overview](docs/aos-spec.en-overview.md) (a navigation aid only — it does not translate or replace the canonical).
 
 ---
 
@@ -65,6 +65,34 @@ ContextType / AggregateType / Mapping / ProcessType  ← T02 four constructs
 Two further AOS-specific dimensions have no classical counterpart: an **observation layer** (the session event stream, physically separated from authoritative facts) and **governance as a startup condition** (the capability list must be complete before the kernel starts; legitimacy is recorded, never manufactured).
 
 > TBox/ABox is a **teaching analogy** here. AosKeel does not use RDF triples, SPARQL or a DL reasoner. Facts are immutable events; queries are rebuildable projections. [06 · Formal semantics](docs/guide/06-formal-semantics.md) explains the mapping and its exact limits.
+
+### The mental model in one diagram
+
+The three-layer picture below is the navigation map for the whole project. It is an **inductive view** of the clauses, not a new normative layer — authority stays with [aos-spec.md](docs/aos-spec.md) and the [02 · Architecture](docs/guide/02-architecture.md) derivation.
+
+```mermaid
+flowchart TB
+    GOV["Governance plane · GOV-1..6 + capability list<br/>cross-cuts every layer: declared == registered"]
+    subgraph DESC["Descriptive layer — the blueprint (TBox analogy)"]
+      OT["ObjectType · Property · LinkType<br/>ontology: what is true"]
+      AT["ActionType · Invariant<br/>change contract: who may alter what, under which conditions, with what audit"]
+    end
+    subgraph FACT["Instance layer — authoritative facts (ABox analogy)"]
+      EV["append-only event log · 8 fields · no update/delete"]
+      PR["read-only projections · discard + rebuild"]
+      EV -->|"deterministic replay"| PR
+    end
+    subgraph OBS["Observation layer — non-authoritative"]
+      SE["session event stream · what the agent saw/attempted"]
+    end
+    GOV -.-> DESC
+    GOV -.-> FACT
+    AT -->|"only write path: commit()"| EV
+    DESC -->|"compile / validate / register"| FACT
+    SE -.->|"forbidden as authority (KS-2.2)"| PR
+```
+
+Read the layers as follows: the **ontology / descriptive layer** (ObjectType, Property, LinkType) says what is true; `ActionType` is the element inside that layer which turns a descriptive ontology into a **governable** one — it compiles "who may change what, under which conditions, and with what trace" into an executable contract. The **governance plane** (GOV-1..6 plus the capability list) cuts across all layers and is a startup condition. The **instance layer** holds the only authoritative facts (immutable events + rebuildable projections), and the physically separated **observation layer** may never stand in as authority. This is why an LLM can propose candidates but cannot write canonical facts: every write must traverse `ActionType` and the governance plane.
 
 ---
 
