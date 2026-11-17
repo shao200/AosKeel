@@ -24,18 +24,50 @@ USAGE = """\
   spec fingerprint      独立结构层核对（GOV-2.5 分歧二分）     报缺 → exit 1
   spec version <v>      GOV-3 版本通道：新版本登记（append-only）
                         --proposal-ref SPEC-YYYY-NNN 强制      缺 → 拒绝
-  generate [--force]    声明 → 代码骨架（actions/reducers，provenance 头）
+  generate [--force]    声明 → 代码骨架（Profile 门控：backend.cqrs →
+                        command_api/query_api；auth.oauth2_1 → auth_oauth2（IdP：
+                        AC+PKCE/治理面 claims/DPoP）；actions/reducers 常驻）
                         手改检测：不一致 → 拒绝静默覆盖；--force 显式覆盖
   release               发布闸门（fail-closed）：三关 + 布线套件 + 骨架一致性
                         全绿 → dist/RELEASE-MANIFEST.json；任一失败 → 不出制品
   draft <file>          需求 DSL → 本体草案（解析→编译把关；全绿才写 spec/drafts/）
                         --name N 命名草案；编译不过逐条报告，不落盘
   draft promote <f>     草案晋升正典（--proposal-ref SPEC-YYYY-NNN 强制，GOV-1）
+  import-db             数据库元结构 → 本体草案（旧系统迁移素材源）
+                        (--dsn sqlite:///db | --ddl dump.sql) [--name N]
+                        [--tables a,b] [--skip-failed] ｜ 只读 schema 不读业务数据，
+                        凭据不落盘；方言失败如实拒绝（不静默跳过 = 不丢表）
                         目标已存在 → 拒绝（GOV-3 通道）；晋升含 apply_generated（P-5）
-  manual [--out F]      领域说明书：spec/ 八类声明 → 可读文档（人读 + LLM 上下文注入）
+  import-data           数据迁徙（细胞移植）：老库数据行 → 创世事件草案
+                        --dsn sqlite:///db --map M [--name N] [--skip-failed]
+                        映射只声明「老表列→动作参数」，事件形态由正典动作定；
+                        逐行走 Kernel.submit 完整求值链，违反约束即拒（fail-closed）；
+                        只读源库（mode=ro）；凭据不落盘；产物 data-drafts/*.ndjson
+  extract               语义提取：素材（源码/文档）→ 本体草案（过同一三段闸）
+                        <file> --name N [--extractor script.py]
+                        builtin 参考提取器 = 确定性规则（零 LLM）；LLM 调用写进
+                        自定义适配器（契约: stdout YAML objects[]）；产物只进
+                        spec/drafts/，晋升须 GOV-1 提案
+  shadow-online         在线影子对账：消费部署侧探针 NDJSON（契约见工具头注释）
+                        <probes.ndjson> ｜ 对比新旧在线系统状态/输出等价；
+                        坏行 fail-closed 零静默；探针（拦流记录）属实例侧
+  shadow                影子对账（离线双跑）：老库行 ↔ 新体系事件语义等价
+                        --dsn sqlite:///db --map M ｜ 复用 import-data 映射；
+                        对账三项：求值链接受 / 映射字段无损 / 声明效果落位；
+                        差异清单应进 aos review；在线影子流量属部署期
+  review                审核清单（只读咨询）：profile 锚点现状 / drafts 候选 /
+                        [--out F]            治理授权对账 → 带编号裁决清单
+                        每项附下一步命令（promote 须 GOV-1 提案；L3 不可自动定稿）
+  manual [--out F]      领域说明书：spec/ 九类声明 → 可读文档（人读 + LLM 上下文注入）
                         派生件非真源；缺省打印到 stdout，--out 落盘
   impact <target>       变更影响分析（事前咨询）：声明名 / spec 路径 / ObjectType.prop
                         → 反向引用图报告；不进闸门，缺目标 → 拒绝
+  profile               Feature Profile 解析：能力选择 → 依赖展开 → 生成序
+                        （治理面在前）；锚点缺失 → 拒绝；只出计划不生成代码
+  init <dir>            模板实例化到新目录（不覆盖既有目标）
+                        [--name N] 实例名；实例化后可定制 Profile：
+                        [--depth minimal|standard|full] [--cap ID] [--no-cap ID]
+                        [--interactive] —— 无定制旗标 = 保留模板 profile 原样
   audit export <events.jsonl> [--out F]
                         统一审计导出：追加证据 + 决策引用 → 链式 audit_id JSONL
                         （只读派生件；进程内台账用 tools.audit_export.export）
@@ -103,10 +135,20 @@ def cmd_verify() -> int:
     return 0
 
 
-def cmd_init(target: str) -> int:
+def cmd_init(target: str, wizard: dict | None = None) -> int:
     dst = Path(target).resolve()
     if dst.exists():
         print(f"REFUSED: 目标已存在 {dst} —— init 不覆盖（护栏）"); return 1
+    if wizard and any([wizard.get("depth"), wizard.get("add"),
+                       wizard.get("remove")]):
+        # 参数前置校验（fail-fast）：非法参数不得浪费一次完整实例化
+        from kernel.profile import validate_init_args, ProfileError
+        try:
+            validate_init_args(wizard.get("name"), wizard.get("depth") or "standard",
+                               tuple(wizard["add"]), tuple(wizard["remove"]))
+        except ProfileError as e:
+            print(f"INIT-PROFILE-REFUSED: {e} —— 未创建目标目录")
+            return 1
     dst.mkdir(parents=True)
     EXCLUDE = {"__pycache__", ".aos", "drafts"}          # drafts=工作区，不入实例
     copied = 0
@@ -144,7 +186,37 @@ def cmd_init(target: str) -> int:
     (dst / "docs/TEMPLATE-LOCK.md").write_bytes(
         _gen_template_lock(spec_ver, art_id, snap_ok, copied).encode("utf-8"))
     print(f"INITIALIZED: {dst}（{copied} 文件；TEMPLATE-LOCK: template 0.3 × {spec_ver} × {art_id}）")
-    print("下一步: cd 实例 && python src/cli/main.py bootstrap --stage 0")
+    if wizard and any([wizard.get("depth"), wizard.get("add"),
+                       wizard.get("remove"), wizard.get("interactive")]):
+        # Profile 定制向导（实例化后第二步）：depth 预设 ± 能力增删。
+        # 实例自带模板 profile —— 定制即重铺（init_profile force=True），
+        # 产出走同一解析器自校验；失败则如实报告（模板 profile 仍在，实例可用）。
+        from kernel.profile import init_profile, DEPTH_PRESETS, ProfileError
+        wname = wizard.get("name") or dst.name
+        depth = wizard.get("depth") or "standard"
+        try:
+            if wizard.get("interactive") and not wizard.get("depth"):
+                depth = input(f"深度 {sorted(DEPTH_PRESETS)} [standard]: ").strip() \
+                    or "standard"
+            if wizard.get("interactive") and not wizard.get("name"):
+                wname = input(f"项目名 [{wname}]: ").strip() or wname
+            r = init_profile(wname, depth, tuple(wizard["add"]),
+                             tuple(wizard["remove"]), root=dst, force=True)
+        except ProfileError as e:
+            print(f"INIT-PROFILE-REFUSED: {e} —— 实例保留模板 profile；"
+                  "可手工编辑 spec/profile.yaml 后 aos profile 校验")
+            return 1
+        declared = sum(1 for s in r["selected"].values() if s == "declared")
+        print(f"INIT-PROFILE: {r['path']}（depth={r['depth']}，"
+              f"选定 {len(r['selected'])} 项 = 声明 {declared} + 自动展开 "
+              f"{len(r['selected']) - declared}）")
+        print("生成顺序: " + " → ".join(r["order"]))
+        for f in r["failures"]:
+            print(f"  [PENDING] {f}   ←（待声明 roadmap，补齐后即可 aos generate）")
+        print("下一步: cd 实例 && python src/cli/main.py bootstrap --stage 0")
+    else:
+        print("下一步: cd 实例 && python src/cli/main.py bootstrap --stage 0"
+              "（或 aos init <dir> --depth standard 定制能力广度）")
     return 0
 
 
@@ -277,7 +349,26 @@ def main(argv: list[str] | None = None) -> int:
         if cmd == "register":
             return hs_register(_positional(rest, 0, "用法: aos register <version>"))
         if cmd == "init":
-            return cmd_init(_positional(rest, 0, "用法: aos init <dir>"))
+            usage_i = "用法: aos init <dir> [--name N] " \
+                      "[--depth minimal|standard|full] [--cap ID ...] " \
+                      "[--no-cap ID ...] [--interactive]"
+            target = _positional(rest, 0, "用法: aos init <dir>")
+            wizard: dict = {"name": _value(rest, "--name", usage_i),
+                            "depth": _value(rest, "--depth", usage_i),
+                            "add": [], "remove": [], "interactive": False}
+            i = 0
+            while i < len(rest):
+                tok = rest[i]
+                if tok in ("--cap", "--no-cap"):
+                    if i + 1 >= len(rest) or rest[i + 1].startswith("--"):
+                        raise UsageError(f"{tok} 缺能力 id —— {usage_i}")
+                    (wizard["add"] if tok == "--cap" else wizard["remove"]).append(rest[i + 1])
+                    i += 2
+                elif tok == "--interactive":
+                    wizard["interactive"] = True; i += 1
+                else:
+                    i += 1
+            return cmd_init(target, wizard)
         if cmd == "bootstrap":
             stage_s = _value(rest, "--stage", "用法: aos bootstrap --stage N")
             if stage_s is None: print("用法: aos bootstrap --stage N"); return 1
@@ -323,6 +414,125 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
             print(f"DRAFT-OK: {report['draft']}（人确认后执行 aos draft promote）")
             return 0
+        if cmd == "import-db":
+            from tools.db_import import import_db, ImportRefused
+            usage = "用法: aos import-db (--dsn sqlite:///db | --ddl dump.sql) " \
+                    "[--name N] [--tables a,b] [--skip-failed]"
+            dsn, ddl = _value(rest, "--dsn", usage), _value(rest, "--ddl", usage)
+            if bool(dsn) == bool(ddl):
+                raise UsageError("--dsn 与 --ddl 须二选一 —— " + usage)
+            name = _value(rest, "--name", usage) or "db-import"
+            only = _value(rest, "--tables", usage)
+            try:
+                r = import_db(dsn=dsn, ddl=Path(ddl) if ddl else None, name=name,
+                              only=tuple(t.strip() for t in only.split(",")) if only else (),
+                              skip_failed="--skip-failed" in rest)
+            except ImportRefused as e:
+                print(f"IMPORT-REFUSED: {e}")
+                return 1
+            print(f"IMPORT-DRAFT: {r['draft']}（source: {r['source']}，凭据不落盘）")
+            print(f"对象候选: {r['objects']} ｜ 聚合候选: {r['aggregates']}")
+            if r["candidate_links"]:
+                print(f"候选引用 {len(r['candidate_links'])} 条"
+                      "（聚合归属/引用语义由人工裁决后进正典 links）")
+                for lk in r["candidate_links"]:
+                    print(f"  [CANDIDATE] {lk['source']} → {lk['target']}（{lk['link_type']}）")
+            for n in r["notes"]:
+                print(f"  [TRANSLATED] {n}")
+            for s in r["skipped"]:
+                print(f"  [SKIPPED] {s}")
+            print("下一步: 审核 spec/drafts/ 草案 → aos draft promote（GOV-1 提案强制）"
+                  " —— 导入的是候选，不是事实")
+            return 0
+        if cmd == "import-data":
+            from tools.data_import import import_data
+            usage = "用法: aos import-data --dsn sqlite:///db --map M [--name N] [--skip-failed]"
+            dsn, map_ = _value(rest, "--dsn", usage), _value(rest, "--map", usage)
+            if not dsn or not map_:
+                raise UsageError("--dsn 与 --map 必填 —— " + usage)
+            r = import_data(dsn=dsn, mapping_path=map_,
+                            name=_value(rest, "--name", usage),
+                            skip_failed="--skip-failed" in rest)
+            print(f"DATA-DRAFT: {r['draft']}（source: {r['source']}，凭据不落盘）")
+            print(f"创世事件: 接受 {r['accepted']} 行 / 求值链拒绝 {r['rejected']} 行"
+                  f" ｜ 来源表: {r['tables']}")
+            print("下一步: 人工确认 data-drafts/ 事件流 → 部署期装载（须 GOV/人签，"
+                  "CLI 不直写事件库）")
+            return 0
+        if cmd == "shadow-online":
+            from tools.shadow_online import reconcile_probes, PROBE_CONTRACT
+            usage = "用法: aos shadow-online <probes.ndjson>"
+            pos = [a for a in rest if not a.startswith("--")]
+            if not pos:
+                raise UsageError("探针记录文件必填 —— " + usage)
+            r = reconcile_probes(pos[0])
+            print(f"SHADOW-ONLINE-{r['verdict']}（探针契约: {PROBE_CONTRACT}）")
+            print(f"对账: {r['total']} 条 ｜ 一致 {r['matched']} ｜ 分歧 {r['diverged']}")
+            for m in r["mismatches"][:20]:
+                for d in m["diffs"]:
+                    print(f"  [DIFF] 行 {m['line']} {m['action']} [{d['kind']}]"
+                          f" legacy={d.get('legacy')!r} modern={d.get('modern')!r}")
+            if r["verdict"] == "DIVERGED":
+                print("下一步: 分歧清单进 aos review 人工裁决（语义映射修正或本体补声明）")
+            return 0
+        if cmd == "extract":
+            from tools.semantic_extract import extract
+            usage = "用法: aos extract <file> --name N [--extractor script.py]"
+            pos = [a for a in rest if not a.startswith("--")]
+            if not pos:
+                raise UsageError("素材文件必填 —— " + usage)
+            r = extract(pos[0], _value(rest, "--name", usage) or Path(pos[0]).stem,
+                        _value(rest, "--extractor", usage))
+            if "draft" in r:
+                print(f"EXTRACT-DRAFT: {r['draft']}")
+                print(f"来源: {r['extractor']} ｜ 候选 {len(r['decls']['objects'])} 个 ｜ "
+                      f"置信度: {r['confidence']}")
+                print("纪律: 候选不是事实 —— 晋升须 aos draft promote --proposal-ref（GOV-1）")
+            else:
+                print("EXTRACT-REFUSED（闸门失败，未落盘）:")
+            for f in r.get("failures", []):
+                print(f"  [GATE] {f}")
+            for n in r.get("notes", []):
+                print(f"  [NOTE] {n}")
+            return 0
+        if cmd == "shadow":
+            from tools.shadow import shadow_reconcile
+            usage = "用法: aos shadow --dsn sqlite:///db --map M"
+            dsn, map_ = _value(rest, "--dsn", usage), _value(rest, "--map", usage)
+            if not dsn or not map_:
+                raise UsageError("--dsn 与 --map 必填 —— " + usage)
+            r = shadow_reconcile(dsn, map_)
+            print(f"SHADOW-{r['verdict']}（source: {r['source']}，凭据不落盘）")
+            print(f"对账: {r['rows']} 行 ｜ 字段一致 {r['matched_fields']} ｜ "
+                  f"差异 {r['mismatched']} ｜ 求值链拒绝 {r['rejected']}")
+            if r["uncovered_columns"]:
+                print(f"对账盲区（源列未被映射覆盖，如实披露）: {r['uncovered_columns']}")
+            for m in r["mismatches"][:20]:
+                print(f"  [DIFF] 行 {m['row']} [{m['kind']}] {m.get('field', '')}"
+                      f" 期望 {m.get('expected', '-')} 实际 {m.get('actual', '-')}"
+                      if m["kind"] != "rejection" else
+                      f"  [REJECT] 行 {m['row']}: {m['detail']}")
+            if r["verdict"] == "DIVERGED":
+                print("下一步: 差异清单进 aos review 人工裁决（映射修正或本体补声明）")
+            return 0
+        if cmd == "review":
+            from tools.review import review_report, format_report
+            from kernel.profile import ProfileError
+            usage = "用法: aos review [--out docs/REVIEW.md]"
+            try:
+                r = review_report()
+            except ProfileError as e:
+                print(f"REVIEW-REFUSED: {e}")
+                return 1
+            text = format_report(r)
+            out = _value(rest, "--out", usage)
+            if out:
+                Path(out).parent.mkdir(parents=True, exist_ok=True)
+                Path(out).write_bytes(text.encode("utf-8"))
+                print(f"REVIEW-WRITTEN: {out}")
+            else:
+                print(text)
+            return 0
         if cmd == "manual":
             from tools.domain_manual import main as manual_main
             usage = "用法: aos manual [--out docs/DOMAIN-MANUAL.md]"
@@ -335,13 +545,38 @@ def main(argv: list[str] | None = None) -> int:
         if cmd == "audit":
             from tools.audit_export import main as audit_main
             return audit_main(rest)
+        if cmd == "profile":
+            from kernel.profile import resolve as profile_resolve, ProfileError, ANCHORS
+            try:
+                r = profile_resolve()
+            except ProfileError as e:
+                print(f"REFUSED: {e}")
+                return 1
+            declared = sum(1 for s in r["selected"].values() if s == "declared")
+            implied = len(r["selected"]) - declared
+            print(f"PROFILE: {r['project']} —— 选定 {len(r['selected'])} 项"
+                  f"（声明 {declared} / 自动展开 {implied}）")
+            print("生成顺序: " + " → ".join(r["order"]))
+            if r["failures"]:
+                for f in r["failures"]:
+                    print(f"  [FAIL] {f}")
+                print("PROFILE-REFUSED: 锚点缺失 —— 计划不可执行（fail-closed）")
+                return 1
+            for a in sorted(ANCHORS.values()):
+                n = len(list((ROOT / "spec" / a).glob("*.yaml"))) if (ROOT / "spec" / a).exists() else 0
+                print(f"  锚点 spec/{a}/: OK（{n} 条声明）")
+            print("PROFILE-OK: 生成计划就绪（本命令只出计划；代码生成按模块逐个接入）")
+            return 0
         if cmd == "impact":
             from tools.impact import report as impact_report
             return impact_report(
                 _positional(rest, 0, "用法: aos impact <声明路径|声明名|ObjectType.prop>"))
         if cmd == "test":
-            suite = _value(rest, "--suite", "用法: aos test [--suite S]")
-            return cmd_test(suite)
+            suite = _value(rest, "--suite", "用法: aos test [suite|--suite S]")
+            pos = [a for a in rest if not a.startswith("--")
+                   and rest[max(0, rest.index(a) - 1)] not in ("--suite",)]
+            suite = suite or (pos[0] if pos else None)   # 位置参数优先（复盘修复：
+            return cmd_test(suite)                        # 此前被静默丢弃）
         print(USAGE); return 1
     except UsageError as e:
         print(f"REFUSED: {e}")
