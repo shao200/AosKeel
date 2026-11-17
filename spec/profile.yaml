@@ -1,0 +1,23 @@
+# spec/profile.yaml —— Feature Profile（能力选择意图，唯一真源）
+# 用户以最小代价声明"要什么"，依赖展开/生成序/锚点核对由 kernel.profile 完成：
+#   python src/cli/main.py profile    # 解析并输出生成计划（只出计划，不生成代码）
+# 锚点缺失（治理面/聚合/映射无声明）→ fail-closed 拒绝。
+profile:
+  project: crm-contract-sample
+  capabilities:
+    governance:
+      duty_matrix: true          # 治理面：spec/governance/ 职责授权矩阵（auth/写路径的语义根）
+      audit_trail: true          # 审计留痕（依赖 event_sourcing）
+    backend:
+      cqrs: true                 # 命令/查询分离（依赖 duty_matrix）
+      event_sourcing: true       # 事件溯源（依赖 cqrs）
+      projections: [read-db]     # 读模型投影落点（依赖 event_sourcing）
+    auth:
+      oauth2_1: true             # Authorization Code + PKCE；claims 由治理面生成
+      pkce: true
+      token_binding: dpop        # dpop | mTLS | none
+    frontend:
+      admin_console: true        # 管理控制台（依赖 cqrs + mappings 锚点）
+      form_generation: true      # 由 objects + invariants 驱动表单生成
+    workflow:
+      enabled: true              # 跨聚合编排（依赖 cqrs）
