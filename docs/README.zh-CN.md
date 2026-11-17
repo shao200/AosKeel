@@ -61,33 +61,35 @@ AosKeel 是**治理性本体脚手架**，不是推理机、规划器或三元�
 ## 快速开始（0 → 1）
 
 ```powershell
-pip install -e .                              # 安装 pyyaml + pytest；或直接 python -m src.cli.main
+pip install -e .                              # 安装 pyyaml + pytest
 aos init my-org-system --depth standard       # 实例化 + 能力画像（依赖自动展开；拒绝覆盖已存在目标）
 cd my-org-system
-aos profile                                   # 解析能力画像：拓扑生成序（治理 → cqrs → oauth → 前端）
-aos bootstrap --stage 0                       # BOOT-0：工件哈希登记 + 三关首跑
-aos verify                                    # 三关：结构(指纹) → 密码学(哈希) → 注册(declared==registered)
+# —— 重要：进入实例后用 python src/cli/main.py，不要用 aos ——
+# aos 控制台脚本锚定的是安装它的模板根，与 cwd 无关；实例内直接用它会操作模板而非实例。
+python src/cli/main.py profile                # 解析能力画像：拓扑生成序（治理 → cqrs → oauth → 前端）
+python src/cli/main.py bootstrap --stage 0    # BOOT-0：工件哈希登记 + 三关首跑
+python src/cli/main.py verify                 # 三关：结构(指纹) → 密码学(哈希) → 注册(declared==registered)
 python -m pytest -q tests                     # 一致性 + forbidden 双射 + 解释器负向集
-aos bootstrap --stage 1 --appointment-ref <外部凭据>   # BOOT-1 创制任命（强制真实凭据）
-aos test                                      # 按 config/verification.yaml 分组执行
+python src/cli/main.py bootstrap --stage 1 --appointment-ref <外部凭据>   # BOOT-1 创制任命（强制真实凭据）
+python src/cli/main.py test                   # 按 config/verification.yaml 分组执行
 # —— 全链路生命周期（需求 → 制品）——
-aos draft requirements.txt --name r1          # 需求 DSL → 草案（编译把关，未全绿不落盘）
-aos draft promote spec/drafts/draft-r1.yaml --proposal-ref SPEC-2026-021   # 晋升正典（治理提案强制）
-aos generate                                  # 声明 → 代码骨架（治理→CQRS→OAuth2.1→前端守卫；手改检测）
-aos release                                   # 发布闸门（fail-closed）→ dist/RELEASE-MANIFEST.json
+python src/cli/main.py draft requirements.txt --name r1   # 需求 DSL → 草案（编译把关，未全绿不落盘）
+python src/cli/main.py draft promote spec/drafts/draft-r1.yaml --proposal-ref SPEC-2026-021   # 晋升正典（治理提案强制）
+python src/cli/main.py generate               # 声明 → 代码骨架（治理→CQRS→OAuth2.1→前端守卫；手改检测）
+python src/cli/main.py release                # 发布闸门（fail-closed）→ dist/RELEASE-MANIFEST.json
 # —— 旧系统迁徙（绞杀者管线；素材永远先成草案，编译不过不落盘）——
-aos import-db --ddl legacy.sql                # 老库元结构 → 本体草案（只读 schema，凭据不落盘）
-aos extract legacy_code.py --name sem1        # 语义提取：源码/文档 → 草案（确定性参考提取器；LLM 走实例侧适配器契约）
-aos review                                    # 裁决清单（锚点 / 草案候选 / 治理对账，只读咨询）
-aos import-data --dsn sqlite:///db --map M    # 老库数据行 → 创世事件草案（逐行过完整求值链）
-aos shadow --dsn sqlite:///db --map M         # 影子对账（离线双跑）：行 ↔ 事件语义等价
-aos shadow-online probes.ndjson               # 在线双跑对账协议（探针 NDJSON 契约；探针组件属部署侧）
+python src/cli/main.py import-db --ddl legacy.sql         # 老库元结构 → 本体草案（只读 schema，凭据不落盘）
+python src/cli/main.py extract legacy_code.py --name sem1 # 语义提取：源码/文档 → 草案（确定性参考提取器；LLM 走实例侧适配器契约）
+python src/cli/main.py review                 # 裁决清单（锚点 / 草案候选 / 治理对账，只读咨询）
+python src/cli/main.py import-data --dsn sqlite:///db --map M   # 老库数据行 → 创世事件草案（逐行过完整求值链）
+python src/cli/main.py shadow --dsn sqlite:///db --map M  # 影子对账（离线双跑）：行 ↔ 事件语义等价
+python src/cli/main.py shadow-online probes.ndjson        # 在线双跑对账协议（探针 NDJSON 契约；探针组件属部署侧）
 python tools/console.py                       # WEB 治理控制台壳（白名单 fail-closed，签署类不提供）
 ```
 
 之后的 BOOT-2/3（治理工作流、Identity Context 验收）与业务建模变更（走 GOV-3 版本通道，见 [docs/RUNBOOK.md](RUNBOOK.md)）属实例侧治理工作——模板提供声明位、编译器、闸门与验收清单，不模拟治理（诚实边界；Makefile 不合成创制任命凭据）。CI 门禁见 `.github/workflows/ci.yml`（pytest → 三关 → 发布闸门）。
 
-`aos` 控制台脚本与 `python -m src.cli.main` 等价：两者都经 `main()` 分发，argv 缺省取 `sys.argv[1:]`。`pytest` 是声明的运行时依赖（`aos test` / `aos release` 要执行布线套件）；缺失时明确报 `PYTEST-MISSING` 拒绝，不伪装成"套件失败"。
+两种入口都经 `main()` 分发、argv 缺省取 `sys.argv[1:]`，但**锚点不同**：`aos` 控制台脚本锚定安装它的模板根（`ROOT = Path(__file__).resolve().parents[2]`，与 cwd 无关），`python src/cli/main.py` / `python -m src.cli.main` 锚定当前所在源码树。因此**仅在模板根下两者行为一致，进入实例后必须用 `python src/cli/main.py`**（英文版首屏 §5 同样声明此边界）。`pytest` 是声明的运行时依赖（`aos test` / `aos release` 要执行布线套件）；缺失时明确报 `PYTEST-MISSING` 拒绝，不伪装成"套件失败"。
 
 ## 模板树（v0.1 → v0.3）
 
@@ -107,7 +109,7 @@ config/capabilities.yaml       能力清单三段式（固定段/生成段/prove
 config/verification.yaml       VER-1..33 实文布线 + INTEGRITY 回归守卫布线（承重件）
 spec/                          九类声明样例（objects/links/actions/contexts/aggregates/mappings/processes/invariants/governance）
 spec/profile.yaml              能力画像声明（capabilities × depth；generate 的拓扑序来源）
-src/cli/main.py                命令表驱动入口（22 命令，见下表；启动自检拒绝误装 wheel）
+src/cli/main.py                命令表驱动入口（26 命令面 = 21 顶层 + 5 子命令，见下表；启动自检拒绝误装 wheel）
 src/kernel/registration.py     注册期管线（KS-7.2 五步，P-5 单写者；装载 spec/ 九类声明；角色-职责对账）
 src/kernel/profile.py          能力画像解析（依赖图展开、Kahn 拓扑生成序、锚点核对、fail-closed）
 src/kernel/sc_compiler.py      SC 两段式编译器（KS-7.1 / VER-18）
@@ -163,10 +165,13 @@ bootstrap/checklists/          _schema + VER-20/24/26/27/28/29（P-14 证据留�
 | `init <dir> [--depth D] [--cap ID] [--no-cap ID]` | 实例化 + 能力画像（依赖自动展开；三档 depth 预设） | 目标已存在 → 拒绝（重铺须 `--force`）；非法 depth/能力 → 实例化前 fail-fast |
 | `profile` | 解析能力画像：依赖展开 + 拓扑生成序 + 锚点核对 | 锚点缺失 → `PROFILE-FAIL` 带待声明清单；环/未知能力 → 拒绝 |
 | `verify` | 三关串联 | 任一失败 → exit 1 |
+| `cq [list\|run] [CQ-n ...] [--domain D]` | 能力问题可执行验收（contract 域十张冻结清单）；`--domain` 跑实例自定义域 | 缺题 / 回答者未注册 / 断言失败 → exit 1 |
 | `register <version>` | GOV-2.3 登记 | 同哈希幂等；漂移 → 拒绝（GOV-3） |
 | `bootstrap --stage N` | BOOT-0..3；`--dry-run` 只跑检查表 | 阶段乱序 → 拒绝；2/3 属实例侧 |
 | `test [--suite S]` | 按 verification.yaml 分组 | 套件失败 / 布线路径缺失 → exit 1 |
 | `spec fingerprint` | 独立结构层核对 | 报缺 → exit 1 |
+| `spec digest` | 只读查看 spec/ 声明摘要与登记状态 | 不写入 |
+| `spec register-declarations <v> [--proposal-ref ...]` | GOV-2.3-DECL 声明摘要登记（append-only；不动冻结正典） | 首次直接登记；后续漂移缺提案引用 → 拒绝 |
 | `spec version <v>` | GOV-3 版本通道（append-only） | 缺 `--proposal-ref` → 拒绝 |
 | `generate [--force]` | 声明 → 代码骨架（Profile 门控：治理→CQRS→OAuth2.1→前端守卫；字节级零漂移） | 锚点缺失 → `CODEGEN-REFUSED`；手改漂移 → 拒绝静默覆盖 |
 | `release` | 发布闸门（fail-closed） | 任一关失败 → 不出制品 |

@@ -160,7 +160,7 @@ The guide ships in Chinese to preserve clause-level terminology exactly; it is c
 | 02 | [Architecture](docs/guide/02-architecture.md) | AX→KS→P→INV→BOOT→GOV→VER derivation, four event streams, accident-based pattern justification |
 | 03 | [Implementation](docs/guide/03-implementation.md) | Registration pipeline, SC compiler, submission pipeline, restricted interpreter, upcasting, gates |
 | 04 | [Tutorial](docs/guide/04-tutorial.md) | install → init → BOOT-0 → draft/promote → generate → submit → test/release, with real outputs |
-| 05 | [Reference](docs/guide/05-reference.md) | 12 commands, file map, T01–T26, VER-1..33 wiring, exceptions, FAQ |
+| 05 | [Reference](docs/guide/05-reference.md) | 26 commands (21 top-level + 5 subcommands), file map, T01–T26, VER-1..33 wiring, exceptions, FAQ |
 | 06 | [Formal semantics](docs/guide/06-formal-semantics.md) | Description logic, open vs closed world, engineering method, OWL↔AOS translation limits |
 | 07 | [Kernel walkthrough](docs/guide/07-kernel-walkthrough.md) | Executable Python: rejection paths, full re-evaluation, projections, decision audit |
 | 08 | [Enterprise app guide](docs/guide/08-enterprise-app-guide.md) | The full build-out: modeling → AI drafting & promotion → generation → external ingestion → agent wiring → release → what you must build yourself |
@@ -169,19 +169,23 @@ The guide ships in Chinese to preserve clause-level terminology exactly; it is c
 
 ---
 
-## 7. Command cheat sheet
+## 7. Command cheat sheet — 26 commands (21 top-level + 5 subcommands)
 
 | Command | Purpose |
 |---|---|
 | `aos init <dir> [--depth D] [--cap ID]` | Instantiate + capability profile (dependency-expanded) |
 | `aos profile` | Resolve and validate the capability profile |
 | `aos verify` | Three chained gates |
+| `aos cq [list\|run] [CQ-n ...] [--domain D]` | Run the ten competency questions against the kernel; `--domain` runs instance-defined sets |
 | `aos register <version>` | GOV-2.3 artifact registration (idempotent for the same hash) |
 | `aos bootstrap --stage N [--dry-run]` | BOOT-0..3; stage 1 requires a real external appointment reference |
 | `aos test [--suite S]` | Run suites wired in `config/verification.yaml` |
 | `aos spec fingerprint` | Standalone structural-layer check |
+| `aos spec digest` | Read-only view of the declaration digest and its registration state |
+| `aos spec register-declarations <v> [--proposal-ref ...]` | GOV-2.3-DECL append-only declaration registration (frozen canon untouched) |
 | `aos spec version <v> --proposal-ref ...` | GOV-3 version channel (append-only) |
 | `aos generate [--force]` | Declarations → code skeleton (governance → CQRS → OAuth 2.1 → frontend guard tables); hand edits block silent overwrite |
+| `aos release` | Fail-closed release gate → `dist/RELEASE-MANIFEST.json` |
 | `aos draft <file> [--name N]` | Requirements DSL → compiler-gated draft |
 | `aos draft promote <f> --proposal-ref ...` | Promote a draft to canonical (single writer) |
 | `aos import-db` | Legacy schema → ontology draft (DDL or sqlite DSN; meta-structure only) |
@@ -190,8 +194,11 @@ The guide ships in Chinese to preserve clause-level terminology exactly; it is c
 | `aos shadow` | Offline dual-run reconciliation: legacy rows ↔ new-system events |
 | `aos shadow-online` | Online dual-run reconciliation: consumes deployment-side probe NDJSON (probe contract in tool header; fail-closed on bad lines; probes are instance-side) |
 | `aos review` | Read-only adjudication list (anchors / draft candidates / governance audit) |
-| `aos release` | Fail-closed release gate → `dist/RELEASE-MANIFEST.json` |
-| `tools/console.py` | WEB governance console shell (whitelisted commands via subprocess CLI; signing commands excluded) |
+| `aos manual [--out F]` | Domain manual: nine declaration kinds → readable doc (derived view, not a source of truth) |
+| `aos impact <target>` | Reverse-reference impact graph (declaration name / spec path / `ObjectType.prop`) |
+| `aos audit export <events.jsonl>` | Chain `audit_id` JSONL export (read-only derived artifact) |
+| `aos metrics` | Gate-history metrics from `dist/gate-history.jsonl` |
+| `tools/console.py` | WEB governance console shell over the same CLI (whitelisted commands; signing commands excluded) |
 
 ---
 
