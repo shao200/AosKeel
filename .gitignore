@@ -12,3 +12,7 @@ build/
 *.egg-info/
 dist/*
 !dist/RELEASE-MANIFEST.json
+
+# 实例侧产物草案与 IDE 配置
+data-drafts/
+.vscode/
