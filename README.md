@@ -22,7 +22,16 @@ A language model is widely read but structurally naive: it produces plausible te
 | "What did it know at the time?" is unanswerable | Every evaluation and change is recorded | Interpreter audit + 8-field events + decision references (`KS-3.3`, `KS-2.5`) |
 | Permissions live in the prompt | Capability surface is a strict subset of the list | Rejection before the store is reached (`P-10`, `INV-4`) |
 
-The current wave of interest is driven by two forces: enterprises need **auditable reasoning** from AI, and Palantir-style ontologies demonstrated that explicit object/link/action models can carry serious workloads. AosKeel borrows that engineering shape and adds a governance layer with mechanical checkpoints.
+**Lineage — and what AosKeel deliberately is not.** Four traditions meet here; none of them alone is AosKeel:
+
+| Tradition | Contribution | AosKeel's position |
+|---|---|---|
+| Description logics / OWL (Baader et al., 2003) | TBox/ABox, classes, axioms | Teaching analogy only — no DL reasoner, no RDF/SPARQL store |
+| Action formalisms — PDDL (McDermott et al., 1998), situation calculus (Reiter, 2001), event calculus (Kowalski & Sergot, 1986) | Preconditions, effects, state transition | `ActionType` compiles preconditions into Check AST and writes effects through the kernel; no planner |
+| Deontic logic (von Wright, 1951; Jones & Carmo, 1993) | Permission, obligation, norm | Governance declarations and the capability list turn permission into a startup-time gate, not an inferred conclusion |
+| Production graph ontologies (Palantir-style object/link/action; industrial practice) | Explicit object models at scale | Engineering shape borrowed; the governance layer and mechanical checkpoints are AosKeel's addition |
+
+AosKeel is a **governable ontology scaffold**, not a reasoner, planner, or triple store. Its claim is deliberately narrow and testable: a declared action cannot reach the event store without passing structural checks, conditions evaluated over materialized state, permission evidence, and an append-only audit trail. This mapping is executable: `aos cq` runs the ten competency questions of [06 · Formal semantics](docs/guide/06-formal-semantics.md#41-能力问题驱动建模最容易被跳过的一步) against the kernel.
 
 ---
 

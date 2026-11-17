@@ -1,0 +1,9 @@
+id: CQ-4
+question: 批准动作发生时依据了什么？
+answerer: audit.unified
+fixture: contract_approved
+probe: { expression_hint: "snapshot.status" }
+expect:
+  op: equals
+  value: { expression: true, snapshot: true, result: true }
+evidence: "KS-3.3 解释器审计三元组（表达式+快照+结果）经 audit_export 合链"

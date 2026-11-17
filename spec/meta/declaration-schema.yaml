@@ -1,0 +1,65 @@
+# spec/meta/declaration-schema.yaml —— 九类本体声明的元 schema（本轮理论层修补）
+# 定位：把此前散落在 registration.py 各 validate_* 中的"骨架要求"抽取为可审查声明。
+# 职责边界：本文件只声明 required 字段及其值类型；专用语义校验（LinkPattern 三项、
+# R8 预算、治理职责对账、T24 效果值域等）仍由各 validate_* 承担，二者不互相替代。
+# 验证层 CQ 声明（spec/competence/）由 tools/cq.py 自行守卫完整性，不属于九类本体声明。
+meta_schema: AOS-declaration-schema
+version: 1
+scope: 九类本体声明的通用骨架（object/link/action/context/aggregate/invariant/mapping/process/governance）
+value_types: [str, int, bool, dict, list]
+
+classes:
+  objects:
+    directory: ontology/objects
+    required:
+      object_type: str
+      properties: dict
+  links:
+    directory: ontology/links
+    required:
+      link_type: str
+      checks: dict
+  actions:
+    directory: ontology/actions
+    required:
+      action_type: str
+      aggregate: str
+      submission_criteria: dict
+      permissions: dict
+  contexts:
+    directory: contexts
+    required:
+      context: str
+      steward: str
+      projection_delay_budget_ms: int
+  aggregates:
+    directory: aggregates
+    required:
+      aggregate: str
+      stream: str
+      evaluation_budget: int
+    # root 为推荐而非强制：需求 DSL 草案阶段不产出该字段，晋升正典后由人工补齐；
+    # 元 schema 只声明既有骨架约束，不引入草案流程无法履行的新门槛（GOV-1 不倒退）。
+    recommended:
+      root: str
+  invariants:
+    directory: invariants
+    required:
+      invariant: str
+      repair_binding: dict
+  mappings:
+    directory: mappings
+    required:
+      mapping: str
+      semantic_loss_declared: list
+  processes:
+    directory: processes
+    required:
+      process: str
+      steps: list
+  governance:
+    directory: governance
+    required:
+      governance: str
+      steward: str
+      duties: list

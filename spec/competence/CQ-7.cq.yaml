@@ -1,0 +1,7 @@
+id: CQ-7
+question: 违规事件能否被普通 Action 写入？
+answerer: store.stream_rule
+fixture: empty
+probe: { event_type: InvariantViolation@1 }
+expect: { op: equals, value: StreamRuleViolation }
+evidence: "commit 流规则：RaiseInvariantViolation 是唯一写者（INV-10 / VER-23）"

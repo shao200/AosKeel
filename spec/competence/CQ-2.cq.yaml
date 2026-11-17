@@ -1,0 +1,12 @@
+id: CQ-2
+question: 谁能批准合同？
+answerer: declaration.permissions
+fixture: contract_approved
+probe: { intruder_role: unauthorized_agent }
+expect:
+  op: equals
+  value:
+    roles: [contract_steward]
+    authorized: [contract_steward]
+    intruder_denied: true
+evidence: "Action permissions.roles ↔ 治理职责项 position 对账 + 真实 submit 拒绝"

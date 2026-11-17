@@ -1,0 +1,7 @@
+id: CQ-3
+question: 金额 200 万的合同能否批准？
+answerer: kernel.conditional
+fixture: empty
+probe: { contract_id: C-2, amount: 2000000 }
+expect: { op: equals, value: ConditionalRejected }
+evidence: "snapshot.amount < 10**6 条件求值；拒绝即不追加（guide/06 §4.1）"

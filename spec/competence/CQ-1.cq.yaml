@@ -1,0 +1,7 @@
+id: CQ-1
+question: 合同 C-1 当前处于什么状态？
+answerer: projection.snapshot
+fixture: contract_approved
+probe: { contract_id: C-1 }
+expect: { op: equals, value: approved }
+evidence: "Projection.snapshot() ← domain:ContractAggregate 事件流重建（guide/06 §4.1）"

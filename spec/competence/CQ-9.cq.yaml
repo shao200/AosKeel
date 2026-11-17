@@ -1,0 +1,9 @@
+id: CQ-9
+question: Agent 当时“看到”了什么？
+answerer: session.observation
+fixture: contract_approved
+probe: { principal: observer }
+expect:
+  op: equals
+  value: { observed: 1, in_authoritative: false }
+evidence: "会话事件流可读；KS-2.2 禁止其进入权威投影（观测/事实分离）"

@@ -17,6 +17,17 @@
 
 **AOS 的增量。** 经典本体描述"什么为真"；AOS 把 `ActionType` 提升为一等元，于是本体同时约束"谁能改什么、在什么条件下、留下什么审计轨迹"——从描述性本体跃迁为**治理性本体**。另有两层经典本体没有的维度：非权威的观测层（会话事件流），以及作为启动条件的治理（`declared == registered`）。
 
+**学术谱系与诚实边界。** 四条传统在此交汇，AosKeel 不等于其中任何一条：
+
+| 传统 | 贡献 | AosKeel 的立场 |
+|---|---|---|
+| 描述逻辑 / OWL（Baader et al., 2003） | TBox/ABox、类、公理 | 仅作教学类比；无 DL 推理机、无 RDF/SPARQL 三元组库 |
+| 动作形式化——PDDL（McDermott et al., 1998）、情境演算（Reiter, 2001）、事件演算（Kowalski & Sergot, 1986） | 前置条件、效果、状态变迁 | `ActionType` 把前置条件编译为 Check AST、效果由内核写入；无规划器 |
+| 道义逻辑（von Wright, 1951；Jones & Carmo, 1993） | 许可、义务、规范 | 治理声明 + 能力清单把许可变成启动期可执行门禁，而非推理结论 |
+| 生产级图本体（Palantir 风格 object/link/action，工业实践） | 显式对象模型的可扩展性 | 借用工程形态；治理层与机械核对点是 AosKeel 的增量 |
+
+AosKeel 是**治理性本体脚手架**，不是推理机、规划器或三元组库。其主张刻意收窄且可检验：声明的动作未经结构检查、物化状态上的条件求值、权限证据与 append-only 审计，不得触达事件存储。该映射是可执行的——`aos cq` 会针对内核运行[06 · 形式语义](guide/06-formal-semantics.md)的十张能力问题。
+
 | 经典概念 | AOS 构件 | 实际落点 |
 |---|---|---|
 | 类 Class | `ObjectType` | `spec/ontology/objects/*.object.yaml` |
@@ -35,7 +46,7 @@
 | [02 体系逻辑](guide/02-architecture.md) | AX→KS→P→INV→BOOT→GOV→VER 推导链、四条事件流、事故反证模式 |
 | [03 实现方法](guide/03-implementation.md) | 注册、SC 编译、提交管线、受限解释器、升级、闸门 |
 | [04 实操教程](guide/04-tutorial.md) | install → init → BOOT-0 → draft/promote → generate → 提交 → test/release（实测输出） |
-| [05 速查手册](guide/05-reference.md) | 命令面 ×24、文件地图、T01–T26、VER-1..33 布线、异常、FAQ |
+| [05 速查手册](guide/05-reference.md) | 命令面 26（21 顶层 + 5 子命令）、文件地图、T01–T26、VER-1..33 布线、异常、FAQ |
 | [06 形式语义](guide/06-formal-semantics.md) | 描述逻辑、开放/封闭世界、本体工程方法、OWL↔AOS 翻译边界 |
 | [07 内核实操](guide/07-kernel-walkthrough.md) | 可运行 Python：拒绝路径、完整重求值、投影、决策审计 |
 | [08 企业应用构建指南](guide/08-enterprise-app-guide.md) | 完整构建路径：建模 → AI 起草与晋升 → 生成 → 外部接入 → Agent 装配 → 签发 → 实例侧自建清单 |
@@ -141,11 +152,11 @@ src/generated/                   生成物（字节级零漂移 gate 强制）�
                                  auth_oauth2.py（OAuth 2.1 IdP + 治理面 claims + DPoP）+
                                  admin_console.py（前端守卫/表单/页面三张表 + fail-closed 守卫）
 tests/                           一致性 + negative 双射 + golden + genesis + replay + redteam 套件
-                                 + conformance（含 22 条 INTEGRITY 回归守卫，布线执行）
+                                 + conformance（含 28 条 INTEGRITY 回归守卫，布线执行）
 bootstrap/checklists/          _schema + VER-20/24/26/27/28/29（P-14 证据留档）
 ```
 
-## CLI 命令 ×22 与护栏 ×3
+## CLI 26 命令面（21 顶层 + 5 子命令）与护栏 ×3
 
 | 命令 | 语义 | 失败行为 |
 |---|---|---|

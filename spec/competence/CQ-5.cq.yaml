@@ -1,0 +1,9 @@
+id: CQ-5
+question: 两个系统里的“合同”是不是同一个？
+answerer: link.same_as
+fixture: empty
+probe: { link_type: same_as }
+expect:
+  op: equals
+  value: { failures: [], grants_permissions: false, scope: cross_context_only }
+evidence: "same_as.link.yaml + LinkPattern 三项注册期校验（P-4 / VER-21）"

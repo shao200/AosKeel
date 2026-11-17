@@ -71,7 +71,7 @@ tools/console.py                     ⑧ WEB 控制台壳（驱动 ①–⑦，�
 | Semantic-DSL（声明式语言） | 需求 DSL + 三段闸 + GOV-1 晋升提案制 | ✅ |
 | AI-Generation Pipeline | 确定性 codegen（治理→CQRS→OAuth2.1 拓扑序）+ draft 闸 | ✅ |
 | Governance-Console | `aos review` + 职责授权矩阵对账 + WEB 壳（白名单） | ✅ |
-| Verification-Suite | 三关 + release gate + 49 条布线 + redteam/replay 套件 | ✅ |
+| Verification-Suite | 三关 + release gate + 60 条布线 + redteam/replay 套件 | ✅ |
 
 ## 5. 诚实边界（采用前必读）
 

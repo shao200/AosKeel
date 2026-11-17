@@ -1,0 +1,7 @@
+id: CQ-10
+question: 规范改了一句话，系统怎么知道？
+answerer: integrity.declaration_digest
+fixture: empty
+probe: { domain: spec }
+expect: { op: equals, value: true }
+evidence: "正典哈希 + GOV-2.3-DECL 声明摘要第四道 append-only 登记比对"

@@ -1,0 +1,9 @@
+id: CQ-8
+question: 删掉投影后状态还能恢复吗？
+answerer: projection.rebuild
+fixture: contract_approved
+probe: { projection: Contract }
+expect:
+  op: equals
+  value: { identical: true, dematerialized: true }
+evidence: "discard → ProjectionNotMaterialized → rebuild 确定性一致（P-16 / VER-26）"

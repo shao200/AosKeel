@@ -1,0 +1,9 @@
+id: CQ-6
+question: 合同变更时订单侧要做什么？
+answerer: process.compensation
+fixture: empty
+probe: { for_action: ApproveContract }
+expect:
+  op: equals
+  value: { compensation: VoidContract, declared: true, registered: true }
+evidence: "ProcessType 补偿绑定 ↔ Action compensation ↔ 能力清单三处对账（P-9）"
