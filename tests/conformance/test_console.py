@@ -11,7 +11,8 @@ from pathlib import Path
 import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "src"))
-from tools.console import Handler, ALLOWED, READONLY, MUTATING
+from tools.console import Handler, ALLOWED, READONLY, MUTATING, DENIED_PAIRS
+from tools.console import _authorize
 from tools.console import serve as _serve
 @pytest.fixture()
 def server():
@@ -56,7 +57,27 @@ def test_ui_page_declares_scope():
     for c in sorted(ALLOWED):
         assert c in page
     assert "壳" in page and "subprocess" in page
+def test_governance_write_subcommands_refused(server):
+    """首词+子命令二元组：spec version / spec register-declarations /
+    draft promote 不得经无认证 HTTP 抵达治理写面。"""
+    for cmd, args in (("spec", ["version", "v9", "--proposal-ref", "SPEC-2026-014"]),
+                      ("spec", ["register-declarations", "v9"]),
+                      ("draft", ["promote", "x.yaml", "--proposal-ref", "SPEC-2026-014"]),
+                      ("spec", ["--quiet", "version", "v9"])):
+        code, body = _post(server, {"cmd": cmd, "args": args})
+        assert code == 403 and "白名单" in body["error"], (cmd, args, code, body)
+
+def test_authorize_pair_semantics():
+    """二元组语义：只读子命令放行，未列子命令/参数化首参按规则处理。"""
+    assert _authorize("spec", ["fingerprint"]) == (True, "spec fingerprint")
+    assert _authorize("spec", ["digest"]) == (True, "spec digest")
+    assert _authorize("spec", []) == (False, "spec")
+    assert _authorize("draft", ["requirements.txt"]) == (True, "draft")
+    assert _authorize("release", []) == (False, "release")
+    assert ("draft", "promote") in DENIED_PAIRS
+
 def test_whitelist_split_is_honest():
     """白名单分级诚实：只读与可变更明确分组，无遗漏的写面混入只读级。"""
     assert {"release", "register", "bootstrap"}.isdisjoint(ALLOWED)
+    assert "spec" not in ALLOWED                     # 不再按首词整族放行
     assert set(READONLY) | set(MUTATING) == ALLOWED

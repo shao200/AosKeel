@@ -28,6 +28,7 @@ from kernel.errors import RegistrationFailed
 from kernel.sc_compiler import compile_action, CompiledAction
 SPEC_DIR = ROOT / "spec"
 CAPS = ROOT / "config/capabilities.yaml"
+META_SCHEMA = ROOT / "spec/meta/declaration-schema.yaml"   # 九类声明骨架的声明化元 schema
 R8_BUDGET_LIMIT = 10 ** 5                             # R8 缺省求值预算上限
 GENESIS_BUILTINS = {                                  # BOOT-0 基线（KS-8.3 / VER-31）
     "write_actions": [
@@ -96,6 +97,56 @@ def validate_context(ctx: dict) -> list[str]:
     if ctx.get("projection_delay_budget_ms") is None:
         failures.append(f"CONTEXT-PROJECTION-BUDGET-MISSING: {name}（P-16）")
     return failures
+# ---------- 元 schema 骨架校验（声明化；专用语义校验保持原位） ----------
+_TYPE_CHECKS = {
+    "str": lambda v: isinstance(v, str),
+    "int": lambda v: isinstance(v, int) and not isinstance(v, bool),
+    "bool": lambda v: isinstance(v, bool),
+    "dict": lambda v: isinstance(v, dict),
+    "list": lambda v: isinstance(v, list),
+}
+
+def validate_meta_schema(meta: dict, spec_dir: Path) -> list[str]:
+    """按 spec/meta/declaration-schema.yaml 对九类声明做通用骨架校验。
+
+    元 schema 是声明而非硬编码规则：增删 required 字段即改变注册期判据，
+    且该文件随 spec/ 摘要域进入第四道比对（改规则必须走治理变更通道）。
+    """
+    failures: list[str] = []
+    classes = meta.get("classes") or {}
+    if not classes:
+        return ["META-SCHEMA-EMPTY: 元 schema 无 classes —— 骨架约束不可为空"]
+    for cname, cfg in classes.items():
+        rel = (cfg or {}).get("directory")
+        if not rel:
+            failures.append(f"META-CLASS-NO-DIRECTORY: {cname} 缺 directory"); continue
+        d = spec_dir / rel
+        files = sorted(d.glob("*.yaml")) if d.is_dir() else []
+        if not files:
+            failures.append(f"META-CLASS-EMPTY: {cname} 目录 {rel} 无 *.yaml "
+                            f"—— 声明类别不可空转")
+        required = (cfg or {}).get("required") or {}
+        for p in files:
+            doc = _load_yaml(p)
+            short = p.relative_to(spec_dir).as_posix()
+            for field, want in required.items():
+                check = _TYPE_CHECKS.get(want)
+                if check is None:
+                    failures.append(f"META-TYPE-UNKNOWN: {cname}.{field} → {want!r}")
+                elif field not in doc:
+                    failures.append(f"META-REQUIRED-MISSING: {short} 缺 {field} "
+                                    f"（元 schema {cname}）")
+                elif not check(doc[field]):
+                    failures.append(f"META-TYPE-MISMATCH: {short}.{field} 期望 {want} "
+                                    f"实得 {type(doc[field]).__name__}")
+    return failures
+
+def _validate_meta_schema() -> list[str]:
+    if not META_SCHEMA.exists():
+        return ["META-SCHEMA-MISSING: spec/meta/declaration-schema.yaml 缺失 —— "
+                "九类声明骨架不可无声明（GOV-2.3-DECL 第四道覆盖域）"]
+    return validate_meta_schema(_load_yaml(META_SCHEMA), SPEC_DIR)
+
 def _validate_spec() -> list[str]:
     failures: list[str] = []
     for p in sorted((SPEC_DIR / "ontology" / "links").glob("*.yaml")) if (SPEC_DIR / "ontology" / "links").exists() else []:
@@ -123,6 +174,8 @@ def _validate_spec() -> list[str]:
                 failures.append(f"COMPENSATION-INCOMPLETE: {d.get('process', p.name)}（P-9）")
     failures += _validate_governance()
     failures += _validate_effects()
+    failures += _validate_context_refs()
+    failures += _validate_meta_schema()
     return failures
 def _load_action_types(spec_dir: Path) -> set[str]:
     adir = spec_dir / "ontology" / "actions"
@@ -216,6 +269,23 @@ def _validate_effects() -> list[str]:
                     and val not in (props[key] or {}).get("values", []):
                 failures.append(f"EFFECTS-VALUE-OUT-OF-DOMAIN: {aid} 效果值 {val!r} "
                                 f"不在 {key} 的声明枚举值域内")
+    return failures
+def _validate_context_refs() -> list[str]:
+    """P-10 上下文引用完整性（声明引用 MUST 解析到 spec/contexts/ 正典）。
+    此前 permissions.contexts 只被编译进 CompiledAction、无任何消费者：
+    拼错上下文名也能通过五步管线。这里把"空引用"变成注册期失败。"""
+    known: set[str] = set()
+    for p in sorted((SPEC_DIR / "contexts").glob("*.yaml")):
+        known.add((_load_yaml(p) or {}).get("context"))
+    failures: list[str] = []
+    adir = SPEC_DIR / "ontology" / "actions"
+    for p in sorted(adir.glob("*.yaml")) if adir.exists() else []:
+        d = _load_yaml(p) or {}
+        aid = d.get("action_type", p.name)
+        for c in (d.get("permissions") or {}).get("contexts") or []:
+            if c not in known:
+                failures.append(f"CONTEXT-REF-UNDECLARED: {aid} 引用上下文 {c} "
+                                f"无 spec/contexts/ 声明（P-10）")
     return failures
 # ---------- 步骤 4+5：生成 + 对账 ----------
 def _compute_generated() -> dict:

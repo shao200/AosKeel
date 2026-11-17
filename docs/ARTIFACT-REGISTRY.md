@@ -3,3 +3,17 @@
 | 条目 ID | 版本 | 哈希 | 登记时间 | 状态 |
 |---|---|---|---|---|
 | AOS-ART-001 | v2.0.0 | sha256:e6884aedc60e171ea7e5e72b8033518026b6933153126e3fdbb51998b82724d6 | 2026-11-15T13:32:19+00:00 | registered |
+
+## 声明摘要登记（GOV-2.3-DECL；append-only；独立于冻结正典域）
+
+| 条目 ID | 版本 | 声明摘要 | 登记时间 | 状态 |
+|---|---|---|---|---|
+| AOS-DECL-001 | v2.0.0 | sha256:3b2ed9f12edfdbdb989daec8268ffaec64cb0572f0203d85c86f5e46db47154d | 2026-11-17T05:22:27+00:00 | registered |
+| AOS-DECL-002 | v2.0.0 | sha256:efdd9171386f4bb2b791a4233fce835c98dbc22d9068130de17668aa5cb066ed | 2026-11-17T05:38:03+00:00 | registered |
+# decl-superseded-via: REVIEW-2026-11-17 → AOS-DECL-002（GOV-3 声明变更通道；旧登记行不改写——append-only P-15）
+| AOS-DECL-003 | v2.0.0 | sha256:723f6e3d829d2d21c81a38913aac585c36e2ca3c7b74f2903ed45e0c65f4269c | 2026-11-17T06:43:40+00:00 | registered |
+# decl-superseded-via: REVIEW-2026-11-17-R2 → AOS-DECL-003（GOV-3 声明变更通道；旧登记行不改写——append-only P-15）
+| AOS-DECL-004 | v2.0.0 | sha256:68dc12b5c14b94e1b923207f88fcb8532a80043684c8382029da3f6deecfd119 | 2026-11-17T06:47:02+00:00 | registered |
+# decl-superseded-via: REVIEW-2026-11-17-R2 → AOS-DECL-004（GOV-3 声明变更通道；旧登记行不改写——append-only P-15）
+| AOS-DECL-005 | v2.0.0 | sha256:91ffe5a11ec0a49876adf765d5e31c57492ca330a8943f54a383999c2325e449 | 2026-11-17T08:06:51+00:00 | registered |
+# decl-superseded-via: REVIEW-2026-11-17-R3 → AOS-DECL-005（GOV-3 声明变更通道；旧登记行不改写——append-only P-15）

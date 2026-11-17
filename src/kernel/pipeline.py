@@ -58,7 +58,7 @@ class Kernel:
         self.store, self.session, self.compiled = store, session, compiled
         self.interpreter_audit: list[dict] = []        # KS-3.3：评估审计留档
     def submit(self, action_type: str, params: dict, principal: str,
-               roles: tuple[str, ...] = ()):
+               roles: tuple[str, ...] = (), contexts: tuple[str, ...] = ()):
         act = self.compiled.get(action_type)
         if act is None:
             raise UnregisteredAction(f"{action_type} 未注册 —— 不注册即不可执行（INV-1 / P-1）")
@@ -75,7 +75,7 @@ class Kernel:
         payload.setdefault("valid_time", _now())
         payload.update(act.effects)   # T24 副作用：状态效果由声明书写，非调用方自报
         for _ in range(MAX_REEVAL):
-            self._evaluate(act, params, principal)     # 1+2 每轮重跑（KS-1.4 / VER-3）
+            self._evaluate(act, params, principal, roles, contexts)  # 1+2 每轮重跑（KS-1.4 / VER-3）
             try:
                 return self.store.commit(action_type, stream,
                                          len(self.store.streams.get(stream, [])),
@@ -83,11 +83,14 @@ class Kernel:
             except VersionConflict:
                 continue                               # 下轮以新版本视图重新求值
         raise BudgetExceeded(f"重求值超过 {MAX_REEVAL} 次 —— 竞争过热，fail-closed（R8）")
-    def _evaluate(self, act, params: dict, principal: str):
+    def _evaluate(self, act, params: dict, principal: str,
+                  roles: tuple[str, ...], contexts: tuple[str, ...]):
         """一次完整评估：结构 → 条件。版本冲突时由 submit 重新调用本方法，
         而非仅以新 expected_version 重试追加（KS-1.4 / VER-3）。每轮都留
         KS-3.3 评估审计；条件快照经 materialize() 物化投影求值（P-16），
-        调用方自报字段与权威投影矛盾 → SNAPSHOT-CONTRADICTION 拒绝。"""
+        调用方自报字段与权威投影矛盾 → SNAPSHOT-CONTRADICTION 拒绝。
+        principal.* 来源为内核调用参数（平台 authN 出示），不取 params 自报：
+        `principal.role` 兑现声明位，单角色退化为字符串以兼容既有表达式。"""
         try:
             run_structural(act.structural, params)     # 1 结构（KS-7.1 第一段）
         except ValueError as e:
@@ -104,17 +107,26 @@ class Kernel:
                     f"SNAPSHOT-CONTRADICTION: {contra['key']} 自报 {contra['claim']} ≠ "
                     f"权威投影 {contra['authority']} —— 条件对物化投影求值，"
                     f"改口无效（P-16 / KS-1.4）；不追加（VER-2）")
-            env = {"snapshot": snap, "principal": {"role": principal}}
+            principal_env = {
+                "name": principal,
+                "roles": tuple(roles),
+                "role": roles[0] if len(roles) == 1 else tuple(roles),
+                "contexts": tuple(contexts),
+            }
+            env = {"snapshot": {**snap, "principal": principal_env},
+                   "principal": principal_env}
             try:
                 ok = eval_boolean(act.conditional, env)
             except Exception as e:                     # 求值失败也是评估 —— 照记审计（KS-3.3）
                 self.interpreter_audit.append(
                     {**record_evaluation(act.conditional, env, False),
-                     "expression": act.conditional, "tx": _now(), "error": str(e)})
+                     "expression": act.conditional, "snapshot": snap,
+                     "tx": _now(), "error": str(e)})
                 raise
             self.interpreter_audit.append(
                 {**record_evaluation(act.conditional, env, ok),
-                 "expression": act.conditional, "tx": _now()})
+                 "expression": act.conditional, "snapshot": snap,
+                 "tx": _now()})
             if not ok:
                 raise ConditionalRejected(
                     f"条件校验未通过（KS-7.1 第二段）：{act.conditional}；不追加（VER-2）")

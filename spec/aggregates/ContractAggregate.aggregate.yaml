@@ -1,5 +1,5 @@
 aggregate: ContractAggregate
 root: Contract
-stream: domain.contract               # 域聚合流
+stream: domain:ContractAggregate        # 域聚合流（编译权威源；与既有事件流名一致）
 evaluation_budget: 100000             # P-2 / R8：MUST ≤ 10^5，超限注册拒绝
 invariants: [NoOrphanContract]

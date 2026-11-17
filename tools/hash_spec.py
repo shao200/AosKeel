@@ -8,6 +8,12 @@
   被就地修改 → 拒绝并指向 GOV-3 通道（把 GOV-2.5"传输缺陷不修冻结文本"
   落成仓库规则）；
 - 回填：capabilities.yaml 记登记条目 ID，禁止内联哈希（GOV-2.2）。
+
+GOV-2.3-DECL（第四道比对）：冻结正典之外，spec/ 下的九类声明同样承载业务
+语义（条件阈值、权限、副作用）。它们不进入 CANONICAL_FILES —— 那会改动
+e6884aed… 封存基线；改为独立的"声明摘要"条目登记进同一 append-only 表，
+verify 时一并比对。未登记（如 aos init 生成的实例未复制登记表）显式 SKIP，
+不把"没有基线"伪装成"校验通过"。spec/drafts/ 是工作区草案，不入摘要域。
 """
 import hashlib, sys, datetime
 from pathlib import Path
@@ -88,13 +94,96 @@ def supersede(spec_version: str, proposal_ref: str) -> int:
     _set_spec_ref(art_id)
     print(f"SUPERSEDED: {art_id}  sha256:{digest[:16]}…  proposal={proposal_ref}")
     return 0
+DECL_PREFIX = "AOS-DECL-"
+DECL_SECTION = ("\n## 声明摘要登记（GOV-2.3-DECL；append-only；独立于冻结正典域）\n\n"
+                "| 条目 ID | 版本 | 声明摘要 | 登记时间 | 状态 |\n"
+                "|---|---|---|---|---|\n")
+def declaration_files() -> list[Path]:
+    """摘要覆盖域：spec/ 下全部 *.yaml，排除 drafts（工作区草案不入正典）。
+    按 POSIX 相对路径排序 —— 顺序即规范，与正典覆盖域同一纪律。"""
+    d = ROOT / "spec"
+    if not d.is_dir():
+        return []
+    return sorted(p for p in d.rglob("*.yaml")
+                  if "drafts" not in p.relative_to(ROOT).parts)
+def declaration_digest() -> str | None:
+    """返回 spec/ 声明摘要 sha256；无声明文件时返回 None（SKIP 的信号）。"""
+    files = declaration_files()
+    if not files:
+        return None
+    h = hashlib.sha256()
+    for p in files:
+        rel = p.relative_to(ROOT).as_posix()
+        h.update(rel.encode()); h.update(b"\x00")
+        h.update(p.read_bytes()); h.update(b"\x00")
+    return h.hexdigest()
+def _decl_entries():
+    if not REGISTRY.exists():
+        return []
+    return [l for l in REGISTRY.read_text(encoding="utf-8").splitlines()
+            if l.startswith(f"| {DECL_PREFIX}")]
+def _next_decl_id() -> str:
+    n = max([int(l.split("|")[1].strip().rsplit("-", 1)[-1])
+             for l in _decl_entries()], default=0)
+    return f"{DECL_PREFIX}{n+1:03d}"
+def register_declarations(spec_version: str, proposal_ref: str = "") -> int:
+    """登记当前 spec/ 声明摘要（append-only；不改冻结正典、不改 e6884aed…）。
+    首次登记无需提案；后续漂移 MUST 绑定治理提案引用（GOV-1/3 同源护栏），
+    以新条目取代前者，旧行逐字保留。"""
+    digest = declaration_digest()
+    if digest is None:
+        sys.exit("REFUSED: spec/ 下无可摘要的 *.yaml —— 无登记对象")
+    rows = _decl_entries()
+    if rows and digest in rows[-1]:
+        print(f"IDEMPOTENT: 声明摘要已登记为 {rows[-1].split('|')[1].strip()}"); return 0
+    superseded = bool(rows)
+    if superseded and not proposal_ref:
+        sys.exit("DECL-FROZEN-MUTATED: 声明摘要与最近登记不符 —— 业务声明不得就地"
+                 "修改；带 --proposal-ref SPEC-YYYY-NNN 走治理变更后登记。")
+    art_id, now = _next_decl_id(), datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+    if not REGISTRY.exists():
+        REGISTRY.write_bytes(("# AOS 工件登记（append-only；GOV-2.3）\n\n"
+                              "| 条目 ID | 版本 | 哈希 | 登记时间 | 状态 |\n"
+                              "|---|---|---|---|---|\n").encode("utf-8"))
+    with REGISTRY.open("ab") as f:                 # 字节追加：文本模式会写入 CRLF
+        if DECL_SECTION.strip() not in REGISTRY.read_text(encoding="utf-8"):
+            f.write(DECL_SECTION.encode("utf-8"))
+        f.write(f"| {art_id} | {spec_version} | sha256:{digest} | {now} | registered |\n"
+                .encode("utf-8"))
+        if superseded:
+            f.write(f"# decl-superseded-via: {proposal_ref} → {art_id}（GOV-3 声明变更通道；"
+                    f"旧登记行不改写——append-only P-15）\n".encode("utf-8"))
+    print(f"DECL-REGISTERED: {art_id}  sha256:{digest[:16]}…  "
+          f"（{len(declaration_files())} 份声明；冻结正典未动"
+          f"{'；提案 ' + proposal_ref if superseded else ''}）")
+    return 0
+def verify_declarations() -> int:
+    """第四道：声明摘要比对。无声明 / 未登记 → 显式 SKIP（不伪装成 PASS）。"""
+    digest = declaration_digest()
+    rows = _decl_entries()
+    if digest is None:
+        print("  DECL-DIGEST: SKIP —— 无 spec/*.yaml（实例裁剪）")
+        return 0
+    if not rows:
+        print("  DECL-DIGEST: SKIP —— 未登记（实例自行登记；GOV-2.3-DECL）")
+        return 0
+    ok = digest in rows[-1]
+    print(("  OK       " if ok else "  MISMATCH ") +
+          f"DECL sha256:{digest[:16]}…  （{len(declaration_files())} 份声明）")
+    return 0 if ok else 1
 def verify() -> int:
     rows = _entries()
     if not rows: sys.exit("NOT-REGISTERED: 先执行 aos register（BOOT-0）")
     digest = canonical_digest()
     ok = digest in rows[-1]
     print(("OK       " if ok else "MISMATCH ") + f"computed sha256:{digest[:16]}…")
-    return 0 if ok else 1
+    decl_ok = verify_declarations()                 # 第四道：业务声明摘要
+    return 0 if ok and decl_ok == 0 else 1
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "verify"
-    sys.exit(register(sys.argv[2]) if cmd == "register" else verify())
+    if cmd == "register":
+        sys.exit(register(sys.argv[2]))
+    if cmd == "register-declarations":
+        ref = sys.argv[3] if len(sys.argv) > 3 else ""
+        sys.exit(register_declarations(sys.argv[2], ref))
+    sys.exit(verify())

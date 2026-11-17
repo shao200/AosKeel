@@ -6,7 +6,9 @@ conditional：受限布尔表达式 → BooleanFunctionRef（仅引用，运行�
 from __future__ import annotations
 from dataclasses import dataclass, field
 from kernel.errors import RegistrationFailed
-STRUCTURAL_OPS = {"exists", "references", "max_len"}
+# 只保留有运行时执行点的算子：`references` 曾在 AST 白名单内但 run_structural
+# 无分支（静默跳过），已移除 —— 无执行点的算子不得留在声明式语言里（fail-closed）。
+STRUCTURAL_OPS = {"exists", "max_len"}
 @dataclass(frozen=True)
 class Check:
     op: str          # STRUCTURAL_OPS 之一
@@ -61,6 +63,14 @@ def compile_action(decl: dict, provenance: str) -> CompiledAction:
         raise RegistrationFailed(
             f"SC-COMPILE-FAIL: {action_type} effects 与 params 同字段重名 {sorted(clash)} "
             f"—— 状态效果只能由内核书写，不得同时接受调用方自报（双事实源）")
+    # P-12：`dry_run: required` 是演练义务， MUST 有审计位承接，否则演练结果
+    # 无从留痕 —— 声明字段从"注释"变为注册期可拒绝的一致性约束。
+    if decl.get("dry_run") == "required" and decl.get("audit") != "required":
+        raise RegistrationFailed(
+            f"SC-COMPILE-FAIL: {action_type} dry_run=required 但 audit != required "
+            f"—— 高风险 Action 的演练义务须可审计（P-12）")
+    # 流名以声明为权威源；聚合名仅在声明缺省时兜底（不再硬编码覆盖声明）。
+    stream = decl.get("stream") or f"domain:{agg}"
     declared_inputs = tuple(cond.get("snapshot_inputs", []) or [])
     return CompiledAction(
         action_type=action_type, aggregate=agg,
@@ -69,7 +79,7 @@ def compile_action(decl: dict, provenance: str) -> CompiledAction:
         snapshot_keys=tuple(k for k in declared_inputs
                             if k.split(".", 1)[0] != "principal"),
         permissions=decl.get("permissions") or {},
-        stream=f"domain:{agg}",
+        stream=stream,
         provenance=provenance,
         dry_run=bool((decl.get("dry_run") == "required")),
         effects=dict(effects))

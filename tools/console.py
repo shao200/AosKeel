@@ -3,9 +3,13 @@
 定位（入口层架构纪律的落点）：
 - 壳不 import 内核：所有操作经 subprocess 调 src/cli/main.py —— 内核升级壳
   不变，壳崩溃不伤内核；同一组 CLI 命令是唯一交互面，WEB 与终端殊途同归；
-- 命令白名单分级：只读咨询（review/profile/verify/impact/shadow/shadow-online/manual）+
-  参数化操作（import-db/import-data/extract/generate/draft/test）；高危写面
-  （release / register / bootstrap）**不提供** —— 治理签署必须走终端显式执行；
+- 命令白名单分级：只读咨询（review/profile/verify/impact/shadow/shadow-online/manual/
+  spec fingerprint/spec digest）+ 参数化操作（import-db/import-data/extract/
+  generate/draft/test）；高危写面（release / register / bootstrap）**不提供**，
+  治理写子命令（spec version / spec register-declarations / draft promote）
+  同样**不提供** —— 治理签署必须走终端显式执行；
+- 白名单是「首词 + 子命令」二元组，不按首词分级：先前把 `spec` 整族放进
+  只读级导致 `spec version` 可经无认证 HTTP 触发 GOV-3 写面，已收紧；
 - 默认仅绑定 127.0.0.1（治理数据不出本机）；无任何持久化状态。
 用法: python tools/console.py [--port 7800]
 """
@@ -17,11 +21,29 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CLI = ROOT / "src" / "cli" / "main.py"
-# 白名单（分级）：壳只放行这些命令；不在表内 = 拒绝（fail-closed）
+# 白名单（分级 + 二元组）：壳只放行这些「首词[ 子命令]」标签；不在表内 = 拒绝
 READONLY = ["review", "profile", "verify", "impact", "shadow", "shadow-online",
-            "manual", "spec"]
+            "manual", "spec fingerprint", "spec digest"]
 MUTATING = ["import-db", "import-data", "extract", "generate", "draft", "test"]
 ALLOWED = set(READONLY) | set(MUTATING)
+# 子命令敏感族：只有列出的子命令拼入标签参与白名单匹配，其余一律按首词
+# 处理（如 `draft <file>` 的首参是文件名，不是子命令）。
+SUBCOMMAND_FIRST = {"spec"}          # 需要按子命令精确匹配的族
+# 显式拒绝的子命令对：即使首词在 MUTATING 白名单内，治理写面也不经壳执行。
+DENIED_PAIRS = {("spec", "version"), ("spec", "register-declarations"),
+                ("draft", "promote")}
+def _authorize(cmd: str, args: list[str]) -> tuple[bool, str]:
+    """二元组授权：返回 (是否放行, 实际派发的 CLI 参数)。
+    先查显式拒绝对，再按标签匹配白名单；选项形式（--x）不作为子命令。"""
+    sub = args[0] if args and not args[0].startswith("-") else None
+    pair = (cmd, sub)
+    if pair in DENIED_PAIRS:
+        return False, f"{cmd} {sub}".strip()
+    if cmd in SUBCOMMAND_FIRST and sub:
+        label = f"{cmd} {sub}"
+    else:
+        label = cmd
+    return label in ALLOWED, label
 PAGE = """<!doctype html><html><head><meta charset="utf-8"><title>AosKeel Console</title>
 <style>body{font-family:monospace;background:#111;color:#ddd;max-width:900px;margin:2em auto}
 h1{color:#7ec9ff}button,select,input{background:#222;color:#ddd;border:1px solid #555;padding:6px}
@@ -32,9 +54,10 @@ pre{background:#000;padding:1em;white-space:pre-wrap;border:1px solid #333}</sty
 <button onclick="run()">执行</button></p><pre id="out">（输出区）</pre>
 <script>
 async function run(){
+ const parts=document.getElementById('cmd').value.split(/\\s+/);
  const r=await fetch('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},
-   body:JSON.stringify({cmd:document.getElementById('cmd').value,
-     args:document.getElementById('args').value.split(/\\s+/).filter(Boolean)})});
+   body:JSON.stringify({cmd:parts[0],
+     args:parts.slice(1).concat(document.getElementById('args').value.split(/\\s+/).filter(Boolean))})});
  const j=await r.json();
  document.getElementById('out').textContent=(j.exit_code===0?'OK':'EXIT '+j.exit_code)+'\\n'+j.stdout;
 }</script></body></html>"""
@@ -60,9 +83,13 @@ class Handler(BaseHTTPRequestHandler):
             return
         cmd = req.get("cmd")
         args = [str(a) for a in (req.get("args") or [])]
-        if cmd not in ALLOWED:                      # 白名单外 fail-closed
-            self._send(403, json.dumps({"error": f"cmd {cmd!r} 不在壳白名单 —— "
-                                        "治理签署类命令必须走终端显式执行"}))
+        if not isinstance(cmd, str):                # 非字符串命令提前 fail-closed
+            self._send(403, json.dumps({"error": "cmd 须为字符串 —— 不在壳白名单"}))
+            return
+        allowed, label = _authorize(cmd, args)      # 首词+子命令二元组
+        if not allowed:                             # 白名单外 fail-closed
+            self._send(403, json.dumps({"error": f"命令 {label!r} 不在壳白名单 —— "
+                                        "治理签署类命令与写子命令必须走终端显式执行"}))
             return
         proc = subprocess.run([sys.executable, str(CLI), cmd, *args],
                               capture_output=True, text=True, timeout=600,
