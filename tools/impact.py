@@ -2,7 +2,7 @@
 """tools/impact.py —— 变更影响分析（治理面"版本与变更治理"的事前半边）。
 三关与 reconcile 是**事后漂移检测**（改错了会被拦）；本工具回答**事前**问题：
 "改这条声明，会牵动哪些声明、哪些生成段、哪些布线测试？"
-做法：装载 spec/ 八类声明，按已知引用位建反向引用图——
+做法：装载 spec/ 九类声明，按已知引用位建反向引用图——
   Action: aggregate / conditional.snapshot_inputs →聚合根属性 / effects →聚合根属性 /
           permissions.contexts
   Invariant: aggregate / snapshot_inputs / repair_binding.action
@@ -10,6 +10,7 @@
   Mapping: source_context / target_context / field_map 值（目标属性）
   Process: steps[].action / compensations[].action
   Context: ubiquitous_language 键（同名词即对象类型时）
+  Governance: duties[].authorizes → Action / sla[].duty → 职责项
 纯咨询，不进闸门、不写盘；真源仍是 spec/，图是派生视图（声明变更后重算即可）。
 """
 from __future__ import annotations
@@ -108,6 +109,18 @@ def build_graph() -> dict:
         names[c] = "context"
         if d.get("steward"):
             link(c, "steward 角色", f, d["steward"])
+    for d, f in _load("governance"):
+        g = d.get("governance") or Path(f).name
+        names[g] = "governance"
+        for duty in d.get("duties", []) or []:
+            dn = duty.get("duty") or "?"
+            names[dn] = "duty"
+            link(g, "职责项", f, dn)
+            for a in duty.get("authorizes", []) or []:
+                link(dn, "治理授权", f, a)          # 改 Action 前先看哪些职责授权它
+        for s in d.get("sla", []) or []:
+            if s.get("duty"):
+                link(g, "sla", f, s["duty"])
     # 属性节点：ObjectType.prop（由 object properties 枚举补全 names）
     for ot, props in properties.items():
         for pr in props:
@@ -119,14 +132,14 @@ def resolve(target: str, g: dict) -> str | None:
     if p.exists() and p.suffix == ".yaml":
         d = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
         for key in ("action_type", "object_type", "aggregate", "invariant",
-                    "mapping", "process", "context", "link_type"):
+                    "mapping", "process", "context", "link_type", "governance"):
             if d.get(key):
                 return d[key]
         return None
     if target in g["nodes"]:
         return target
     # 容错：按文件名 <name>.<kind>.yaml 猜测
-    m = re.match(r".*?([^.\\/]+)\.(action|object|aggregate|invariant|mapping|process|context|link)\.yaml$",
+    m = re.match(r".*?([^.\\/]+)\.(action|object|aggregate|invariant|mapping|process|context|link|governance)\.yaml$",
                  target.replace("\\", "/"))
     if m and m.group(1) in g["nodes"]:
         return m.group(1)

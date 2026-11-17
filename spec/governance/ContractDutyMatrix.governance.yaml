@@ -1,0 +1,19 @@
+governance: ContractDutyMatrix
+steward: contract-steward-role        # P-3：治理声明同样有所有者
+duties:                               # 图1 职责授权链：组织→部门→岗位→职责项→授权
+  - duty: register_contract_duty      # 职责项（图1"职责项"）
+    position: contract_steward        # 岗位（即 Action permissions.roles 的成员）
+    org_unit: contract-department     # 组织锚点（部门）
+    authorizes: [RegisterContract]
+  - duty: approve_contract_duty
+    position: contract_steward
+    org_unit: contract-department
+    authorizes: [ApproveContract]
+    constraints: { max_amount: 999999 }   # 职责额度（与 action 条件上额同口径）
+  - duty: void_contract_duty
+    position: contract_steward
+    org_unit: contract-department
+    authorizes: [VoidContract]
+sla:                                  # 服务等级协议（图1 SLA 层）
+  - duty: approve_contract_duty
+    response_hours: 48

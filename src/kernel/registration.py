@@ -2,7 +2,7 @@
 """src/kernel/registration.py —— spec/ 与运行时之间的唯一通道（KS-7.2 / VER-2）。
 管线五步（顺序即管线，任一步失败即整体失败，fail-closed / P-3）：
  1. load       读 spec/ 全部声明（objects/links/actions/contexts/aggregates/
-               mappings/processes/invariants）—— 八类样例即骨架的承重测试
+               mappings/processes/invariants/governance）—— 九类样例即骨架的承重测试
  2. compile    SC 两段式编译（KS-7.1 / VER-18）：structural → Check AST；
                conditional → BooleanFunctionRef（R10，运行时由受限解释器求值）
  3. validate   LinkPattern 三项（P-4/INV-2/VER-21）· 求值预算 ≤ R8（P-2）·
@@ -121,7 +121,67 @@ def _validate_spec() -> list[str]:
         for c in d.get("compensations", []) or []:
             if not c.get("action"):
                 failures.append(f"COMPENSATION-INCOMPLETE: {d.get('process', p.name)}（P-9）")
+    failures += _validate_governance()
     failures += _validate_effects()
+    return failures
+def _load_action_types(spec_dir: Path) -> set[str]:
+    adir = spec_dir / "ontology" / "actions"
+    return {(_load_yaml(p) or {}).get("action_type", p.stem)
+            for p in sorted(adir.glob("*.yaml"))} if adir.exists() else set()
+def validate_governance(gov: dict, known_actions: set[str]) -> list[str]:
+    """治理面结构校验（图1 职责授权矩阵 / L3·L4 锚点）：
+    steward 必填（P-3）· 职责项绑定岗位与组织锚点 · 授权引用必须指向已声明 Action
+    （声明完整性）· SLA 必须引用在场职责项。"""
+    failures, name = [], gov.get("governance", "?")
+    if not gov.get("steward"):
+        failures.append(f"GOVERNANCE-STEWARD-MISSING: {name}（P-3）")
+    duties, seen = gov.get("duties") or [], set()
+    if not duties:
+        failures.append(f"GOVERNANCE-DUTIES-EMPTY: {name} —— 治理面声明存在但无职责项")
+    for d in duties:
+        dn = d.get("duty") or "?"
+        if dn == "?" or not d.get("duty"):
+            failures.append(f"GOVERNANCE-DUTY-UNNAMED: {name} 中存在无名职责项")
+        elif dn in seen:
+            failures.append(f"GOVERNANCE-DUTY-DUPLICATE: {dn}（职责项名须唯一）")
+        seen.add(dn)
+        if not d.get("position"):
+            failures.append(f"GOVERNANCE-POSITION-MISSING: {dn}（岗位锚点缺失）")
+        if not d.get("org_unit"):
+            failures.append(f"GOVERNANCE-ORG-UNIT-MISSING: {dn}（组织锚点缺失）")
+        authz = d.get("authorizes") or []
+        if not authz:
+            failures.append(f"GOVERNANCE-AUTHORIZES-EMPTY: {dn} —— 职责项无授权对象（空转）")
+        for a in authz:
+            if a not in known_actions:
+                failures.append(f"GOVERNANCE-ACTION-UNKNOWN: {dn} → {a}（声明完整性）")
+    for s in gov.get("sla") or []:
+        if s.get("duty") not in seen:
+            failures.append(f"GOVERNANCE-SLA-DUTY-UNKNOWN: {s.get('duty', '?')}")
+    return failures
+def _validate_governance(spec_dir: Path | None = None) -> list[str]:
+    """治理面校验 + 角色-职责对账（fail-closed）：
+    带 roles 的 Action MUST 被某条职责项授权，且该职责项的岗位 ∈ Action 角色
+    ——权限不再是无源之水，每个角色证据都有图1 治理链背书（L3/L4 锚点对账）。"""
+    spec_dir = spec_dir or SPEC_DIR
+    failures: list[str] = []
+    known_actions = _load_action_types(spec_dir)
+    gdir = spec_dir / "governance"
+    authorized: dict[str, set[str]] = {}
+    for p in sorted(gdir.glob("*.yaml")) if gdir.exists() else []:
+        gov = _load_yaml(p)
+        failures += validate_governance(gov, known_actions)
+        for d in gov.get("duties") or []:
+            for a in d.get("authorizes") or []:
+                authorized.setdefault(a, set()).add(d.get("position") or "")
+    adir = spec_dir / "ontology" / "actions"
+    for p in sorted(adir.glob("*.yaml")) if adir.exists() else []:
+        d = _load_yaml(p)
+        roles = set((d.get("permissions") or {}).get("roles") or [])
+        if roles and not (roles & authorized.get(d.get("action_type", p.name), set())):
+            failures.append(
+                f"GOVERNANCE-AUTHORIZATION-MISSING: {d.get('action_type', p.name)} "
+                f"要求角色 {sorted(roles)} 但治理面无对应职责授权（L3/L4 锚点对账）")
     return failures
 def _validate_effects() -> list[str]:
     """T24 副作用执行点的声明校验（注册期拒绝优于运行时拒绝）：
