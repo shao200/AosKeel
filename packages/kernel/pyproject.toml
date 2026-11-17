@@ -1,0 +1,26 @@
+[project]
+name = "aoskeel-kernel"
+version = "0.3.0"
+description = "AOS kernel logic packages (kernel/interpreter/generated/agents) — pure Python, data root injected via AOSKEEL_ROOT"
+requires-python = ">=3.11"
+dependencies = ["pyyaml>=6.0"]
+
+[project.readme]
+file = "README.md"
+content-type = "text/markdown"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+# ADR-001 增量双分发：本 wheel 只含纯逻辑层四个包，不含 docs/spec/config/tools/cli。
+# kernel 模块通过 AOSKEEL_ROOT 环境变量注入 template 根（未设时回退 parents[2]）；
+# 因此本包可 pip install 到任意环境，但调用注册/提交链时须指向一份 template 根。
+# 用 find_namespace 兼容 src/kernel 无 __init__.py 的现状（命名空间包）。
+[tool.setuptools]
+package-dir = {"" = "../../src"}
+
+[tool.setuptools.packages.find]
+where = ["../../src"]
+include = ["kernel*", "interpreter*", "generated*", "agents*"]
+namespaces = true
