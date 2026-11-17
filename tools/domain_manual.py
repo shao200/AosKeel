@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """tools/domain_manual.py —— 领域说明书生成器（aos manual）。
-把 spec/ 八类声明编译成人类可读、LLM 可注入的单一文档：
+把 spec/ 九类声明编译成人类可读、LLM 可注入的单一文档：
 - 对开发者：init 后第一份"本域能做什么/谁说了算/哪里会拒绝"的地图；
 - 对 AI 集成：作为 system prompt 素材——LLM 拿到的是治理边界，
   不是自由发挥的领域描述（AX-2：概率只提议，此文档定义可提议的集合）。
@@ -49,6 +49,7 @@ def render() -> str:
     invs = _load(SPEC / "invariants")
     maps = _load(SPEC / "mappings")
     procs = _load(SPEC / "processes")
+    govs = _load(SPEC / "governance")
     L = ["# 领域说明书（生成件 —— 真源是 spec/，本文档是其派生视图）",
          "",
          "> 用途一：开发者理解本域结构的第一份地图。",
@@ -122,6 +123,17 @@ def render() -> str:
         L += [f"### {p.get('process', '?')}",
               f"- 步序：{', '.join(s.get('action', '?') for s in p.get('steps', []) or [])}",
               f"- 补偿：{comps}（补偿本身是 Action，P-9）", ""]
+    L += ["## 9. 治理面（职责授权矩阵 —— 组织/岗位/职责/SLA，图1 职责授权链）", ""]
+    for g in govs:
+        L += [f"### {g.get('governance', '?')}（steward：`{g.get('steward', '（缺失=注册拒绝）')}`）"]
+        for d in g.get("duties", []) or []:
+            cons = f"；约束 {d.get('constraints')}" if d.get("constraints") else ""
+            L += [f"- 职责 `{d.get('duty', '?')}`：岗位 `{d.get('position', '?')}` ＠ "
+                  f"{d.get('org_unit', '?')} → 授权 {', '.join(d.get('authorizes', []) or [])}"
+                  f"{cons}"]
+        for s in g.get("sla", []) or []:
+            L += [f"- SLA：{s.get('duty', '?')} 响应 {s.get('response_hours', '?')} 小时"]
+        L += [""]
     L += ["---",
           "生成命令：`python src/cli/main.py manual [--out docs/DOMAIN-MANUAL.md]`；"
           "声明变更后重新生成。本文档不进哈希覆盖域（派生件不是真源）。"]

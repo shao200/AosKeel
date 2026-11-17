@@ -1,5 +1,5 @@
 {
-  "released_at": "2026-11-16T13:26:59+00:00",
+  "released_at": "2026-11-17T04:24:11+00:00",
   "spec_ref": "AOS-ART-001",
   "digest": "sha256:e6884aedc60e171ea7e5e72b8033518026b6933153126e3fdbb51998b82724d6",
   "registry_entry": "AOS-ART-001",
@@ -22,12 +22,12 @@
     {
       "step": "tests",
       "ok": true,
-      "detail": "35 条布线路径全部通过"
+      "detail": "52 条布线路径全部通过"
     },
     {
       "step": "codegen",
       "ok": true,
-      "detail": "骨架字节级零漂移 · 3 文件"
+      "detail": "骨架字节级零漂移 · 7 文件"
     }
   ]
 }

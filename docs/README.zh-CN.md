@@ -63,6 +63,12 @@ aos draft requirements.txt --name r1          # 需求 DSL → 草案（编译�
 aos draft promote spec/drafts/draft-r1.yaml --proposal-ref SPEC-2026-021   # 晋升正典（治理提案强制）
 aos generate                                  # 声明 → 代码骨架（手改检测，provenance 头）
 aos release                                   # 发布闸门（fail-closed）→ dist/RELEASE-MANIFEST.json
+# —— 旧系统迁徙（绞杀者管线；素材永远先成草案，编译不过不落盘）——
+aos import-db --ddl legacy.sql                # 老库元结构 → 本体草案（只读 schema，凭据不落盘）
+aos review                                    # 裁决清单（锚点 / 草案候选 / 治理对账，只读咨询）
+aos import-data --dsn sqlite:///db --map M    # 老库数据行 → 创世事件草案（逐行过完整求值链）
+aos shadow --dsn sqlite:///db --map M         # 影子对账（离线双跑）：行 ↔ 事件语义等价
+python tools/console.py                       # WEB 治理控制台壳（白名单 fail-closed，签署类不提供）
 ```
 
 之后的 BOOT-2/3（治理工作流、Identity Context 验收）与业务建模变更（走 GOV-3 版本通道，见 [docs/RUNBOOK.md](RUNBOOK.md)）属实例侧治理工作——模板提供声明位、编译器、闸门与验收清单，不模拟治理（诚实边界；Makefile 不合成创制任命凭据）。CI 门禁见 `.github/workflows/ci.yml`（pytest → 三关 → 发布闸门）。

@@ -164,26 +164,57 @@ The guide ships in Chinese to preserve clause-level terminology exactly; it is c
 
 | Command | Purpose |
 |---|---|
-| `aos init <dir>` | Instantiate a template copy with version lock |
+| `aos init <dir> [--depth D] [--cap ID]` | Instantiate + capability profile (dependency-expanded) |
+| `aos profile` | Resolve and validate the capability profile |
 | `aos verify` | Three chained gates |
 | `aos register <version>` | GOV-2.3 artifact registration (idempotent for the same hash) |
 | `aos bootstrap --stage N [--dry-run]` | BOOT-0..3; stage 1 requires a real external appointment reference |
 | `aos test [--suite S]` | Run suites wired in `config/verification.yaml` |
 | `aos spec fingerprint` | Standalone structural-layer check |
 | `aos spec version <v> --proposal-ref ...` | GOV-3 version channel (append-only) |
-| `aos generate [--force]` | Declarations → code skeleton; hand edits block silent overwrite |
+| `aos generate [--force]` | Declarations → code skeleton (governance → CQRS → OAuth 2.1 → frontend guard tables); hand edits block silent overwrite |
 | `aos draft <file> [--name N]` | Requirements DSL → compiler-gated draft |
 | `aos draft promote <f> --proposal-ref ...` | Promote a draft to canonical (single writer) |
+| `aos import-db` | Legacy schema → ontology draft (DDL or sqlite DSN; meta-structure only) |
+| `aos import-data` | Legacy rows → genesis-event drafts (each row through the full evaluation chain) |
+| `aos extract` | Semantic extraction: source code / docs → ontology draft (same three gates; builtin deterministic rules, pluggable LLM adapter via stdout-YAML contract; candidates never facts) |
+| `aos shadow` | Offline dual-run reconciliation: legacy rows ↔ new-system events |
+| `aos shadow-online` | Online dual-run reconciliation: consumes deployment-side probe NDJSON (probe contract in tool header; fail-closed on bad lines; probes are instance-side) |
+| `aos review` | Read-only adjudication list (anchors / draft candidates / governance audit) |
 | `aos release` | Fail-closed release gate → `dist/RELEASE-MANIFEST.json` |
+| `tools/console.py` | WEB governance console shell (whitelisted commands via subprocess CLI; signing commands excluded) |
 
 ---
 
-## 8. Honest boundaries (read before adopting)
+## 8. Legacy migration: the strangler pipeline
+
+Old systems enter through the same gates — imported material is always a **draft**, never a fact:
+
+```powershell
+aos init <dir> --depth standard        # 1. instantiate + capability breadth
+aos import-db --ddl legacy.sql         # 2. structure extraction (schema → ontology draft)
+aos review                             # 3. adjudication list (candidates / governance audit)
+aos draft promote ... --proposal-ref   # 4. human promotion (GOV-1 proposal mandatory)
+aos generate                           # 5. new-system code (governance → CQRS → OAuth 2.1)
+aos import-data --dsn ... --map M      # 6. data as genesis events (every row through the evaluation chain)
+aos shadow --dsn ... --map M           # 7. offline dual-run: rows ↔ events semantic parity
+python tools/console.py                # 8. WEB console shell over the same CLI (whitelist, fail-closed)
+```
+
+Data migration is **event replay, not table copy**: each legacy row must pass the new system's full evaluation chain (registration → role evidence → structural → conditional → store); dirty rows are refused, never laundered into the event stream. OAuth 2.1 is not a plugin but a **projection of the governance plane** — token claims are rendered from the duty matrix, and presenting an undeclared role is refused.
+
+The theory behind this — the five-layer model (concept/structure/constraint/behavior/mapping) with the governance plane cross-cutting every layer, and the ten engineering disciplines (deterministic generation with LLM-as-drafter, three-gate drafts, fail-closed everywhere, credentials never on disk) — is in the [whitepaper](docs/WHITEPAPER.md).
+
+---
+
+## 9. Honest boundaries (read before adopting)
 
 - **No proof of compliance.** `mandatory` clauses require human execution on a running system, with evidence, judge and signer. The template never marks them passed for you.
 - **No manufactured legitimacy.** Stewards and founding appointments are world events; the template records them, never synthesizes them (GOV-1).
-- **Source-tree delivery.** The wheel does not carry `docs/spec/config` and the startup self-check refuses it. Wheel-installability is an open P2 item.
+- **Source-tree delivery.** The wheel does not carry `docs/spec/config` and the startup self-check refuses it (verified, INTEGRITY-20) — see the wheel boundary note below.
 - **In-memory event store.** `EventStore` is a dict: no persistence across process restarts. `kernel/filestore.py` ships a FileStore **reference implementation** (JSONL append + replay, single-writer process model); durable multi-process storage remains an instance-side duty under the same protocol.
+- **wheel is a build artifact, not a deliverable.** `pip wheel .` builds `aos_keel-*.whl` (src/ + tools/ only; the `aos` console script works), but it ships **without** docs/spec/config — running it outside a source tree prints an explicit `REFUSED` (machine-guarded, INTEGRITY-20). The only supported runtime form is the source tree with `pip install -e .`, so the canonical declarations stay versioned next to the code.
+- **The console is a shell, and an offline one.** `tools/console.py` drives the CLI via subprocess with a fail-closed command whitelist; governance-signing commands (release/register/bootstrap) are excluded by design, and `aos shadow` is offline reconciliation — online dual-run traffic comparison is a deployment-stage duty.
 - **Structural fingerprint is weak by design.** It checks clause counts and anchors; the cryptographic hash layer is the strong guarantee.
 - **Chinese frozen canon.** `aos-spec.md` and the other canonical documents are frozen Chinese text and are not translated; only the READMEs are bilingual.
 

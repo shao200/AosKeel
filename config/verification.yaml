@@ -8,9 +8,9 @@ suites:
   negative: { gate: true }
   golden: { gate: true }
   genesis: { gate: true }
-  invariants: { gate: false }
-  replay: { gate: false }
-  redteam: { gate: false }
+  invariants: { gate: false }   # tests/invariants 无测试文件 —— 诚实保持 false
+  replay: { gate: true }        # 复盘布线：support 测试入闸（见 VER-24/26）
+  redteam: { gate: true }       # 复盘布线：support 测试入闸（见 VER-28/29）
 # 回归补充路径：不新增 VER 条款（v2.0.0 的 VER-1..33 是冻结条款集），
 # 只把修补后的守卫测试纳入同一条布线，使其真正进入发布闸门。
 integrity_paths:
@@ -22,6 +22,20 @@ integrity_paths:
   - { id: INTEGRITY-6, path: tests/conformance/test_impact.py }
   - { id: INTEGRITY-7, path: tests/conformance/test_audit_export.py }
   - { id: INTEGRITY-8, path: tests/conformance/test_gate_history.py }
+  - { id: INTEGRITY-9, path: tests/conformance/test_governance_duty_matrix.py }
+  - { id: INTEGRITY-10, path: tests/conformance/test_profile.py }
+  - { id: INTEGRITY-11, path: tests/conformance/test_codegen_cqrs.py }
+  - { id: INTEGRITY-12, path: tests/conformance/test_codegen_auth.py }
+  - { id: INTEGRITY-13, path: tests/conformance/test_onboarding_init.py }
+  - { id: INTEGRITY-14, path: tests/conformance/test_db_import.py }
+  - { id: INTEGRITY-15, path: tests/conformance/test_review.py }
+  - { id: INTEGRITY-16, path: tests/conformance/test_data_import.py }
+  - { id: INTEGRITY-17, path: tests/conformance/test_shadow.py }
+  - { id: INTEGRITY-18, path: tests/conformance/test_console.py }
+  - { id: INTEGRITY-19, path: tests/conformance/test_codegen_frontend.py }
+  - { id: INTEGRITY-20, path: tests/conformance/test_installability.py }
+  - { id: INTEGRITY-21, path: tests/conformance/test_semantic_extract.py }
+  - { id: INTEGRITY-22, path: tests/conformance/test_shadow_online.py }
 ver:
   - { id: VER-1,  clause: KS-1.2,      kind: auto, path: tests/conformance/test_event_schema.py }
   - { id: VER-2,  clause: KS-7.2,      kind: auto, path: tests/conformance/test_pipeline_order.py }
@@ -46,12 +60,12 @@ ver:
   - { id: VER-21, clause: P-4/INV-2,   kind: auto, path: tests/conformance/test_link_pattern.py }
   - { id: VER-22, clause: P-6/INV-3,   kind: auto, path: tests/conformance/test_repair_binding.py }
   - { id: VER-23, clause: P-7/INV-10,  kind: auto, path: tests/conformance/test_violation_object.py }
-  - { id: VER-24, clause: P-8,         kind: mandatory, checklist: bootstrap/checklists/VER-24.yaml, support: tests/replay/test_merge_replay.py }
+  - { id: VER-24, clause: P-8,         kind: mandatory, checklist: bootstrap/checklists/VER-24.yaml, path: tests/replay/test_merge_replay.py }
   - { id: VER-25, clause: P-12,        kind: auto, path: tests/conformance/test_dryrun_report.py }
-  - { id: VER-26, clause: P-16,        kind: mandatory, checklist: bootstrap/checklists/VER-26.yaml, support: tests/replay/test_projection_rebuild.py }
-  - { id: VER-27, clause: INV-13,      kind: mandatory, checklist: bootstrap/checklists/VER-27.yaml, support: tools/verify_capability_list.py }
-  - { id: VER-28, clause: INV-6,       kind: mandatory, checklist: bootstrap/checklists/VER-28.yaml, support: tests/redteam/test_foundation.py }
-  - { id: VER-29, clause: P-15,        kind: mandatory, checklist: bootstrap/checklists/VER-29.yaml, support: tests/redteam/test_breakglass.py }
+  - { id: VER-26, clause: P-16,        kind: mandatory, checklist: bootstrap/checklists/VER-26.yaml, path: tests/replay/test_projection_rebuild.py }
+  - { id: VER-27, clause: INV-13,      kind: mandatory, checklist: bootstrap/checklists/VER-27.yaml, path: tests/conformance/test_capability_list.py }
+  - { id: VER-28, clause: INV-6,       kind: mandatory, checklist: bootstrap/checklists/VER-28.yaml, path: tests/redteam/test_foundation.py }
+  - { id: VER-29, clause: P-15,        kind: mandatory, checklist: bootstrap/checklists/VER-29.yaml, path: tests/redteam/test_breakglass.py }
   - { id: VER-30, clause: GOV-2/3,     kind: auto, path: tests/conformance/test_artifact_ref.py }
   - { id: VER-31, clause: P-4/8/11,    kind: auto, path: tests/genesis/test_genesis_scope.py }
   - { id: VER-32, clause: KS-8.5,      kind: auto, path: tests/genesis/test_genesis_ttl.py }
