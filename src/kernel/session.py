@@ -7,8 +7,9 @@
 from __future__ import annotations
 import datetime as dt
 import sys
+import os                                                 # ADR-001: kernel 包 ROOT 外置注入
 from pathlib import Path
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(os.environ.get("AOSKEEL_ROOT") or Path(__file__).resolve().parents[2])
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "src"))
 from kernel.errors import PrincipalRequired
 def _now() -> str:

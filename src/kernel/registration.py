@@ -22,7 +22,10 @@ try:
     import yaml
 except ImportError:                                   # spec/ 声明解析依赖
     yaml = None
-ROOT = Path(__file__).resolve().parents[2]
+import os                                                 # ADR-001: kernel 包在 site-packages 时需外部注入模板根
+# 未设 AOSKEEL_ROOT 时逐字回退原锚点 Path(__file__).parents[2]（零回归）；
+# 设置后指向 template 根，使 aoskeel-kernel wheel 真正可读 config/spec。
+ROOT = Path(os.environ.get("AOSKEEL_ROOT") or Path(__file__).resolve().parents[2])
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "src"))
 from kernel.errors import RegistrationFailed
 from kernel.sc_compiler import compile_action, CompiledAction
