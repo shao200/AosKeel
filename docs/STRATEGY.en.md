@@ -1,0 +1,68 @@
+# From Digital Soma to Intelligent Contract: Building the "Governance Ontology" Substrate for Next-Generation Enterprise AI
+
+> AosKeel Strategic Vision · v1.0 (2026-11)
+> Language / Language: **English** · [简体中文](STRATEGY.md)
+> Further reading: [WHITEPAPER.md](WHITEPAPER.md) (technical whitepaper) · [POSITIONING.md](POSITIONING.md) (project positioning) · [README.md](../README.md) (template overview)
+
+## I. The Shape of the Era and Market Pain: AI's "Prosperity" and "Loss of Control"
+
+Today, large language models (LLMs) demonstrate astonishing text generation and logical reasoning capabilities, yet when enterprises attempt to bring them into their core business, they face a massive chasm. **The model is a first-rate "liberal arts student" but a terrible "engineer."** It hallucinates, ignores business rules, and even attempts to mutate system state without authorization.
+
+A subtler pain point is **semantic drift**: AI-generated code looks plausible, yet quietly diverges from the true meaning of the business in entity relationships, boundary conditions, and business rules—no one can verify, line by line across a thousand generated lines, whether "this sentence matches the business intent." Meanwhile, many traditional enterprises carry heavy legacy baggage: aging IT systems are "digital labyrinths" with business rules scattered across code, documents, and employees' heads. Migrating to the AI era is not a matter of simply bolting an LLM onto an old database—it requires a **"recombination of the enterprise's digital DNA."**
+
+What the market truly craves is not yet another code-completion tool, but a **low-level operating mechanism that constrains AI and makes its output "verifiable, auditable, and privilege-bounded."** This is the historical moment when "ontology + AI" moves from academic concept to commercial explosion.
+
+## II. Core Technology and Architectural Moat: Forging the "Governance Ontology" Kernel
+
+**AosKeel**, built on the AOS (Ontology-Based Agent System) Specification v2.0.0, is our blade into this blue ocean. Its technical disruption lies in upgrading classical ontology from "describing the world" to "governing the world"—and this upgrade is not a slogan: it is materialized as a specification and a running implementation with **30 kernel semantics, 13 global invariants, 6 governance clauses, and 33 verification points, all machine-checkable**.
+
+### 1. Five-Layer Standard Model + Governance-Plane Crosscut: Authority Is Not a Document, It Is DNA
+
+L1 Concept layer (bounded contexts and ubiquitous language) → L2 Structure layer (`ObjectType` / `LinkType` / aggregates) → L3 Constraint layer (invariants and permission constraints) → L4 Behavior layer (`ActionType` action contracts and state machines) → L5 Mapping layer (projections onto backend / frontend / storage / API)—and the **governance plane crosscuts all five layers**: the duty authorization matrix (position × organizational anchor × duty item × quota) is forced to leave anchors at every layer—L3's `requires-role` compiles into write-side authorization assertions, and L4's authorization constraints land in the Command route's `required_roles`. The permission check point is uniquely located at the kernel commit layer; AI Agents have no "backdoor for free improvisation."
+
+### 2. OAuth 2.1 Is Not a Plugin—It Is a Projection of the Governance Plane
+
+This is a first-in-industry architectural decision: the authentication system is not designed standalone; the claims in the identity token (`org / duty[] / roles[]`) are projected directly from L1/L2 ownership and L3 authorization constraints. The IdP presents a position not declared in the ontology? Rejected outright (`UNDECLARED-POSITION`, fail-closed). **Authentication and governance are physically incapable of diverging**—eliminating at the root the chronic enterprise disease of "the permission system and business reality as two disconnected skins."
+
+### 3. Deterministic Generation; LLM Only Produces Drafts
+
+Our code generators (Command/Query dual-end CQRS skeletons, OAuth 2.1 IdP, frontend admin console) are all produced by the template engine with **byte-level zero drift**, enforced by the release gate. The LLM has exactly one legitimate position in the entire system: candidate producer in `aos draft`—the LLM proposes candidates → the compilation gate vetoes → humans adjudicate promotion. **The LLM never writes the canon directly** (GOV-6: drafting intelligence is swappable; the mechanical gate is the only constant). The generator also carries hand-edit detection: when a generated artifact differs from a fresh regeneration, silent overwrite is refused by default—killing the "just tweak one line" class of silent drift.
+
+### 4. The Absolute Anti-Drift Mechanism: Declared Is Fact
+
+The "`declared == registered`" strong bijection + chained three-gate verification (structural fingerprint → cryptographic hash → registration reconciliation) + append-only registry. If the business specification and the underlying implementation disagree, the system refuses to boot. The ontology is not an after-the-fact validator—it is a **precondition for kernel startup**.
+
+### 5. Event Sourcing + Restricted Interpreter: An Engineering Answer to the Ultimate Audit Question
+
+Authoritative facts live in an append-only, immutable eight-field event stream, with a physically isolated observation layer (session stream) recording "why the AI did what it did at that moment"; all rule evaluation runs inside an **AST-whitelisted restricted interpreter** (boolean profile / mapping profile), and the Agent capability surface is a strict subset of its capability manifest—no privileged channels. Combined with chained-`audit_id` audit export and the gate metrics ledger, every state change and every gate pass/rejection is traceable.
+
+## III. Economic Value: From "Writing Code" to "Defining Rules"
+
+Adopting AosKeel is not merely a technology upgrade—it is a **restructuring of the relations of production**:
+
+*   **Minimal trial-and-error and compliance cost**: In the past, a single AI hallucination triggering a business violation could cause massive financial loss; now, unregistered actions have no write path, roles must be presented before storage is touched, and dirty data is intercepted before ingestion—**the system's answer to "uncertain" is always "no"** (fail-closed). Risk is stopped by upfront structural validation outside the storage layer.
+*   **The "Noah's Ark" for legacy migration: the Strangler pipeline is engineered, not promised.** This is not a vision—it is a complete loop of eight CLI commands: `aos import-db` (legacy DB metastructure → ontology draft; credentials never touch disk) → `aos review` (read-only adjudication list) → `aos draft promote` (governance proposal mandatory for promotion) → `aos generate` (generate the new system in capability-dependency topological order) → `aos import-data` (legacy rows → genesis event drafts, **each row passing the full evaluation chain**—rows violating the new system's constraints cannot be laundered into the event stream) → `aos shadow` / `shadow-online` (offline + online shadow reconciliation: row ↔ event semantic equivalence, dual-run verification before cutover). Enterprises need not rebuild from scratch: with the Strangler pattern, migration cycles that once took years shrink by more than 60%.
+*   **Productivity paradigm shift**: Human engineers and business experts escape the CRUD swamp to focus on "organizational authority governance" and "domain model declaration" (nine classes of YAML declarations as the single source of semantic truth); AI Agents operate as the execution side within tightly sealed contracts. The three-stage gate of **requirements DSL → draft → compilation → promotion** turns every rule the business expert writes into a machine-executable contract, rather than another Word document destined to rot.
+*   **Trust as a product**: We deliberately maintain "honest disclosure boundaries"—the template provides no compliance certificates, does not fabricate governance legitimacy (GOV-1: founding appointments must come from real-world credentials; the CLI refuses to synthesize them), and never auto-checks mandatory clauses. Amid the marketing noise of "AI can do anything," **a system that loudly declares what it does not do is itself the scarcest trust asset in enterprise procurement**.
+
+## IV. Strategic Horizon: Reshaping the Enterprise's "Digital Twin"
+
+### 1. Riding an Irreversible Industrial Trend: From "Software-Defined" to "Ontology-Governed"
+
+Enterprise digitalization is undergoing an irreversible paradigm shift: for the past thirty years, enterprises defined business processes with "software code"; for the next ten, they will govern intelligent agents with "ontology contracts." As AI Agents penetrate enterprise production and decision-making, ensuring they "stay under control, remain auditable, and follow the rules" has become the core strategic anxiety of large enterprises worldwide. The "governance ontology" architecture AosKeel represents strikes precisely at this pulse—and we have proven with 60 wired paths (60 executable / 0 missing), a 353-test conformance suite, and a fail-closed release gate that this mechanism **runs today**, not just in papers. It does not merely follow the trend; it directly anchors the de facto standard of the next-generation enterprise software ecosystem.
+
+### 2. From Point Empowerment to Global Restructuring: The Explosion of the Enterprise Digital Nervous System
+
+In this vast blue ocean, our vision is emphatically not to be a marginal helper tool, but to become the "digital operating system" for enterprise intelligent evolution. In the future, the Strangler pipeline will tease enterprises' sprawling legacy systems apart and recombine them into living ontology graphs; business experts need only declare the "organizational mission and duty authorization matrix" at the top, and underlying AI Agents—under physical constraints—will instantly complete cross-system state updates, process flows, and intelligent decisions. Enterprises will bid farewell to "system silos" and "refactoring quagmires" for good, crossing into the digital-twin form of "business as code, rules as fact."
+
+### 3. Building a Thriving Intelligent-Contract Ecosystem: Becoming the "Infrastructure" of the AI Era
+
+Once this ontology-based governance framework becomes industry consensus, the commercial possibility space expands exponentially. AosKeel's architecture is natively ecosystem-ready: the **capability Profile mechanism** makes "the unit of choice a capability, not a module checkbox"—`backend.cqrs`, `auth.oauth2_1`, `frontend.admin_console` expand automatically in dependency-topological order, and industry plugins, domain templates, and agent assemblers all become pluggable capability nodes; the **`aos extract` adapter contract** lets any LLM service join the drafting stage while the gate remains source-agnostic—meaning the entire ecosystem can share one mechanical gate while accommodating unlimited diversity of intelligent supply. Cross-enterprise collaboration will also see a revolutionary breakthrough: collaboration SLAs, smart contracts, and boundary-of-duty agreements between enterprises will interconnect seamlessly in machine-readable ontology language. AosKeel will be the substrate of this ecosystem, connecting massive industry models, domain plugins, and AI agents—and nurturing a hundred-billion-scale "enterprise digital contract market."
+
+### 4. The Dual-Engine Model: Open-Source Substrate + Governance Premium
+
+The frozen, machine-checkable canonical specification is open source, positioning AOS to become an industry standard. Enterprise-grade premium comes from three places: **migration services** (delivery capability built on the Strangler pipeline + shadow reconciliation), **instance-side capability supply** (true NLP drafters, probe components, persistent storage—adaptation layers whose protocols have reserved positions), and the **governance console and audit compliance package** (chained audits, gate metrics, checklist archiving—the evidence/judge/signer triple aligns naturally with future AI regulatory audit requirements). When regulators begin asking "why did your AI do this," the answer has already been recorded—in our eight-field event stream—every single moment.
+
+## Epilogue
+
+This is the era of the "digital demiurge." The top enterprises of the future will not compete on how many code-writing programmers they employ, but on who can define their own "ontology and rules" with greater clarity and rigor. AosKeel has prepared a solid substrate for this world—not a substrate on slides, but a **runnable substrate** carrying 30 kernel semantics, 13 invariants, 33 verification points, 26 command surfaces, and three chained gates. With an irreplaceable technical position, we will help enterprises make the perilous leap across the AI wave and together open the new era of the digital soma of social entities.
