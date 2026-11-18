@@ -6,7 +6,7 @@ aos verify 三关串联：结构层（指纹 GOV-2.4）→ 密码学层（哈希
 运行形态：模板以源码树为交付物（pip install -e .）—— wheel 不含 docs/spec/config，
 启动时自检并明确拒绝，不把误装报成一串 FileNotFoundError。
 """
-import sys, shutil, json, subprocess
+import sys, shutil, json, subprocess, re
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "src"))
@@ -106,6 +106,22 @@ def _positional(rest: list[str], index: int, usage: str) -> str:
     return rest[index]
 
 
+def _latest_spec_version() -> str:
+    """规范版本真源：登记表最新条目的版本列（E-2：不再硬编码，跃迁自动跟随）。
+    登记表为空（实例在 BOOT-0 首登记前）时回落冻结正典头部的版本标识。"""
+    rows = _entries()
+    if rows:
+        cols = [c.strip() for c in rows[-1].split("|")]
+        if len(cols) > 2 and re.fullmatch(r"v\d+\.\d+\.\d+", cols[2]):
+            return cols[2]
+    spec = (ROOT / "docs/aos-spec.md")
+    if spec.exists():
+        m = re.search(r"^v(\d+\.\d+\.\d+)\s+·\s+Frozen", spec.read_text(encoding="utf-8"), re.M)
+        if m:
+            return "v" + m.group(1)
+    return "UNREGISTERED"
+
+
 def _require_source_tree() -> int | None:
     """wheel 里没有 docs/spec/config；宁可明确拒绝，也不假装可用。"""
     if (ROOT / "docs/aos-spec.md").exists() and (ROOT / "config/verification.yaml").exists():
@@ -177,7 +193,7 @@ def cmd_init(target: str, wizard: dict | None = None) -> int:
             shutil.copy2(p, dst / rel); copied += 1
     rows = _entries()
     art_id = rows[-1].split("|")[1].strip() if rows else "NOT-REGISTERED"
-    spec_ver = "v2.1.0"
+    spec_ver = _latest_spec_version()
     # 根层文件：.gitattributes 的 `* -text` 是 GOV-2.3 字节精确防线的一部分，
     # 实例缺失时换行转换可破坏冻结哈希；pyproject/.gitignore 直接复制。
     for f in (".gitattributes", ".gitignore", "pyproject.toml"):
@@ -290,7 +306,7 @@ def cmd_bootstrap(stage: int, appointment_ref: str | None, dry_run: bool) -> int
             print("DRY-RUN: 检查表 —— 指纹", "PASS" if not failures else f"FAIL {failures}",
                   "｜ 登记", "已有（幂等重跑，无写入）" if _entries() else "缺失（正式执行将写入）")
             return 0 if not failures else 1
-        code = hs_register("v2.1.0") or cmd_verify()
+        code = hs_register(_latest_spec_version()) or cmd_verify()
         if code == 0:
             marker_dir.mkdir(exist_ok=True)
             (marker_dir / "boot-0.done").write_bytes(

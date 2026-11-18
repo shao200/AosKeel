@@ -50,6 +50,24 @@ def _set_spec_ref(art_id: str):
         out = [f"spec_ref: {art_id}   # 登记条目 ID（GOV-2.2）；哈希见登记表"
                if l.strip().startswith("spec_ref:") else l for l in lines]
         path.write_bytes(("\n".join(out) + "\n").encode("utf-8"))
+def _append_art_rows(rows: list[str]) -> None:
+    """把新 ART 登记行插入 ART 表尾（GOV-2.3-DECL 区之前），而非 EOF 追加。
+
+    append-only 只约束"旧行逐字不改"，不约束写入位置。原实现用 `open("ab")`
+    直接写文件末尾：登记表一旦含 DECL 区，新 ART 行就落进 DECL 表之后，
+    下次 `aos spec version` 必然复发（E-1）。此函数定位两段表边界后插入。
+    """
+    text = REGISTRY.read_text(encoding="utf-8")
+    lines = text.split("\n")
+    decl_at = next((i for i, l in enumerate(lines)
+                    if l.startswith("## 声明摘要登记")), len(lines))
+    last = 0
+    for i in range(min(decl_at, len(lines))):
+        if lines[i].strip():
+            last = i
+    lines[last + 1:last + 1] = rows
+    REGISTRY.write_bytes("\n".join(lines).encode("utf-8"))
+
 def register(spec_version: str) -> int:
     digest = canonical_digest()
     rows = _entries()
@@ -63,9 +81,7 @@ def register(spec_version: str) -> int:
         REGISTRY.write_bytes(("# AOS 工件登记（append-only；GOV-2.3）\n\n"
                               "| 条目 ID | 版本 | 哈希 | 登记时间 | 状态 |\n"
                               "|---|---|---|---|---|\n").encode("utf-8"))
-    with REGISTRY.open("ab") as f:                 # 字节追加：文本模式会写入 CRLF
-        f.write(f"| {art_id} | {spec_version} | sha256:{digest} | {now} | registered |\n"
-                .encode("utf-8"))
+    _append_art_rows([f"| {art_id} | {spec_version} | sha256:{digest} | {now} | registered |"])
     _set_spec_ref(art_id)
     print(f"REGISTERED: {art_id}  sha256:{digest[:16]}…"); return 0
 def supersede(spec_version: str, proposal_ref: str) -> int:
@@ -85,12 +101,11 @@ def supersede(spec_version: str, proposal_ref: str) -> int:
         REGISTRY.write_bytes(("# AOS 工件登记（append-only；GOV-2.3）\n\n"
                               "| 条目 ID | 版本 | 哈希 | 登记时间 | 状态 |\n"
                               "|---|---|---|---|---|\n").encode("utf-8"))
-    with REGISTRY.open("ab") as f:                 # 字节追加：文本模式会写入 CRLF
-        f.write(f"| {art_id} | {spec_version} | sha256:{digest} | {now} | registered |\n"
-                .encode("utf-8"))
-        f.write(f"# superseded-via: {proposal_ref} → {art_id}（GOV-3 版本通道；"
-                f"前一登记条目由本条目取代，旧行不改写——append-only P-15）\n"
-                .encode("utf-8"))
+    _append_art_rows([
+        f"| {art_id} | {spec_version} | sha256:{digest} | {now} | registered |",
+        f"# superseded-via: {proposal_ref} → {art_id}（GOV-3 版本通道；"
+        f"前一登记条目由本条目取代，旧行不改写——append-only P-15）",
+    ])
     _set_spec_ref(art_id)
     print(f"SUPERSEDED: {art_id}  sha256:{digest[:16]}…  proposal={proposal_ref}")
     return 0

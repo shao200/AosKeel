@@ -18,7 +18,7 @@
 |---|---|---|---|---|
 | [README.md](../README.md) | English | informative first screen, §§1–9 | no | [README.zh-CN.md](README.zh-CN.md) — mirrored §§1–9 |
 | [README.zh-CN.md](README.zh-CN.md) | 简体中文 | informative full edition + Appendix A | no | [README.md](../README.md) |
-| [aos-spec.md](aos-spec.md) | 简体中文 | **normative canonical**, v2.1.0, frozen (informative appendices R/S) | **yes** (`AOS-ART-002`, `48df813a…`) | [English overview](aos-spec.en-overview.md) — map only, non-normative |
+| [aos-spec.md](aos-spec.md) | 简体中文 | **normative canonical**, v2.1.1, frozen (informative appendices R/S) | **yes** (`AOS-ART-003`, `18868adf…`) | [English overview](aos-spec.en-overview.md) — map only, non-normative |
 | [SPEC-FINGERPRINT.md](SPEC-FINGERPRINT.md) | 简体中文 | **normative**, clause fingerprint list (GOV-2.4) | **yes** | none |
 | [ARTIFACT-REGISTRY.md](ARTIFACT-REGISTRY.md) | 简体中文 | append-only registry (GOV-2.3) | no (registry itself) | none |
 | `spec/**/*.yaml` | YAML | declarative business-semantics source | **yes** (declaration digest `91ffe5a1…`) | n/a |
@@ -30,6 +30,7 @@
 | [REVIEW-ontology-peer-review.md](REVIEW-ontology-peer-review.md) | 简体中文 | historical peer-review record (author-local, not copied into instances) | no | none |
 | [adr/ADR-001-dual-distribution.md](adr/ADR-001-dual-distribution.md) | 简体中文 | Accepted architecture decision (kernel wheel + template sdist) | no | none |
 | [adr/ADR-002-canonical-appendices-rs.md](adr/ADR-002-canonical-appendices-rs.md) | 简体中文 | Accepted GOV-3 decision (canonical informative appendices R/S, v2.1.0) | no | none |
+| [adr/ADR-003-appendix-errata-v211.md](adr/ADR-003-appendix-errata-v211.md) | 简体中文 | Accepted GOV-3 errata decision (appendix R/S content, v2.1.1) | no | none |
 | [guide/](guide/README.md) | 简体中文 | nine-part **informative** guide (copied into every instance) | no | clause IDs stay verbatim in English prose |
 | [guide/index.html](guide/index.html) | mixed | visual concept map, informative | no | none |
 | [samples/llm/README.md](samples/llm/README.md) | 简体中文 | offline LLM-in-the-loop worked example | no | none |
@@ -61,7 +62,7 @@ compiled input, not specification text. Do not describe `spec/` as the canonical
 | Strategic vision, bilingual | [STRATEGY.md](STRATEGY.md) · [STRATEGY.en.md](STRATEGY.en.md) |
 | BOOT-2/3 workflow scaffold (GOV-3 channels) | [RUNBOOK.md](RUNBOOK.md) |
 | Historical peer review (author-local) | [REVIEW-ontology-peer-review.md](REVIEW-ontology-peer-review.md) |
-| Architecture decisions | [adr/ADR-001-dual-distribution.md](adr/ADR-001-dual-distribution.md) · [adr/ADR-002-canonical-appendices-rs.md](adr/ADR-002-canonical-appendices-rs.md) |
+| Architecture decisions | [adr/ADR-001-dual-distribution.md](adr/ADR-001-dual-distribution.md) · [adr/ADR-002-canonical-appendices-rs.md](adr/ADR-002-canonical-appendices-rs.md) · [adr/ADR-003-appendix-errata-v211.md](adr/ADR-003-appendix-errata-v211.md) |
 | Nine-part guide (Chinese, copied into every instance) | [guide/README.md](guide/README.md) |
 | Visual concept map | [guide/index.html](guide/index.html) |
 | LLM-in-the-loop offline example / requirements DSL sample | [samples/llm/README.md](samples/llm/README.md) · [samples/requirements-sample.txt](samples/requirements-sample.txt) |
@@ -77,8 +78,8 @@ compiled input, not specification text. Do not describe `spec/` as the canonical
    `CLI 26 命令面（21 顶层 + 5 子命令）` and
    `60 条布线（可执行 60 / 缺失 0 / 〔强〕未布线 1）`, plus 28 INTEGRITY regression guards.
    `tests/conformance/test_doc_consistency.py` locks the strings that consume them.
-   Test-suite size is quoted as **72 test files / 373 `def test_` functions**; pytest
-   collects 387 cases after parametrisation. Both numbers are correct — different units,
+   Test-suite size is quoted as **73 test files / 379 `def test_` functions**; pytest
+   collects 393 cases after parametrisation. Both numbers are correct — different units,
    so do not "correct" one into the other.
 2. **Changing a fact changes both editions.** Any edit to §§1–9 of one README must be
    mirrored in the other in the same commit. This is now a machine check, not just a
@@ -92,5 +93,5 @@ compiled input, not specification text. Do not describe `spec/` as the canonical
    and `aos verify`. Editing any document outside `aos-spec.md` / `SPEC-FINGERPRINT.md`
    does not change the canonical hash; changing either of those requires the GOV-3
    version channel and a proposal reference.
-4. **Version numbers**: software `0.3.0` · canonical spec `v2.1.0` (informative appendices R/S; semantic delta zero) · whitepaper/strategy
+4. **Version numbers**: software `0.3.0` · canonical spec `v2.1.1` (informative appendices R/S; semantic delta zero) · whitepaper/strategy
    documents `v1.0`. Do not conflate them.

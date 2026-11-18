@@ -6,9 +6,9 @@
 
 **A verifiable, 0→1 scaffold for ontology-based Agent systems — specification-driven, governance-built-in, and machine-checkable.**
 
-AosKeel implements the *AOS: Ontology-Based Agent System Development Specification* v2.1.0. It is closer to `npm create vue` than to a runtime product: you instantiate a source tree, declare your domain, and let the compiler and gates decide whether the system is allowed to start. This page gives you the theory and a working entry point; the [full guide](#6-guided-learning) goes deeper. The frozen canonical spec is a Chinese text; English readers can start from the [non-normative English overview](docs/aos-spec.en-overview.md) (a navigation aid only — it does not translate or replace the canonical).
+AosKeel implements the *AOS: Ontology-Based Agent System Development Specification* v2.1.1. It is closer to `npm create vue` than to a runtime product: you instantiate a source tree, declare your domain, and let the compiler and gates decide whether the system is allowed to start. This page gives you the theory and a working entry point; the [full guide](#6-guided-learning) goes deeper. The frozen canonical spec is a Chinese text; English readers can start from the [non-normative English overview](docs/aos-spec.en-overview.md) (a navigation aid only — it does not translate or replace the canonical).
 
-**Three version numbers, do not conflate them**: software `0.3.0` (`pyproject.toml`, git tag `v0.3.0`), canonical specification `v2.1.0` (frozen, hash-registered), and the whitepaper/strategy documents `v1.0` (document editions).
+**Three version numbers, do not conflate them**: software `0.3.0` (`pyproject.toml`, git tag `v0.3.0`), canonical specification `v2.1.1` (frozen, hash-registered), and the whitepaper/strategy documents `v1.0` (document editions).
 
 ---
 
@@ -291,7 +291,7 @@ The theory behind this — the five-layer model (concept/structure/constraint/be
 - **The hash domain is narrow by design.** Frozen bytes cover `docs/aos-spec.md` + `docs/SPEC-FINGERPRINT.md`, plus a separate declared-digest over `spec/**/*.yaml`. Guides, whitepaper, strategy, review notes and these READMEs are informative and outside both domains; see the language and authority matrix.
 - **Probes and LLM bindings are instance-side.** The kernel ships the reconciliation protocol (`aos shadow-online` consumes probe NDJSON) and the extraction adapter contract (`aos extract --extractor`); the interception probe and any real LLM call belong to the deployment, so the kernel has zero deployment and zero LLM dependencies.
 - **Byte-exact, fail-closed everywhere.** All writes are UTF-8 + LF; `.gitattributes * -text` disables newline conversion, so external CRLF edits are rejected by `generate` / `release` as byte drift. Wiring paths declared in `config/verification.yaml` but missing on disk block `aos test` and `aos release` (no silent downgrade).
-- **Language and authority.** The frozen canonical (`docs/aos-spec.md` v2.1.0), `SPEC-FINGERPRINT.md`, the nine-part guide, the whitepaper, positioning, runbook and registry are Chinese. English companions are explicitly scoped: this README and its Chinese counterpart are bilingual editions of one page, `STRATEGY.en.md` is the English edition of the Chinese strategy paper, and `aos-spec.en-overview.md` is a **non-normative navigation aid** that translates neither clauses nor normative prose. On any conflict, the Chinese canonical wins.
+- **Language and authority.** The frozen canonical (`docs/aos-spec.md` v2.1.1), `SPEC-FINGERPRINT.md`, the nine-part guide, the whitepaper, positioning, runbook and registry are Chinese. English companions are explicitly scoped: this README and its Chinese counterpart are bilingual editions of one page, `STRATEGY.en.md` is the English edition of the Chinese strategy paper, and `aos-spec.en-overview.md` is a **non-normative navigation aid** that translates neither clauses nor normative prose. On any conflict, the Chinese canonical wins.
 
 **What the template gives, and what it refuses to give** (same table in Chinese edition §9):
 
@@ -324,7 +324,7 @@ The Chinese edition's Appendix A carries the full file-by-file map; the essentia
 
 ```
 README.md / docs/README.zh-CN.md   bilingual editions, §1–§9 mirrored
-docs/aos-spec.md                   frozen canonical v2.1.0 (hash-registered)
+docs/aos-spec.md                   frozen canonical v2.1.1 (hash-registered)
 docs/SPEC-FINGERPRINT.md           clause fingerprint list (GOV-2.4)
 docs/ARTIFACT-REGISTRY.md          append-only artifact registry (GOV-2.3)
 docs/guide/                        nine-part informative guide (copied into every instance)

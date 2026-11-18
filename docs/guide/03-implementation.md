@@ -74,7 +74,7 @@ effects:
 `config/capabilities.yaml` 结构：
 
 ```yaml
-spec_ref: AOS-ART-002          # 与登记表最新条目同源（GOV-2.2）
+spec_ref: AOS-ART-003          # 与登记表最新条目同源（GOV-2.2）
 foundation:                    # 固定段：基座三项，人工维护，内核不可改
   - audit_append_only
   - perimeter_integrity

@@ -2,7 +2,8 @@
 
 共同底线：这些全是信息性/工具性增量，不扩大冻结正典的哈希覆盖域，也不写入
 声明摘要域（spec/**/*.yaml）。v2.1.0 依据 GOV-3 提案 SPEC-2026-001 增附录 R/S，
-当前哈希已重新登记；本文件用可证伪断言锁住"覆盖域不变 + 旧登记行逐字保留"。
+v2.1.1 依 SPEC-2026-002 做内容勘误；当前哈希已重新登记；本文件用可证伪断言锁住
+"覆盖域不变 + 旧登记行逐字保留"。
 """
 import sys
 from pathlib import Path
@@ -17,7 +18,7 @@ from tools import hash_spec as hs  # noqa: E402
 def test_canonical_digest_unchanged_by_new_docs():
     """新增文档/样例/工具不得进入正典哈希覆盖域；现行文本已按 GOV-3 登记。"""
     registry = (ROOT / "docs/ARTIFACT-REGISTRY.md").read_text(encoding="utf-8")
-    assert hs.canonical_digest() in registry          # 当前正典已登记（AOS-ART-002）
+    assert hs.canonical_digest() in registry          # 当前正典已登记（AOS-ART-003）
     assert any(l.startswith("| AOS-ART-001 |") and "e6884aed" in l
                for l in registry.splitlines())        # 封存基线逐字保留（append-only P-15）
     assert hs.CANONICAL_FILES == ["docs/aos-spec.md", "docs/SPEC-FINGERPRINT.md"]

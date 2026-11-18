@@ -1,6 +1,6 @@
 # From Digital Soma to Intelligent Contract: Building the "Governance Ontology" Substrate for Next-Generation Enterprise AI
 
-> AosKeel Strategic Vision · v1.0 (2026-11, document edition; software 0.3.0 / spec v2.1.0)
+> AosKeel Strategic Vision · v1.0 (2026-11, document edition; software 0.3.0 / spec v2.1.1)
 > Language / 语言: **English** · [简体中文](STRATEGY.md)
 > Further reading: [WHITEPAPER.md](WHITEPAPER.md) (technical whitepaper) · [POSITIONING.md](POSITIONING.md) (project positioning) · [README.md](../README.md) (template overview)
 > This page mirrors the Chinese edition paragraph by paragraph. Both are strategy papers (informative): they create no normative clauses; authority remains [aos-spec.md](aos-spec.md).
@@ -15,7 +15,7 @@ What the market truly craves is not yet another code-completion tool, but a **lo
 
 ## II. Core Technology and Architectural Moat: Forging the "Governance Ontology" Kernel
 
-**AosKeel**, built on the AOS (Ontology-Based Agent System) Specification v2.1.0, is our blade into this blue ocean. Its technical disruption lies in upgrading classical ontology from "describing the world" to "governing the world"—and this upgrade is not a slogan: it is materialized as a specification and a running implementation with **30 kernel semantics, 13 global invariants, 6 governance clauses, and 33 verification points**. The mechanically decidable parts are covered by gates and test suites; mandatory / strong clauses still require human execution on a running system with evidence / judge / signer archived—the template never signs on anyone's behalf.
+**AosKeel**, built on the AOS (Ontology-Based Agent System) Specification v2.1.1, is our blade into this blue ocean. Its technical disruption lies in upgrading classical ontology from "describing the world" to "governing the world"—and this upgrade is not a slogan: it is materialized as a specification and a running implementation with **30 kernel semantics, 13 global invariants, 6 governance clauses, and 33 verification points**. The mechanically decidable parts are covered by gates and test suites; mandatory / strong clauses still require human execution on a running system with evidence / judge / signer archived—the template never signs on anyone's behalf.
 
 ### 1. Five-Layer Standard Model + Governance-Plane Crosscut: Authority Is Not a Document, It Is DNA
 
@@ -50,7 +50,7 @@ Adopting AosKeel is not merely a technology upgrade—it is a **restructuring of
 
 ### 1. Riding an Irreversible Industrial Trend: From "Software-Defined" to "Ontology-Governed"
 
-Enterprise digitalization is undergoing an irreversible paradigm shift: for the past thirty years, enterprises defined business processes with "software code"; for the next ten, they will govern intelligent agents with "ontology contracts." As AI Agents penetrate enterprise production and decision-making, ensuring they "stay under control, remain auditable, and follow the rules" has become the core strategic anxiety of large enterprises worldwide. The "governance ontology" architecture AosKeel represents strikes precisely at this pulse—and we have proven with 60 wired paths (60 executable / 0 missing), a conformance suite of 72 test files / 373 test functions, and a fail-closed release gate that this mechanism **runs today**, not just in papers. It does not merely follow the trend; it directly anchors the de facto standard of the next-generation enterprise software ecosystem.
+Enterprise digitalization is undergoing an irreversible paradigm shift: for the past thirty years, enterprises defined business processes with "software code"; for the next ten, they will govern intelligent agents with "ontology contracts." As AI Agents penetrate enterprise production and decision-making, ensuring they "stay under control, remain auditable, and follow the rules" has become the core strategic anxiety of large enterprises worldwide. The "governance ontology" architecture AosKeel represents strikes precisely at this pulse—and we have proven with 60 wired paths (60 executable / 0 missing), a conformance suite of 73 test files / 379 test functions, and a fail-closed release gate that this mechanism **runs today**, not just in papers. It does not merely follow the trend; it directly anchors the de facto standard of the next-generation enterprise software ecosystem.
 
 ### 2. From Point Empowerment to Global Restructuring: The Explosion of the Enterprise Digital Nervous System
 

@@ -49,7 +49,7 @@ cd my-org-system
 预期：
 
 ```
-INITIALIZED: ...\my-org-system（128 文件；TEMPLATE-LOCK: template 0.3 × v2.1.0 × AOS-ART-002）
+INITIALIZED: ...\my-org-system（128 文件；TEMPLATE-LOCK: template 0.3 × v2.1.1 × AOS-ART-003）
 下一步: cd 实例 && python src/cli/main.py bootstrap --stage 0
 ```
 
@@ -78,7 +78,7 @@ DRY-RUN: 检查表 —— 指纹 PASS ｜ 登记 已有（幂等重跑，无写�
 [1/3] 结构层（指纹 GOV-2.4）
   OK —— 附录 F 十节三元组在场
 [2/3] 密码学层（分离式哈希 GOV-2.3）
-OK       computed sha256:48df813aa7dba890…
+OK       computed sha256:18868adfa7dba890…
 [3/3] 注册层（declared == registered，KS-7.2 / INV-13）
   OK —— 7 条能力一致（含 provenance 回溯）
 VERIFY-OK: 三关连续通过 —— 结构 / 密码学 / 注册

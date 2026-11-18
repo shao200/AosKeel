@@ -51,6 +51,25 @@ def test_drift_refused_and_gov3_channel(tmp_path, monkeypatch):
     assert hs.verify() == 0                                         # 新哈希通过
     log = (tmp_path / "docs/ARTIFACT-REGISTRY.md").read_text(encoding="utf-8")
     assert "superseded-via: SPEC-2026-014" in log                   # 提案回溯在案
+def test_supersede_row_lands_in_art_table_before_decl_section(tmp_path, monkeypatch):
+    """E-1：GOV-3 新登记行 MUST 插在 ART 表尾（DECL 区之前），不得 EOF 追加。"""
+    _sandbox(tmp_path, monkeypatch)
+    hs.register("v1")
+    # 模拟登记表已含 DECL 区（历史博茨：旧实现会把新 ART 行写到文件末尾）
+    reg = hs.REGISTRY
+    with reg.open("ab") as f:
+        f.write(("\n" + hs.DECL_SECTION.strip() + "\n"
+                 "| AOS-DECL-001 | v1 | sha256:abc | now | registered |\n").encode("utf-8"))
+    before = reg.read_text(encoding="utf-8")
+    (tmp_path / "docs/aos-spec.md").write_text("# 规范 v2\n新正文", encoding="utf-8")
+    assert hs.supersede("v2", "SPEC-2026-014") == 0
+    after = reg.read_text(encoding="utf-8")
+    art_line = next(l for l in after.splitlines() if l.startswith("| AOS-ART-002 |"))
+    decl_at = after.index("## 声明摘要登记")
+    assert after.index(art_line) < decl_at, "新 ART 行落到 DECL 区之后（E-1 回归）"
+    assert "| AOS-ART-001 |" in before and "| AOS-ART-001 |" in after  # 旧行逐字保留
+
+
 def test_supersede_requires_proposal_ref(tmp_path, monkeypatch):
     """护栏：无治理提案引用 → 拒绝（GOV-1 精神：CLI 只记录，不合成版本）。"""
     _sandbox(tmp_path, monkeypatch)

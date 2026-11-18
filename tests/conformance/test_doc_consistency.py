@@ -162,8 +162,8 @@ def test_declaration_execution_boundaries_disclosed():
         "invariants.gate 必须为 false：没有 tests/invariants 执行点时不得声称已布线")
 
 
-def test_canonical_v21_registration_and_informative_appendices():
-    """v2.1.0 信息性附录与 GOV-3 登记联动；封存登记行逐字保留（P-15）。"""
+def test_canonical_v211_registration_and_informative_appendices():
+    """v2.1.1 附录勘误与 GOV-3 登记联动；封存登记行逐字保留（P-15）。"""
     spec = (ROOT / "docs/aos-spec.md").read_text(encoding="utf-8")
     fp = (ROOT / "docs/SPEC-FINGERPRINT.md").read_text(encoding="utf-8")
     reg = (ROOT / "docs/ARTIFACT-REGISTRY.md").read_text(encoding="utf-8")
@@ -171,9 +171,37 @@ def test_canonical_v21_registration_and_informative_appendices():
     assert "## 附录 S：条件语言最小求值语义（信息性）" in spec
     assert "附录 ×9" in spec and "附录 ×9" in fp
     assert any(l.startswith("| AOS-ART-002 |") and "v2.1.0" in l
-               for l in reg.splitlines())
+               for l in reg.splitlines())                       # 历史行逐字保留
     assert any(l.startswith("| AOS-ART-001 |") and "e6884aed" in l
                for l in reg.splitlines())
-    assert "SPEC-2026-001" in reg
+    assert any(l.startswith("| AOS-ART-003 |") and "v2.1.1" in l
+               for l in reg.splitlines())                       # 现行条目
+    for ref in ("SPEC-2026-001", "SPEC-2026-002"):
+        assert ref in reg
     for rel in ("config/capabilities.yaml", "config/verification.yaml"):
-        assert "spec_ref: AOS-ART-002" in (ROOT / rel).read_text(encoding="utf-8")
+        assert "spec_ref: AOS-ART-003" in (ROOT / rel).read_text(encoding="utf-8")
+
+
+def test_appendix_errata_content_is_accurate():
+    """勘误内容守卫：文献归属谱系正确、4D 立场实质认领、S 语义与实现对齐。"""
+    spec = (ROOT / "docs/aos-spec.md").read_text(encoding="utf-8")
+    # R-1/R-3：Borst 1997 + Studer 1998 归位，Gruber 1995 明确非定义修订
+    assert "Borst（1997）" in spec and "Studer、Benjamins 与 Fensel（1998）" in spec
+    assert "Guarino（1998）" in spec
+    assert "并未以 formal / shared 修订 1993 定义" in spec
+    # R-2：真正的 4D 承诺，非动词义"接续"
+    assert "perdurantism（四维论）" in spec
+    assert "个体是事件流的时间切片" in spec
+    assert "valid_time` 上的函数" in spec
+    assert "Galton" in spec
+    # S-1/S-2：偏函数拒绝 + 无 now
+    assert "env = (snapshot, principal)" in spec
+    assert "偏函数（拒绝语义）" in spec
+    assert "`InterpreterRejected`" in spec
+    # S-3/S-4：真子集 + 范围限定 + 机器核对接线
+    assert "真子集（最小核心片段）" in spec
+    assert "该命题不覆盖完整 R10 profile" in spec
+    assert "tests/conformance/test_boolean_profile_semantics.py" in spec
+    # E-3：头部版本标识与谱系一致
+    assert spec.lstrip().startswith("《AOS：基于本体论的 Agent 系统开发规范》")
+    assert "v2.1.1 · Frozen" in spec
