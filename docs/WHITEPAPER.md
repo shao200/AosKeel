@@ -1,14 +1,17 @@
 # AosKeel 白皮书 —— 本体驱动的企业级 AI 架构迁移引擎
 
-> 版本：v1.0（2026-11）· 语言：中文（术语与正典一致）· 配套：[README](../README.md) · [正式规范](aos-spec.md)
+> 白皮书 v1.0（2026-11，文档版次；对应软件 0.3.0 / 规范 v2.0.0）· 语言：中文（术语与正典一致）· 配套：[README](../README.md) · [中文完整版](README.zh-CN.md) · [正式规范](aos-spec.md)
+> 本白皮书是信息性材料，描述**模板层**能力；不产生规范条款，一切 MUST / MUST NOT 以冻结正典为准。
 
 ## 0. 定位
 
-**AosKeel = 语义提炼 → 契约声明 → 确定性生成 → 闭环治理 的完整技术栈。**
+**AosKeel = 语义提炼 → 契约声明 → 确定性生成 → 闭环治理 的模板层完整技术栈。**
 
-它不只是代码生成器，而是把企业"老系统（Legacy）"向"本体论 + AI"体系迁徙的工程纪律集合。老系统的业务逻辑是"死的"（改动靠人肉）；本体驱动的系统是"活的"（改声明，机器重编译，闸门把关）。
+它不只是代码生成器，而是把企业"老系统（Legacy）"向"本体论 + AI"体系迁徙的工程纪律集合。老系统的业务逻辑是"死的"（改动靠人肉）；本体驱动的系统是"活的"（改声明，机器重编译，闸门把关）。它是**脚手架 / 模板生成系统**，不是运行时产品、推理机或三元组库。
 
-AosKeel 实现的规范是 *AOS: Ontology-Based Agent System Development Specification* v2.0.0（[正式规范](aos-spec.md)）：30 条内核语义、13 条全局不变量、6 条治理条款、33 个验证点，全部机器可校验。
+AosKeel 实现的规范是 *AOS: Ontology-Based Agent System Development Specification* v2.0.0（[正式规范](aos-spec.md)）：30 条内核语义、13 条全局不变量、6 条治理条款、33 个验证点。其中可机械判定的部分由三关闸门与布线套件兑现；〔强〕/mandatory 条款仍须人工在运行系统上执行并留档（§5 诚实边界），本稿不作"全部机器可校验"的宣称。
+
+两个"真源"须分开：**规范条款**的真源是冻结正典 `docs/aos-spec.md`（哈希登记 `AOS-ART-001`）；**业务语义**的真源是 `spec/` 九类声明（YAML，另有独立的声明摘要哈希域）。`spec/` 是被编译的输入，不是规范文本。
 
 ## 1. 理论基座：五层标准模型 + 治理面横切
 
@@ -36,7 +39,7 @@ L5 映射层  spec/mappings/      到后端 / 前端 / 存储 / API 的投影
 
 ## 2. 十条核心纪律（比代码更稀缺的部分）
 
-1. **确定性生成，LLM 只产草案。** 生成物（Command/Query/OAuth2.1 骨架）全部由模板引擎产出、字节级零漂移（release gate 强制）。LLM 的唯一合法位置是 `aos draft` 的候选生产者：LLM 提候选 → 编译闸把关 → 人工裁决晋升。LLM 永远不直接写正典。
+1. **确定性生成，LLM 只产草案。** 生成物（Command/Query/OAuth2.1 骨架）全部由模板引擎产出、字节级零漂移（release gate 强制）。LLM 的唯一合法位置是 `aos draft` / `aos extract` 的候选生产者：LLM 提候选 → 编译闸把关 → 人工裁决晋升。LLM 永远不直接写正典。
 2. **三段闸：草案 → 编译 → 晋升。** 一切素材（需求 DSL、老库 schema、老库数据、文档）进来都是草案（`spec/drafts/`、`data-drafts/`），编译不过不落盘；晋升必须携带治理提案引用（GOV-1：CLI 只记录治理结果，不合成正当性）。
 3. **fail-closed。** 未注册动作没有写路径（INV-1）；角色未出示在触碰存储前拒绝（P-10/INV-4）；未知能力/环/脏行/凭据缺失一律拒绝——系统对"不确定"的回答永远是"不"。
 4. **凭据永不落盘。** 连接串、签名密钥、密码是运行时凭据：命令行传入或环境变量，不进任何声明文件、任何草案、任何报告。
@@ -60,14 +63,14 @@ aos shadow --dsn … --map M           ⑦ 影子对账：行 ↔ 事件语义�
 tools/console.py                     ⑧ WEB 控制台壳（驱动 ①–⑦，白名单 fail-closed）
 ```
 
-新建系统与旧系统迁移收敛到**同一 spec + profile**，后续三关验证（结构指纹 → 密码学哈希 → 声明=注册对账）与发布闸门（47+ 条布线测试、骨架字节校验）完全一致。
+新建系统与旧系统迁移收敛到**同一 spec + profile**，后续三关验证（结构指纹 → 密码学哈希〔同时比对冻结正典与声明摘要两个哈希域〕 → 声明=注册对账）与发布闸门（60 条布线测试、骨架字节校验）完全一致。
 
 ## 4. 六大核心组件 → 实际落点
 
 | 组件 | 落点 | 状态 |
 |---|---|---|
 | Ontology-Core（元模型） | `spec/` 九类声明 + `src/kernel/registration.py` 编译器 + 指纹清单 | ✅ |
-| Legacy-Scanner（老系统扫描） | `aos import-db`（DDL/直连 → 结构草案）；代码/文档语义提取 | 结构 ✅，语义 ⬜ |
+| Legacy-Scanner（老系统扫描） | `aos import-db`（DDL/直连 → 结构草案）；`aos extract`（源码/文档 → 语义草案） | 结构 ✅，语义提取**契约层** ✅（确定性参考提取器 + 可插拔适配器）；真 LLM 起草器属实例侧 |
 | Semantic-DSL（声明式语言） | 需求 DSL + 三段闸 + GOV-1 晋升提案制 | ✅ |
 | AI-Generation Pipeline | 确定性 codegen（治理→CQRS→OAuth2.1 拓扑序）+ draft 闸 | ✅ |
 | Governance-Console | `aos review` + 职责授权矩阵对账 + WEB 壳（白名单） | ✅ |
@@ -79,10 +82,11 @@ tools/console.py                     ⑧ WEB 控制台壳（驱动 ①–⑦，�
 - **不合成正当性。** 岗位、职责、创制任命是世界事件；模板只记录，从不制造（GOV-1）。
 - **实例侧职责清单。** 在线影子流量的拦流记录（探针）、LLM 服务绑定（`aos extract --extractor` 适配器契约）、持久化多进程存储（`kernel/filestore.py` 参考实现已给协议）——内核只提供协议与契约，零部署环境依赖、零 LLM 依赖纪律不变。
 - **结构指纹弱校验是刻意的。** 条款计数与锚点检查；强保证在密码学哈希层。
+- **BOOT-2/3 未实装。** 模板只给脚手架与检查表，`bootstrap --stage 2/3` 返回拒绝；治理工作流与 Identity Context 验收属实例侧世界事件。
 
-## 6. 路线图：已全部清偿
+## 6. 路线图：内核侧已清偿，实例侧如实披露
 
-内核侧路线图项已全部交付（v1.0）。唯一保留的实例侧职责（如实披露，非路线图项）：
+内核侧路线图项已全部交付（文档版次 v1.0；软件版本 0.3.0）。因此上表"状态"列全部为已兑现或已给契约；Remaining 三项是**实例侧职责，不是本模板未完成的路线图项**：
 
 - **探针组件**（在线影子流量的拦流记录）：部署侧职责——内核提供对账协议（`aos shadow-online` 消费探针 NDJSON，契约见工具头注释），探针本身由实例按部署环境实现；
 - **LLM 服务绑定**：实例侧适配器（`aos extract --extractor` 契约）；
@@ -90,6 +94,6 @@ tools/console.py                     ⑧ WEB 控制台壳（驱动 ①–⑦，�
 
 > 语义提取契约层已交付（v1.0，`aos extract`）：内核**不绑定任何 LLM 服务**——提供提取契约 + 确定性参考提取器（零依赖可跑）+ 可插拔适配器（LLM 调用是实例侧职责，契约：stdout YAML `objects[]`）。无论提取器是规则还是 LLM，产物都是草案、都过同一三段闸、晋升都必须 GOV-1 提案——闸门与来源无关；参考提取器只产结构层候选（行为层不编造），置信度如实标注。
 > 在线影子对账协议已交付（v1.0，`aos shadow-online`）：对账协议在内核（状态等价 / 输出等价 / 坏行 fail-closed 零静默），探针在部署侧——与离线 `aos shadow` 共同构成绞杀者模式的双跑闭环。
-> wheel 可安装性已验证（v0.3.0）：`pip wheel .` 构建 `aos_keel-*.whl`（含 src/ + tools/ 与 `aos` console script）；**wheel 不含 docs/spec/config，不是可安装交付物**——脱离源码树运行输出明确 `REFUSED`（机器判据 INTEGRITY-20）。唯一受支持的运行形态是源码树 + `pip install -e .`。
-
+> wheel 构建与拒绝行为已验证（软件 v0.3.0）：`pip wheel .` 构建 `aos_keel-*.whl`（含 src/ + tools/ 与 `aos` console script）；**wheel 不含 docs/spec/config，不是可安装交付物**——脱离源码树运行输出明确 `REFUSED`（机器判据 INTEGRITY-20）。唯一受支持的运行形态是源码树 + `pip install -e .`。
 > frontend.admin_console 生成器已交付（v1.0）：`GUARD`/`FORMS`/`PAGES` 三张声明驱动表 + fail-closed 路由守卫（`can_access`/`nav_for`），与 `command_api.ROUTES` 同源（治理授权链）；UI 组件由实例前端框架消费这些 schema。
+> 双分发工件已交付（ADR-001）：`aoskeel-kernel`（可 pip 装的纯逻辑 wheel，需 `AOSKEEL_ROOT` 注入模板根）与 `aoskeel-template`（源码树 sdist）；不替换根 wheel，也不改变"源码树是唯一受支持运行形态"的边界。

@@ -2,7 +2,11 @@
 
 > 一句话定位：规范驱动开发是方法论，AI 软件工厂是组织与流程载体，
 > 本体论架构是让前两者在语义层面真正"可执行"的基础设施——
-> **AOS 模板生成系统就是这层基础设施的一个完整、可校验的具体实现。**
+> **AOS 模板生成系统就是这层基础设施在模板层的一个完整、可校验的具体实现。**
+>
+> 信息性文档，不产生规范条款。两个"真源"须分开：**规范条款**的真源是冻结正典
+> [`docs/aos-spec.md`](aos-spec.md)（哈希登记 `AOS-ART-001`）；**业务语义**的真源是
+> `spec/` 九类声明（YAML，独立的声明摘要哈希域）。`spec/` 是被编译的输入，不是规范文本本身。
 
 ## 1. 行业叙事与 AOS 的对应
 
@@ -13,14 +17,15 @@ SDLC。规范驱动开发的核心是让 AI 在编码前获得明确、结构化
 条件，产生**语义漂移**——生成代码看似合理，却偏离真实业务含义。
 
 AOS 的回答是把"规范"从人类可读文档升级为**机器可执行、可校验的语义契约**：
-spec/ 九类声明（YAML）作为整个开发过程中唯一的语义真相源（AX-5 Schema 即
-数据 / KS-4.1 声明渲染论），每一步转换都有机械核对点，漂移即拒绝。
+`spec/` 九类声明（YAML）是业务语义的唯一真相源（AX-5 Schema 即
+数据 / KS-4.1 声明渲染论），每一步转换都有机械核对点，漂移即拒绝；规范
+条款本身仍以冻结正典为准（GOV-2.3 哈希 + GOV-3 版本通道）。
 
 ## 2. 条款级对照表
 
 | 行业叙事 | AOS 条款 | 模板兑现 |
 |---|---|---|
-| 机器可读语义真相源 | AX-5 / KS-4.1 | spec/ 九类声明（YAML），registration 五步管线装载 |
+| 机器可读语义真相源 | AX-5 / KS-4.1 | `spec/` 九类声明（YAML，业务语义），registration 五步管线装载 |
 | 语义契约可校验 | VER-12 / VER-18 / VER-21 | 编译期拒绝（上下文 steward、SC 编译、LinkPattern 三项） |
 | 消除语义漂移 | KS-7.2 / INV-13 | declared == registered 双射断言 + reconcile |
 | 规则/权限维度形式化 | R10-R11 / P-10 | 受限解释器 AST 白名单；Agent 能力面 = 清单严格子集 |
@@ -31,7 +36,7 @@ spec/ 九类声明（YAML）作为整个开发过程中唯一的语义真相源�
 
 | 环节 | 现状 | 缺口 | 优先级 |
 |---|---|---|---|
-| 本体建模 | **已兑现（模板层）**：`aos draft` 需求 DSL → 草案（确定性解析器）→ 编译把关（KS-7.1/P-2/R2，未全绿不落盘）→ `aos draft promote --proposal-ref` 晋升正典（GOV-1 提案强制，P-5 单写者落盘）。LLM 起草 = 实例侧 hook，产出同一 DSL、过同一闸门（GOV-6：起草智能可换，把关机械唯一） | 真 NLP 起草器是实例侧/产品侧能力，模板不假装会（见 samples/requirements-sample.txt） | — |
+| 本体建模 | **已兑现（模板层）**：`aos draft` 需求 DSL → 草案（确定性解析器）→ 编译把关（KS-7.1/P-2/R2，未全绿不落盘）→ `aos draft promote --proposal-ref` 晋升正典（GOV-1 提案强制，P-5 单写者落盘）。LLM 起草 = 实例侧 hook，产出同一 DSL、过同一闸门（GOV-6：起草智能可换，把关机械唯一） | 真 NLP 起草器是实例侧/产品侧能力，模板不假装会（见 [需求 DSL 样例](samples/requirements-sample.txt)） | — |
 | 代码生成 | **已兑现**：`aos generate` 声明 → actions.py（INV-1 封装 submit）+ reducers.py（纯函数，声明外字段进 `_undeclared` 漂移可见），手改检测 + provenance 头（`tools/codegen.py`） | 生成物仅骨架层；投影/查询 API 生成可再扩展 | — |
 | 智能体发布 | **已兑现**：`aos release` / `make release` 发布闸门（fail-closed）——三关 + 布线套件 + 骨架一致性全绿才出制品，RELEASE-MANIFEST 随制品落档（`tools/release_gate.py`） | — | — |
 
@@ -47,4 +52,8 @@ spec/ 九类声明（YAML）作为整个开发过程中唯一的语义真相源�
 ## 5. 边界（诚实边界，见 README）
 
 AOS 提供语义骨架、治理机制与验收机械核对点；**不提供**合规证明与治理世界
-事件（创制任命、红队、审批）——模板只记录，不制造（GOV-1）。
+事件（创制任命、红队、审批）——模板只记录，不制造（GOV-1）。同时它是模板
+生成系统：无 DL 推理机、无规划器、无 RDF/SPARQL 三元组库；`AgentRuntime`
+只是能力面过滤 + 委派 `Kernel.submit`，不含自主循环与 LLM 绑定；事件存储
+为内存态（FileStore 为持久化参考实现）。详见[英文首屏 §9](../README.md#9-honest-boundaries-read-before-adopting)
+与[中文完整版 §9](README.zh-CN.md#9-诚实边界采用前先读)。

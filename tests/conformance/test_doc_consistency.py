@@ -72,6 +72,53 @@ def test_readme_command_tables_cover_authoritative_commands():
         assert not missing, f"{rel} 速查表缺命令面 {sorted(missing)}"
 
 
+def test_readme_section_skeleton_is_mirrored():
+    """§§1–9 + 附录 A 的顶层骨架必须逐槽对应——不再只靠人工约定。
+
+    中文 §7 的标题被仓库口径守卫固定以 `## CLI ` 开头，不可直译；因此本测试
+    按「显式槽号」比对（英文 `7.` / 中文「对应英文 §7」/ 双方「附录 A」），
+    而不是按标题文本比对。任一版新增、删除或错序顶层章节都会失败。
+    """
+    expected = list(range(1, 10)) + ["A"]
+
+    def heads_and_slots(rel):
+        txt = (ROOT / rel).read_text(encoding="utf-8")
+        heads = re.findall(r"^##\s+(.+)$", txt, re.M)
+        slots = []
+        for h in heads:
+            m = re.match(r"^(\d+)\.", h)
+            if m:
+                slots.append(int(m.group(1)))
+                continue
+            m = re.search(r"对应英文\s*§\s*(\d+)", h)
+            if m:
+                slots.append(int(m.group(1)))
+                continue
+            if h.startswith("Appendix A") or h.startswith("附录 A"):
+                slots.append("A")
+        return heads, slots
+
+    for rel in ("README.md", "docs/README.zh-CN.md"):
+        heads, slots = heads_and_slots(rel)
+        assert len(heads) == len(expected), (
+            f"{rel} 顶层章节数漂移：期望 {len(expected)}，实得 {len(heads)}：{heads}"
+        )
+        assert slots == expected, f"{rel} 章节骨架未镜像：期望 {expected}，实得 {slots}"
+
+
+def test_readme_editions_cross_link_and_mirror_shared_facts():
+    """两版互链、§1–§9 对偶声明与双分发增量子节必须同时存在。"""
+    en = (ROOT / "README.md").read_text(encoding="utf-8")
+    zh = (ROOT / "docs/README.zh-CN.md").read_text(encoding="utf-8")
+    assert "[简体中文](docs/README.zh-CN.md)" in en
+    assert "[English (default)](../README.md)" in zh
+    assert "ADR-001" in en and "ADR-001" in zh
+    assert "### Two distribution artifacts" in en
+    assert "### 双分发工件" in zh
+    assert "docs/adr/ADR-001-dual-distribution.md" in en
+    assert "adr/ADR-001-dual-distribution.md" in zh
+
+
 def test_no_stale_hand_copied_counts():
     """旧口径不得残留（随本轮修补一并清除）。"""
     stale = {
