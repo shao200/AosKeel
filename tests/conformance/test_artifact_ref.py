@@ -55,7 +55,7 @@ def test_supersede_row_lands_in_art_table_before_decl_section(tmp_path, monkeypa
     """E-1：GOV-3 新登记行 MUST 插在 ART 表尾（DECL 区之前），不得 EOF 追加。"""
     _sandbox(tmp_path, monkeypatch)
     hs.register("v1")
-    # 模拟登记表已含 DECL 区（历史博茨：旧实现会把新 ART 行写到文件末尾）
+    # 模拟登记表已含 DECL 区（历史 bug：旧实现会把新 ART 行写到文件末尾）
     reg = hs.REGISTRY
     with reg.open("ab") as f:
         f.write(("\n" + hs.DECL_SECTION.strip() + "\n"
@@ -77,3 +77,33 @@ def test_supersede_requires_proposal_ref(tmp_path, monkeypatch):
     (tmp_path / "docs/aos-spec.md").write_text("# 规范 v3", encoding="utf-8")
     with pytest.raises(SystemExit, match="REFUSED"):
         hs.supersede("v2", None)
+def test_registry_crlf_working_copy_keeps_old_row_bytes(tmp_path, monkeypatch):
+    """P-15 字节保真：登记表被编辑器存成 CRLF 时，旧行字节（含 \r）原样保留，
+    新行随既有换行风格；spec_ref 回填同样不剥 \r。"""
+    _sandbox(tmp_path, monkeypatch)
+    hs.register("v1")
+    reg, caps = hs.REGISTRY, hs.CAPS
+    old_line = next(l for l in reg.read_bytes().split(b"\n")
+                    if l.startswith(b"| AOS-ART-001 |"))
+    reg.write_bytes(reg.read_bytes().replace(b"\n", b"\r\n"))     # 模拟编辑器 CRLF
+    caps.write_bytes(caps.read_bytes().replace(b"\n", b"\r\n"))
+    (tmp_path / "docs/aos-spec.md").write_text("# 规范 v2\n新正文", encoding="utf-8")
+    assert hs.supersede("v2", "SPEC-2026-014") == 0
+    raw = reg.read_bytes()
+    assert old_line + b"\r" in raw                                # 旧行 \r 未被剥掉
+    assert raw.replace(b"\r\n", b"\n").count(b"| AOS-ART-001 |") == 1
+    new_line = next(l for l in raw.split(b"\r\n") if l.startswith(b"| AOS-ART-002 |"))
+    assert new_line == next(l for l in hs._entries() if "AOS-ART-002" in l).encode("utf-8")
+    assert caps.read_bytes().startswith(b"spec_ref: AOS-ART-002") # 回填正确
+    assert caps.read_bytes().endswith(b"\r\n")                    # CRLF 风格未被改写
+def test_latest_spec_version_follows_registry_then_canonical(tmp_path, monkeypatch):
+    """E-2：版本真源 = 登记表最新条目版本列；登记表为空时回落正典头部
+    （不再硬编码），跃迁自动跟随。"""
+    import cli.main as cm
+    _sandbox(tmp_path, monkeypatch)
+    monkeypatch.setattr(cm, "ROOT", tmp_path)
+    (tmp_path / "docs/aos-spec.md").write_text("《AOS》\nv2.1.1 · Frozen\n正文",
+                                               encoding="utf-8")
+    assert cm._latest_spec_version() == "v2.1.1"                  # 空 → 正典头部回落
+    hs.register("v9.9.9")
+    assert cm._latest_spec_version() == "v9.9.9"                  # 登记后跟随最新条目

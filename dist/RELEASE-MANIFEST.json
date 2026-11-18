@@ -1,5 +1,5 @@
 {
-  "released_at": "2026-11-18T02:58:31+00:00",
+  "released_at": "2026-11-18T03:40:00+00:00",
   "spec_ref": "AOS-ART-003",
   "digest": "sha256:18868adf87a8d25f5c7ee402235afc150cbb1eb80661da90250d0d5b4c63dfd9",
   "registry_entry": "AOS-ART-003",
@@ -22,7 +22,7 @@
     {
       "step": "tests",
       "ok": true,
-      "detail": "60 条布线路径全部通过"
+      "detail": "61 条布线路径全部通过"
     },
     {
       "step": "codegen",

@@ -76,10 +76,10 @@ compiled input, not specification text. Do not describe `spec/` as the canonical
    derives the CLI command count from `src/cli/main.py` dispatch branches and the wiring
    count from `config/verification.yaml`. Current authoritative values:
    `CLI 26 命令面（21 顶层 + 5 子命令）` and
-   `60 条布线（可执行 60 / 缺失 0 / 〔强〕未布线 1）`, plus 28 INTEGRITY regression guards.
+   `61 条布线（可执行 61 / 缺失 0 / 〔强〕未布线 1）`, plus 29 INTEGRITY regression guards.
    `tests/conformance/test_doc_consistency.py` locks the strings that consume them.
-   Test-suite size is quoted as **73 test files / 379 `def test_` functions**; pytest
-   collects 393 cases after parametrisation. Both numbers are correct — different units,
+   Test-suite size is quoted as **73 test files / 381 `def test_` functions**; pytest
+   collects 395 cases after parametrisation. Both numbers are correct — different units,
    so do not "correct" one into the other.
 2. **Changing a fact changes both editions.** Any edit to §§1–9 of one README must be
    mirrored in the other in the same commit. This is now a machine check, not just a

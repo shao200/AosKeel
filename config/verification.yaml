@@ -42,6 +42,7 @@ integrity_paths:
   - { id: INTEGRITY-26, path: tests/conformance/test_competence_questions.py }  # 第二轮：CQ 可执行契约
   - { id: INTEGRITY-27, path: tests/conformance/test_meta_schema.py }           # 第二轮：元 schema 声明化
   - { id: INTEGRITY-28, path: tests/conformance/test_domain_cq.py }             # 第三轮：域无关 CQ 定义
+  - { id: INTEGRITY-29, path: tests/conformance/test_boolean_profile_semantics.py }  # S-4：附录 S 语义机器核对（E-3 布线补登）
 ver:
   - { id: VER-1,  clause: KS-1.2,      kind: auto, path: tests/conformance/test_event_schema.py }
   - { id: VER-2,  clause: KS-7.2,      kind: auto, path: tests/conformance/test_pipeline_order.py }

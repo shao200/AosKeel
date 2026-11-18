@@ -46,27 +46,36 @@ def _set_spec_ref(art_id: str):
     for path in (CAPS, ROOT / "config/verification.yaml"):
         if not path.exists():
             continue
-        lines = path.read_text(encoding="utf-8").splitlines()
-        out = [f"spec_ref: {art_id}   # 登记条目 ID（GOV-2.2）；哈希见登记表"
-               if l.strip().startswith("spec_ref:") else l for l in lines]
-        path.write_bytes(("\n".join(out) + "\n").encode("utf-8"))
+        out = []
+        for l in path.read_bytes().split(b"\n"):     # 字节读写：保留既有换行符
+            if l.strip().startswith(b"spec_ref:"):
+                cr = b"\r" if l.endswith(b"\r") else b""
+                out.append(f"spec_ref: {art_id}   # 登记条目 ID（GOV-2.2）；哈希见登记表"
+                           .encode("utf-8") + cr)
+            else:
+                out.append(l)
+        path.write_bytes(b"\n".join(out))
 def _append_art_rows(rows: list[str]) -> None:
     """把新 ART 登记行插入 ART 表尾（GOV-2.3-DECL 区之前），而非 EOF 追加。
 
     append-only 只约束"旧行逐字不改"，不约束写入位置。原实现用 `open("ab")`
     直接写文件末尾：登记表一旦含 DECL 区，新 ART 行就落进 DECL 表之后，
     下次 `aos spec version` 必然复发（E-1）。此函数定位两段表边界后插入。
+    全程 read_bytes/写回 bytes：登记表被编辑器存成 CRLF 时，旧行字节（含 \r）
+    原样保留，不因 universal newlines 被静默改写为 LF（P-15 字节保真）。
     """
-    text = REGISTRY.read_text(encoding="utf-8")
-    lines = text.split("\n")
-    decl_at = next((i for i, l in enumerate(lines)
-                    if l.startswith("## 声明摘要登记")), len(lines))
+    data = REGISTRY.read_bytes()
+    eol = b"\r\n" if b"\r\n" in data else b"\n"      # 新行随文件既有换行风格
+    lines = data.split(b"\n")
+    decl_mark = "## 声明摘要登记".encode("utf-8")
+    decl_at = next((i for i, l in enumerate(lines) if l.startswith(decl_mark)), len(lines))
     last = 0
     for i in range(min(decl_at, len(lines))):
         if lines[i].strip():
             last = i
-    lines[last + 1:last + 1] = rows
-    REGISTRY.write_bytes("\n".join(lines).encode("utf-8"))
+    cr = b"\r" if eol == b"\r\n" else b""
+    lines[last + 1:last + 1] = [r.encode("utf-8") + cr for r in rows]
+    REGISTRY.write_bytes(b"\n".join(lines))
 
 def register(spec_version: str) -> int:
     digest = canonical_digest()
