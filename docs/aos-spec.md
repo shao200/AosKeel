@@ -1,6 +1,6 @@
 《AOS：基于本体论的 Agent 系统开发规范》
 
-v2.1.1 · Frozen · Signing Pending Verification
+v2.2.0 · Frozen · Signing Pending Verification
 
 签发说明：本包为 v2.0.0，文档架构换代版——法未变，典重修。语义零变更（AX / KS / P / INV / BOOT / VER 与 v1.3.1 / v1.3.2 逐字一致，收敛已经 SpecChange-005/006/007 双方交叉确认）；全部变更落在承载层。版本跳至 2.0.0 的缘由：v1.3.2 确认的根因（介质丢表格）在本版被结构性灭绝——全部规范性内容改为条款块与代码块原生存储，表格仅存导航职责。条款标识符逐字保留（AX-1..5 / KS-1.1..8.5 / P-1..17 / INV-1..13 / BOOT-0..4 / GOV-1..6 / VER-1..33 / 事故 A..R）——标识符是连续性契约，结构服务于标识符。若发现任何语义漂移，按 GOV-6 自曝处置。您收到的文本中若仍有表格，它们仅为导航；一切 MUST 内容都在正文条款块与代码块内。
 
@@ -494,6 +494,10 @@ v2.1.0   信息性附录增量（R 理论谱系与立场 / S 条件语言最小�
 v2.1.1   附录 R/S 内容勘误版（R.1 文献归属 / R.2 4D 立场认领 / S.1-S.4 语义与实现对齐 /
          头部版本标识）；语义零变更；依据 GOV-3 提案 SPEC-2026-002 更替登记条目
          （AOS-ART-002 → AOS-ART-003）
+v2.2.0   附录 R/S 信息性勘误之二（R.2 Hayes/Galton 术语归属更正 / R.2 双时态补录的
+         4D 本体论承诺衔接 / S.4 归纳步数上界更正与参考求值器计步机器核对 /
+         R.6 参考文献表登记）；语义零变更；依据 GOV-3 提案 SPEC-2026-003
+         更替登记条目（AOS-ART-003 → AOS-ART-004）
 ```
 
 ### A.2 v1.3.2 → v2.0.0 delta（结构重构 · 语义零变更）
@@ -518,6 +522,9 @@ v2.1.0 仅增信息性附录 R/S：AX/KS/P/INV/BOOT/GOV/VER 的标识符、条�
 逐字一致；附录 R/S 不产生 MUST 义务，不得作为推翻条款的凭据。
 v2.1.1 为信息性附录**内容勘误**：R.1 文献归属、R.2 4D 立场认领、S.1–S.4 语义与实现对齐、
 头部版本标识更正；条款标识符、条数与语义仍与 v2.0.0 逐字一致，不产生 MUST 义务。
+v2.2.0 为信息性附录**内容勘误**之二：R.2 文献术语归属（Hayes histories / Galton state）、
+双时态补录的 4D 语义衔接、S.4 归纳证明步数上界更正（结论不变）、新增 R.6 参考文献表；
+条款标识符、条数与语义仍与 v2.0.0 逐字一致，不产生 MUST 义务。
 
 ## 附录 B：决策日志与事故类别登记
 
@@ -607,7 +614,7 @@ AOS-ART-NNN | v2.0.0 | 哈希: 签发时由平台计算 | 登记时间: BOOT-0 |
 
 ## 附录 F：条款指纹清单（GOV-2.4）
 
-《AOS 开发规范》v2.1.1 必备条款指纹清单
+《AOS 开发规范》v2.2.0 必备条款指纹清单
 每节核对 = 条数 + 首条锚 + 末条锚，三者齐备方为在场；〔形态〕为编码标注
 
 ```
@@ -638,7 +645,7 @@ VER  ×33 〔代码块〕首"VER-1 事件 schema 八字段完备" / 末"VER-33 �
 完整条款骨架单块——为任何介质、任何副本的一次性核对而设。本块与全文同入哈希域。
 
 ```
-《AOS 开发规范》v2.1.1 便携校验版
+《AOS 开发规范》v2.2.0 便携校验版
 公理 ×5: AX-1 事件即真源 | AX-2 概率提议/确定断言 | AX-3 三分离 |
         AX-4 闭环可审计(擦除降级注) | AX-5 Schema即数据
 内核 ×30: KS-1.1 唯一真源append-only | KS-1.2 事件八字段 | KS-1.3 追加前求值 |
@@ -698,9 +705,15 @@ specification of a shared conceptualization"（共享概念化的形式化显式
 对象的跨时身份由 stream 的连续性给出，任一时刻的状态只是该函数在该 `valid_time` 处的取值，
 由只读投影（P-16 / KS-6）提供；不存在脱离时间切片的"全程同一对象实体"。该图景对接 Galton
 对 continuant（跨时整体在场、属性随时变）与 occurrent（有时间部分、自身无变化）的区分，
-以及 4D fluents 把时变属性显式挂接时间切片的模式（Hayes 1985 称这种横截面为 state）。
+以及 4D fluents 把时变属性显式挂接时间切片的模式——Hayes 1985 将四维对象称 **histories**，
+其 `h@t` 记号即对象在时刻 t 的横截面切片；"给定时刻的 state" 属 continuant–occurrent
+一侧的 Galton 传统，不归给 Hayes（v2.2.0 更正 v2.1.1 的术语误植）。
 AOS 的工程增量是把这一立场落成可执行的提交门：`valid_time ≤ transaction_time`（KS-6.1）、
 追加前求值（KS-1.3）与冲突完整重求值（KS-1.4），使四维切片既是本体论承诺也是审计单位。
+双时态补录在此图景下有直白义：补录（KS-6.3，`valid_time ≤ transaction_time`）不重写过去，
+而是在四维对象上**新增一个时间部分**——`transaction_time` 使新增切片在案，`valid_time`
+把它挂接到历史区段；append-only 因而不只是存储纪律，而是 4D 立场的本体论承诺：
+过去不可改写，只可增切片。
 
 工程边界在此前提下另行成立且不与上述承诺冲突：AOS 接续"本体作为契约"的工程传统，
 **不接续描述逻辑的开放世界自动推理传统**。附录 D 的 OWL↔AOS 不可译表划定该边界：AOS 不宣称
@@ -727,6 +740,39 @@ Jones–Sergot 的规范位置（normative position）语义；治理两分（GO
 上述对接均为谱系定位，**不构成"已形式化归约"的宣称**：道义算子尚未映射为 AOS 的一阶编码；
 制度事实仅以残余清单方式登记，未给出构成性规则的推理演算。此为本版明确的理论欠账，
 供后续 GOV-3 提案逐条收敛，不得以本附录充作已闭合的证据。
+
+### R.6 参考文献（信息性）
+
+附录 R 正文所引文献逐条登记（R.1–R.2 的归属谱系经外部查证，v2.2.0 增补本表）：
+
+```
+[01] Gruber, T. R. (1993). "A translation approach to portable ontology specifications."
+     Knowledge Acquisition, 5(2), 199–220.
+[02] Gruber, T. R. (1995). "Toward principles for the design of ontologies used for
+     knowledge sharing." International Journal of Human–Computer Studies, 43(5–6), 907–928.
+[03] Borst, W. N. (1997). "Construction of formal ontologies for technical systems: towards
+     an engineering of knowledge sharing and reuse." PhD thesis, University of Twente.
+[04] Studer, R., Benjamins, V. R., Fensel, D. (1998). "Knowledge engineering: principles
+     and methods." Data & Knowledge Engineering, 25(1–2), 161–197.
+[05] Guarino, N. (1998). "Formal ontology and information systems." Proc. FOIS'98,
+     IOS Press, 3–15.
+[06] Hayes, P. J. (1985). "Naive Physics I: Ontology for Liquids." In J. R. Hobbs &
+     R. C. Moore (eds.), Formal Theories of the Commonsense World, Ablex, Norwood NJ, 71–107.
+[07] Galton, A., Mizoguchi, R. (2009). "The water falls but the waterfall does not fall:
+     new perspectives on objects, processes and events." Applied Ontology, 4(2), 71–107.
+[08] McCarthy, J., Hayes, P. J. (1969). "Some philosophical problems from the standpoint
+     of artificial intelligence." Machine Intelligence, 4, 463–502.
+[09] Kowalski, R., Sergot, M. (1986). "A logic-based calculus of events."
+     New Generation Computing, 4(1), 67–95.
+[10] von Wright, G. H. (1951). "Deontic logic." Mind, 60(237), 1–15.
+[11] Jones, A. J. I., Sergot, M. (1996). "A formal characterisation of institutionalised
+     power." Journal of the Interest Group in Pure and Applied Logic (IGPL), 4(3), 427–443.
+[12] Searle, J. R. (1995). "The Construction of Social Reality." The Free Press, New York.
+```
+
+本表为信息性登记，不产生 MUST 义务；R.3 / R.4 的对接宣称以对应文献原文为准，
+归属错误按 GOV-6 处置记录更正（对应关系：[01]–[05] → R.1；[06][07] → R.2；
+[08][09] → R.3；[10]–[12] → R.4）。
 
 ## 附录 S：条件语言最小求值语义（信息性）
 
@@ -792,13 +838,18 @@ max / sum / abs / round / sorted）与算术、复合字面量，按同一 AST �
 预算纪律（R8 同源），仍保证停机，但步数界另计。
 
 **证明（S.1 片段）**：按 `Expr` 结构归纳。`Atom` 为常数步，步数为 1；`not e` 的步数为
-`1 + steps(e)`；`and` / `or` 因短路取值，步数 `≤ 1 + max(steps(e1), steps(e2))`。
-由归纳假设 `steps(sub) ≤ |nodes(sub)|`，合取得 `steps(e) ≤ |nodes(e)|`。S.1 的语法无递归、
-循环、函数调用与宿主求值，故不存在非终止归约路径。证毕。
+`1 + steps(e)`；`and` / `or` 最坏情形两侧均求值（短路不保证只走一边），步数
+`≤ 1 + steps(e1) + steps(e2)`（v2.2.0 更正 v2.1.1 的 `≤ 1 + max(steps(e1), steps(e2))`）。
+由归纳假设 `steps(sub) ≤ |nodes(sub)|`，且 `|nodes(and/or e1 e2)| = 1 + |nodes(e1)| + |nodes(e2)|`
+（AST 节点数含 BoolOp 节点），合取仍得 `steps(e) ≤ |nodes(e)|`——结论不变，仅步数上界更正。
+S.1 的语法无递归、循环、函数调用与宿主求值，故不存在非终止归约路径。证毕。
 
-**机器核对（已接线）**：`tests/conformance/test_boolean_profile_semantics.py` 对 S.1 片段逐条
-核对 AST 节点数有界、节点类型全在白名单、树深 `≤ MAX_DEPTH`，并实际调用 `eval_boolean`
-确认有限步返回；对 S.1 之外的扩展语法（白名单调用 / 算术）单独断言其属于完整 profile。
+**机器核对（已接线）**：`tests/conformance/test_boolean_profile_semantics.py` 内置一个 S.3
+求值规则的**参考求值器（带步数计数）**，对生成式 S.1 样例空间批量断言
+`steps(e) ≤ |nodes(e)|`（真实步数断言，非"样例有限步返回"的代理指标），并与实现
+`eval_boolean` 的求值结果逐一比对一致；另核对节点类型全在白名单、树深 `≤ MAX_DEPTH`、
+布尔结果非强转（NON-BOOLEAN-PREDICATE）。对 S.1 之外的扩展语法（白名单调用 / 算术）
+单独断言其属于完整 profile 且只受 AST 白名单 + 深度上限约束。
 该命题约束语法封闭性，不替代 VER-1..33 的任何强制点。
 
 ### S.5 与模板边界的关系
@@ -828,6 +879,13 @@ v2.1.1 为信息性附录**内容勘误版**：更正 R.1 的经典定义归属�
 真子集符合性声明；头部版本标识同步。条款标识符、条数与语义仍与 v2.0.0 逐字一致，
 两附录继续不产生 MUST 义务。按 GOV-3 提案 SPEC-2026-002 更替登记条目
 （AOS-ART-002 → AOS-ART-003）；此项非回退——回退须另开提案以更高版本执行（ADR-003）。
+
+v2.2.0 为信息性附录勘误之二（第五轮评议 N8/N9 收口）：R.2 术语归属更正（Hayes 1985
+histories / `h@t`；state 属 Galton 一侧）与双时态补录的本体论承诺衔接（过去不可改写、
+只可增切片）、S.4 归纳步数上界更正为 `1 + steps(e1) + steps(e2)`（证明结论不变）、
+新增 R.6 参考文献表与参考求值器计步机器核对。条款标识符、条数与语义仍与 v2.0.0 逐字一致，
+附录 R/S 继续不产生 MUST 义务。按 GOV-3 提案 SPEC-2026-003 更替登记条目
+（AOS-ART-003 → AOS-ART-004）。
 
 基座仅三项，公理仅五条，创制任命挂接审计日志第一条。边界经得起修订流程而纹丝不动，才配叫边界。
 v1.3.2 让"没收到"和"不存在"可区分；v2.0 让前者不再发生。法未变，典重修。

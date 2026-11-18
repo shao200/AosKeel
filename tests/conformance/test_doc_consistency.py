@@ -177,11 +177,41 @@ def test_canonical_v211_registration_and_informative_appendices():
     assert any(l.startswith("| AOS-ART-001 |") and "e6884aed" in l
                for l in reg.splitlines())
     assert any(l.startswith("| AOS-ART-003 |") and "v2.1.1" in l
-               for l in reg.splitlines())                       # 现行条目
-    for ref in ("SPEC-2026-001", "SPEC-2026-002"):
+               for l in reg.splitlines())                       # 历史行逐字保留（v2.2.0 后降级）
+    for ref in ("SPEC-2026-001", "SPEC-2026-002", "SPEC-2026-003"):
         assert ref in reg
     for rel in ("config/capabilities.yaml", "config/verification.yaml"):
-        assert "spec_ref: AOS-ART-003" in (ROOT / rel).read_text(encoding="utf-8")
+        assert "spec_ref: AOS-ART-004" in (ROOT / rel).read_text(encoding="utf-8")
+
+
+def test_canonical_v220_errata_and_references():
+    """v2.2.0 信息性勘误之二与 GOV-3 登记联动；v2.1.1 登记行降为历史（P-15）。"""
+    spec = (ROOT / "docs/aos-spec.md").read_text(encoding="utf-8")
+    reg = (ROOT / "docs/ARTIFACT-REGISTRY.md").read_text(encoding="utf-8")
+    fp = (ROOT / "docs/SPEC-FINGERPRINT.md").read_text(encoding="utf-8")
+    assert any(l.startswith("| AOS-ART-003 |") and "v2.1.1" in l
+               for l in reg.splitlines())                       # 历史行逐字保留
+    assert any(l.startswith("| AOS-ART-004 |") and "v2.2.0" in l
+               for l in reg.splitlines())                       # 现行条目
+    assert "v2.2.0 · Frozen" in spec and "v2.2.0 必备条款指纹清单" in fp
+    # R.2 术语归属更正（N9）：histories/h@t 归 Hayes，state 归 Galton 一侧
+    assert "histories" in spec and "h@t" in spec
+    assert "不归给 Hayes" in spec
+    # R.2 双时态补录的本体论承诺衔接：过去不可改写，只可增切片
+    assert "新增一个时间部分" in spec and "只可增切片" in spec
+    # S.4 步数上界更正（N8）：1 + steps(e1) + steps(e2)，结论不变；
+    # 旧不等式只允许在更正标注中作为历史引用出现一次
+    assert "1 + steps(e1) + steps(e2)" in spec
+    assert spec.count("1 + max(steps(e1), steps(e2))") == 1
+    assert "更正 v2.1.1 的 `≤ 1 + max(steps(e1), steps(e2))`" in spec
+    # R.6 参考文献表（N9）：×12 条信息性登记 + 对应关系
+    assert "### R.6 参考文献（信息性）" in spec
+    for needle in ("Galton, A., Mizoguchi, R. (2009)", "Kowalski, R., Sergot, M. (1986)",
+                   "Jones, A. J. I., Sergot, M. (1996)", "von Wright, G. H. (1951)",
+                   "McCarthy, J., Hayes, P. J. (1969)"):
+        assert needle in spec
+    assert "The water falls but the waterfall does not fall" not in spec.split("### R.6")[0]  # 正文不误植术语
+    assert "[06][07] → R.2" in spec
 
 
 def test_appendix_errata_content_is_accurate():
@@ -206,4 +236,4 @@ def test_appendix_errata_content_is_accurate():
     assert "tests/conformance/test_boolean_profile_semantics.py" in spec
     # E-3：头部版本标识与谱系一致
     assert spec.lstrip().startswith("《AOS：基于本体论的 Agent 系统开发规范》")
-    assert "v2.1.1 · Frozen" in spec
+    assert "v2.2.0 · Frozen" in spec

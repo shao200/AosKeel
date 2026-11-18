@@ -7,8 +7,10 @@
 - S-2：求值环境仅 snapshot / principal 两源，`now` 不入 env，宿主时钟被禁；
 - S-3：S.1 语法是 R10 完整 profile 的**真子集**——实现 AST 白名单另许白名单调用、
   算术与复合字面量；SC 编译器只校验首 token 来源，不把表达式限制在 S.1；
-- S-4：`steps(e) ≤ |nodes(e)|` 只对 S.1 片段成立——用 AST 节点计数 + 深度上限 +
-  实际求值返回，使"终止性可核对"从宣称落地为测试。
+- S-4：`steps(e) ≤ |nodes(e)|` 只对 S.1 片段成立——S.3 参考求值器（带步数计数）对
+  生成式样例空间批量断言步数上界并与实现比对一致（v2.2.0：真实计步替代
+  "样例有限步返回"的代理指标，N8 勘误的机器核对兑现）；另以 AST 节点计数 +
+  深度上限守住旧口径。
 
 本文件不新增 MUST 条款；只把信息性附录的陈述钉在实现上（可证伪、可回归）。
 """
@@ -22,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "src"))
 
 from interpreter.boolean_profile import (  # noqa: E402
-    eval_boolean, _ALLOWED_NODES, _ALLOWED_CALLS, MAX_DEPTH,
+    eval_boolean, _ALLOWED_NODES, _ALLOWED_CALLS, MAX_DEPTH, _namespace,
 )
 from kernel.errors import InterpreterRejected  # noqa: E402
 from kernel.sc_compiler import compile_action  # noqa: E402
@@ -102,3 +104,96 @@ def test_s4_s1_fragment_terminates_within_ast_node_bound():
 
         assert _depth(tree) <= MAX_DEPTH
         assert isinstance(eval_boolean(expr, ENV), bool)        # 有限步内返回
+
+
+# ---------- S.3 参考求值器（带步数计数）—— S.4 机器核对的兑现点（v2.2.0 / N8） ----------
+
+_S1_CMP = {ast.Eq: lambda a, b: a == b, ast.NotEq: lambda a, b: a != b,
+           ast.Lt: lambda a, b: a < b, ast.LtE: lambda a, b: a <= b,
+           ast.Gt: lambda a, b: a > b, ast.GtE: lambda a, b: a >= b}
+_S1_IN = {ast.In: lambda a, b: a in b, ast.NotIn: lambda a, b: a not in b}
+
+
+def _ref_eval(node, env):
+    """S.3 求值规则的直接实现（S.1 片段）：返回 (值, 步数)。
+
+    步数口径与 S.4 证明逐字一致：Atom（Compare，操作数子求值计入其常数步）
+    = 1；`not` = 1 + steps(e)；`and` / `or` = 1 + steps(e1) + steps(e2)
+    （最坏情形两侧均求值——短路不保证只走一边，v2.2.0 更正后的上界）。"""
+    if isinstance(node, ast.Expression):
+        return _ref_eval(node.body, env)
+    if isinstance(node, ast.BoolOp):
+        vals = [_ref_eval(v, env) for v in node.values]      # 两侧全部求值
+        steps = 1 + sum(s for _, s in vals)
+        if isinstance(node.op, ast.And):
+            return all(v for v, _ in vals), steps
+        return any(v for v, _ in vals), steps
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+        v, s = _ref_eval(node.operand, env)
+        return (not v), 1 + s
+    if isinstance(node, ast.Compare):
+        table = _S1_CMP if type(node.ops[0]) in _S1_CMP else _S1_IN
+        left, _ = _ref_eval(node.left, env)
+        right, _ = _ref_eval(node.comparators[0], env)
+        return table[type(node.ops[0])](left, right), 1      # Atom = 常数步
+    if isinstance(node, ast.Name):
+        return env[node.id] if isinstance(env, dict) else getattr(env, node.id), 0
+    if isinstance(node, ast.Attribute):
+        base, _ = _ref_eval(node.value, env)
+        return getattr(base, node.attr), 0
+    if isinstance(node, ast.Constant):
+        return node.value, 0
+    raise AssertionError(f"参考求值器不支持 S.1 之外的节点: {type(node).__name__}")
+
+
+_REF_ENV = {"snapshot": {"status": "pending", "amount": 500000},
+            "principal": {"role": "contract_steward",
+                          "contexts": ("ContractContext",)}}
+
+
+def _s1_sample_space():
+    """确定性生成式 S.1 样例空间：原子池 → 逐层 and/or/not 组合（无随机、可复现）。"""
+    atoms = [
+        "snapshot.status == 'pending'",
+        "snapshot.status != 'paid'",
+        "snapshot.amount >= 500000",
+        "snapshot.amount < 499999",
+        "principal.role == 'contract_steward'",
+        "'ContractContext' in principal.contexts",
+        "'Missing' not in principal.contexts",
+    ]
+    level1 = (atoms
+              + [f"not ({a})" for a in atoms]
+              + [f"({a}) and ({b})" for a in atoms for b in atoms]
+              + [f"({a}) or ({b})" for a in atoms for b in atoms])
+    level2 = ([f"({a}) and ({b})" for a in level1[:12] for b in level1[:12]]
+              + [f"({a}) or ({b})" for a in level1[:12] for b in level1[:12]]
+              + [f"not ({a})" for a in level1[:12]])
+    level3 = ([f"({a}) and ({b})" for a in level2[:10] for b in level2[:10]]
+              + [f"({a}) or ({b})" for a in level2[:10] for b in level2[:10]])
+    return level1 + level2 + level3
+
+
+def test_s4_reference_evaluator_steps_within_node_bound_and_agrees_with_impl():
+    """S.4 机器核对升级版：对生成式 S.1 样例空间批量断言——
+    ① `steps(e) ≤ |nodes(e)|`（真实步数断言，对样例空间的 ∀ 量化）；
+    ② 参考求值器与实现 `eval_boolean` 求值结果逐一一致（语义同源）；
+    ③ 节点全在白名单、树深 ≤ MAX_DEPTH（静态同源纪律随行）。
+    样例空间含深度 ≤ 3 的数千条表达式，确定性可复现。"""
+    exprs = _s1_sample_space()
+    assert len(exprs) > 500                                   # 样例空间足够大
+    for expr in exprs:
+        tree = ast.parse(expr, mode="eval")
+        nodes = list(ast.walk(tree))
+        assert all(type(n) in _ALLOWED_NODES for n in nodes)
+        depth = 0
+        stack = [(tree, 1)]
+        while stack:                                          # 迭代求深（防深表达式递归）
+            n, d = stack.pop()
+            depth = max(depth, d)
+            stack.extend((k, d + 1) for k in ast.iter_child_nodes(n))
+        assert depth <= MAX_DEPTH
+        ref_val, steps = _ref_eval(tree, _namespace(_REF_ENV))   # ① 参考语义 + 步数
+        assert steps <= len(nodes), f"步数上界失守: {expr} steps={steps} nodes={len(nodes)}"
+        assert isinstance(ref_val, bool)
+        assert ref_val == eval_boolean(expr, _REF_ENV)        # ② 与实现一致

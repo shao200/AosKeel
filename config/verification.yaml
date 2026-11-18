@@ -2,7 +2,7 @@
 # aos test 与 make test 均以本文件为唯一分组依据——布线文件是承重件，不是装饰。
 # 〔自〕= auto（CI 门禁，gate: true 套件）；〔强〕= mandatory（人工执行，检查表留档）
 version: 1
-spec_ref: AOS-ART-003   # 登记条目 ID（GOV-2.2）；哈希见登记表
+spec_ref: AOS-ART-004   # 登记条目 ID（GOV-2.2）；哈希见登记表
 suites:
   conformance: { gate: true }
   negative: { gate: true }

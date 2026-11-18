@@ -2,7 +2,7 @@
 
 > **Status: informational navigation aid, NOT the specification.** The only normative
 > text is the frozen Chinese canonical [`aos-spec.md`](aos-spec.md) (sha256 `18868adf…`,
-> registered as `AOS-ART-003`, spec v2.1.1). This file is deliberately **outside** the hash coverage
+> registered as `AOS-ART-004`, spec v2.2.0). This file is deliberately **outside** the hash coverage
 > set (`tools/hash_spec.py:CANONICAL_FILES`) and outside the declaration digest domain
 > (`spec/**/*.yaml`). If anything here conflicts with the canonical text, the Chinese
 > canonical wins. Clause identifiers are preserved verbatim; no clause is translated.

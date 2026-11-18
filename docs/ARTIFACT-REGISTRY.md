@@ -7,6 +7,8 @@
 # superseded-via: SPEC-2026-001 → AOS-ART-002（GOV-3 版本通道；前一登记条目由本条目取代，旧行不改写——append-only P-15）
 | AOS-ART-003 | v2.1.1 | sha256:18868adf87a8d25f5c7ee402235afc150cbb1eb80661da90250d0d5b4c63dfd9 | 2026-11-18T02:50:16+00:00 | registered |
 # superseded-via: SPEC-2026-002 → AOS-ART-003（GOV-3 版本通道；前一登记条目由本条目取代，旧行不改写——append-only P-15）
+| AOS-ART-004 | v2.2.0 | sha256:fff3d7e712317ca4e3d199b9bc6974f87470ff19f907a7faf2fc974ae993597e | 2026-11-18T07:42:55+00:00 | registered |
+# superseded-via: SPEC-2026-003 → AOS-ART-004（GOV-3 版本通道；前一登记条目由本条目取代，旧行不改写——append-only P-15）
 
 ## 声明摘要登记（GOV-2.3-DECL；append-only；独立于冻结正典域）
 

@@ -1,8 +1,8 @@
 {
-  "released_at": "2026-11-18T06:53:19+00:00",
-  "spec_ref": "AOS-ART-003",
-  "digest": "sha256:18868adf87a8d25f5c7ee402235afc150cbb1eb80661da90250d0d5b4c63dfd9",
-  "registry_entry": "AOS-ART-003",
+  "released_at": "2026-11-18T07:55:41+00:00",
+  "spec_ref": "AOS-ART-004",
+  "digest": "sha256:fff3d7e712317ca4e3d199b9bc6974f87470ff19f907a7faf2fc974ae993597e",
+  "registry_entry": "AOS-ART-004",
   "steps": [
     {
       "step": "structural",

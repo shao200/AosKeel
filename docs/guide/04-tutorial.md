@@ -49,7 +49,7 @@ cd my-org-system
 预期：
 
 ```
-INITIALIZED: ...\my-org-system（128 文件；TEMPLATE-LOCK: template 0.3 × v2.1.1 × AOS-ART-003）
+INITIALIZED: ...\my-org-system（128 文件；TEMPLATE-LOCK: template 0.3 × v2.2.0 × AOS-ART-004）
 下一步: cd 实例 && python src/cli/main.py bootstrap --stage 0
 ```
 

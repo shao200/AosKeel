@@ -1,18 +1,18 @@
-# AosKeel —— 基于本体论的 Agent 系统开发模板（软件 v0.3.0 / 规范 v2.1.1）
+# AosKeel —— 基于本体论的 Agent 系统开发模板（软件 v0.3.0 / 规范 v2.2.0）
 
 > **语言 / Language**：**简体中文** · [English (default)](../README.md)
 >
 > **本页 §1–§9 与仓库根英文首屏逐节对应**：章节顺序、事实、数字、边界一致，只是语言不同；附录 A 是本版独有的完整模板树（英文版为精简版）。中文 §7 标题按仓库口径守卫固定为 `## CLI …`，其位置即英文 §7。两者对规范性事实若有分歧，以中文冻结正典为准；效力与语言矩阵见 [docs/README.md](README.md#语言与效力矩阵)。
 >
-> **三个版本号不要混用**：软件 `0.3.0`（`pyproject.toml`、git tag `v0.3.0`）、规范 `v2.1.1`（冻结、哈希登记）、白皮书与战略稿 `v1.0`（文档版次）。
+> **三个版本号不要混用**：软件 `0.3.0`（`pyproject.toml`、git tag `v0.3.0`）、规范 `v2.2.0`（冻结、哈希登记）、白皮书与战略稿 `v1.0`（文档版次）。
 >
 > 正典规范（[aos-spec.md](aos-spec.md)）为中文冻结文本，未作翻译；`docs/` 下其余规范类文档（SPEC-FINGERPRINT / ARTIFACT-REGISTRY / WHITEPAPER / POSITIONING / RUNBOOK）与九篇指南同样保持中文。英文读者可看[英文概览](aos-spec.en-overview.md)——它是**非规范导航件**，不翻译正典、不进哈希域，发生冲突以中文正典为准。
 
 **定位**：规范驱动开发是方法论，AI 软件工厂是组织与流程载体，本体论架构是让前两者在语义层面真正"可执行"的基础设施——本项目是这层基础设施在**模板层**的一个完整、可校验的具体实现（条款级对照与全链路缺口地图见 [POSITIONING.md](POSITIONING.md)）。对标 `npm create vue` / VS 项目模板：从 0 到 1 实例化一个基于本体论的、治理内建的企业级 Agent 系统；**不是运行时产品**——实例化源码树、声明领域，再由编译器与闸门决定系统是否允许启动。
 
-需区分两个"真源"：**规范条款的真源**是冻结正典 `docs/aos-spec.md`（哈希登记，`AOS-ART-003`；附录 R/S 为信息性增量）；**业务语义的真源**是 `spec/` 九类声明（YAML，另有独立的声明摘要哈希域）。`spec/` 是被编译的输入，不是规范文本本身。
+需区分两个"真源"：**规范条款的真源**是冻结正典 `docs/aos-spec.md`（哈希登记，`AOS-ART-004`；附录 R/S 为信息性增量）；**业务语义的真源**是 `spec/` 九类声明（YAML，另有独立的声明摘要哈希域）。`spec/` 是被编译的输入，不是规范文本本身。
 
-正典规范：《AOS：基于本体论的 Agent 系统开发规范》v2.1.1（[docs/aos-spec.md](aos-spec.md)，登记条目见 [docs/ARTIFACT-REGISTRY.md](ARTIFACT-REGISTRY.md)）。
+正典规范：《AOS：基于本体论的 Agent 系统开发规范》v2.2.0（[docs/aos-spec.md](aos-spec.md)，登记条目见 [docs/ARTIFACT-REGISTRY.md](ARTIFACT-REGISTRY.md)）。
 
 ---
 
@@ -296,7 +296,7 @@ python tools/console.py                # 8. WEB 控制台壳（白名单，fail-
 - **哈希域刻意收窄。** 冻结字节仅 `docs/aos-spec.md` + `docs/SPEC-FINGERPRINT.md`，另有独立的 `spec/**/*.yaml` 声明摘要。指南、白皮书、战略稿、评审记录与两版 README 均为信息性文档，不在两域内；见语言与效力矩阵。
 - **探针与 LLM 绑定在实例侧。** 内核只给对账协议（`aos shadow-online` 消费探针 NDJSON）与提取适配器契约（`aos extract --extractor`）；拦流探针与真实 LLM 调用属部署侧，内核零部署环境依赖、零 LLM 依赖。
 - **字节精确、处处 fail-closed。** 所有写入点为 UTF-8 + LF，`.gitattributes * -text` 禁止换行转换，外部改成 CRLF 时 `generate` / `release` 以字节漂移拒绝；`config/verification.yaml` 声明了 `path` 而文件不存在 → `aos test` 与 `aos release` **阻断**，不再静默降级。
-- **语言与效力。** 冻结正典（`docs/aos-spec.md` v2.1.1）、指纹清单、九篇指南、白皮书、定位、Runbook 与登记表均为中文。英文配套件各有明确边界：根 README 与本页是同一页的双语版，`STRATEGY.en.md` 是中文战略稿的英文版，`aos-spec.en-overview.md` 是**非规范导航件**（既不翻译条款，也不翻译规范性正文）。任何冲突以中文正典为准。
+- **语言与效力。** 冻结正典（`docs/aos-spec.md` v2.2.0）、指纹清单、九篇指南、白皮书、定位、Runbook 与登记表均为中文。英文配套件各有明确边界：根 README 与本页是同一页的双语版，`STRATEGY.en.md` 是中文战略稿的英文版，`aos-spec.en-overview.md` 是**非规范导航件**（既不翻译条款，也不翻译规范性正文）。任何冲突以中文正典为准。
 
 **这个模板给什么、不给什么：**
 
@@ -323,7 +323,7 @@ python tools/console.py                # 8. WEB 控制台壳（白名单，fail-
 
 `packages/` 为增量新增，未替换根 wheel：`aoskeel-kernel` 是可 `pip install` 的纯逻辑 wheel（kernel / interpreter / generated / agents），`aoskeel-template` 是携带 docs/spec/config 的源码树 sdist，作 `aos init` 的模板源。kernel wheel 装进 site-packages 后须设置 `AOSKEEL_ROOT` 指向一份模板根，`registration` / `session` 才能读到 `config/` 与 `spec/`；未设置时行为与源码树内运行逐字一致（零回归）。`aos init` 仍从本地源码树复制，未引入网络拉取。见 [ADR-001](adr/ADR-001-dual-distribution.md) 与两个包的 README。
 
-布线件 `config/verification.yaml` 由 `tools/wiring.py` 统一用 pyyaml 解析；`integrity_paths` 段只登记回归守卫测试的执行路径，**不构成新 VER 条款**（v2.1.1 冻结条款集仍为 VER-1..33，指纹清单与登记哈希均未改动）。
+布线件 `config/verification.yaml` 由 `tools/wiring.py` 统一用 pyyaml 解析；`integrity_paths` 段只登记回归守卫测试的执行路径，**不构成新 VER 条款**（冻结条款集始终为 VER-1..33，v2.1.1 → v2.2.0 均未改动条款；登记哈希随 GOV-3 版本更替）。
 
 完整细节：[docs/README.md](README.md)（索引 + 语言与效力矩阵）· [English](../README.md) · [Positioning](POSITIONING.md) · [Whitepaper](WHITEPAPER.md) · [Runbook](RUNBOOK.md) · [英文概览（非规范）](aos-spec.en-overview.md) · [正典规范](aos-spec.md)。
 
@@ -335,7 +335,7 @@ python tools/console.py                # 8. WEB 控制台壳（白名单，fail-
 README.md                      仓库根首屏入口（英文默认、完整版 = 唯一英文真源）
 docs/README.md                 文档索引（薄指针 + 语言与效力矩阵）
 docs/README.zh-CN.md           本文件（简体中文完整版，§1–§9 与英文版逐节对应）
-docs/aos-spec.md               正典规范 v2.1.1（冻结，哈希登记 AOS-ART-003；附录 R/S 为信息性）
+docs/aos-spec.md               正典规范 v2.2.0（冻结，哈希登记 AOS-ART-004；附录 R/S 为信息性）
 docs/aos-spec.en-overview.md   英文概览（非规范导航件；不进哈希域、不翻译条款）
 docs/SPEC-FINGERPRINT.md       条款指纹清单（正典之二，GOV-2.4）
 docs/ARTIFACT-REGISTRY.md      工件登记（append-only，GOV-2.3；实例自行重新登记）
