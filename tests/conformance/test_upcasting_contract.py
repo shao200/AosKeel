@@ -20,6 +20,13 @@ def test_chain_completes_to_delivered_version():
     register_upcaster("Order", 2, lambda p: {**p, "currency": "CNY"})
     v, data = upcast("Order", 1, {"qty": 3})
     assert v == CURRENT["Order"] and data["amount"] == 3 and data["currency"] == "CNY"
+
+def test_current_covers_example_domain():
+    """示例域 Contract 与 Order 同在 CURRENT 登记；无链仍 fail-closed。"""
+    assert CURRENT.get("Contract") == 1
+    assert upcast("Contract", 1, {"status": "draft"}) == (1, {"status": "draft"})
+    with pytest.raises(UpcastingFailed, match="UPCAST-PATH-MISSING"):
+        upcast("Contract", 0, {"status": "draft"})
 def test_upcast_is_pure_no_input_mutation():
     register_upcaster("Order", 2, lambda p: {**p, "currency": "CNY"})
     src = {"qty": 3}

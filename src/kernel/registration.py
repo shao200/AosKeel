@@ -16,7 +16,7 @@
 调用点三处：内核启动（失败=不发布能力清单=不启动）· aos verify（静态核对）·
 治理 Action 生效后重跑（GOV-4）。
 """
-import json, sys
+import sys
 from pathlib import Path
 try:
     import yaml
@@ -325,16 +325,39 @@ def apply_generated() -> dict:
             lines.append(f"  - {{ {inner} }}")
     CAPS.write_bytes(("\n".join(lines) + "\n").encode("utf-8"))   # 字节精确（* -text）
     return generated
+def _index_by_id(entries: list[dict], seg: str) -> dict[str, dict]:
+    """按 id 建显式单射索引；缺 id / 重复 id 即拒（INV-13 双射的单射侧）。"""
+    out: dict[str, dict] = {}
+    for e in entries:
+        eid = e.get("id")
+        if not isinstance(eid, str) or not eid:
+            raise RegistrationFailed(f"RECONCILE-FAILED: {seg} 段条目缺 id: {e!r}")
+        if eid in out:
+            raise RegistrationFailed(
+                f"RECONCILE-FAILED: {seg} 段重复 id {eid!r} —— 双射要求单射（INV-13）")
+        out[eid] = {k: _norm(v) for k, v in e.items()}
+    return out
+
+def reconcile_bijection(declared: list[dict], registered: list[dict], seg: str) -> None:
+    """declared == registered 的显式双射判据（INV-13 / KS-7.2 第 5 步）。
+
+    按 id 建两侧索引后构造双向映射：单射（无重复 id）+ 两侧键集相等 + 同键内容相等。
+    与原先「两段 list 的 json.dumps 文本相等」相比，顺序无关、不再依赖序列化细节，
+    并显式拒绝重复注入。任一侧失败即 fail-closed。
+    """
+    d, r = _index_by_id(declared, seg), _index_by_id(registered, seg)
+    missing = sorted(set(d) - set(r))
+    extra = sorted(set(r) - set(d))
+    drift = sorted(k for k in set(d) & set(r) if d[k] != r[k])
+    if missing or extra or drift:
+        raise RegistrationFailed(
+            f"RECONCILE-FAILED: {seg} 段 declared != registered（显式双射）\n"
+            f"  missing = {missing}\n  extra   = {extra}\n  drift   = {drift}")
+
 def run_pipeline() -> dict:
     """KS-7.2 五步管线；返回 generated 段。不一致即抛 RegistrationFailed。"""
     generated = _compute_generated()
     caps = load_caps()                                              # 5 reconcile（INV-13）
     for seg in ("write_actions", "channel_writes"):
-        declared = [{k: _norm(v) for k, v in e.items()} for e in generated[seg]]
-        registered = [{k: _norm(v) for k, v in e.items()} for e in caps.get(seg, [])]
-        if json.dumps(declared, sort_keys=True) != json.dumps(registered, sort_keys=True):
-            raise RegistrationFailed(
-                f"RECONCILE-FAILED: {seg} 段 declared != registered\n"
-                f"  declared   = {json.dumps(declared, ensure_ascii=False)}\n"
-                f"  registered = {json.dumps(registered, ensure_ascii=False)}")
+        reconcile_bijection(generated[seg], caps.get(seg, []), seg)
     return generated

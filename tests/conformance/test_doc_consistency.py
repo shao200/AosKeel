@@ -139,3 +139,24 @@ def test_no_stale_hand_copied_counts():
         txt = (ROOT / rel).read_text(encoding="utf-8")
         for needle in needles:
             assert needle not in txt, f"{rel} 仍有旧口径 {needle!r}"
+
+
+def test_declaration_execution_boundaries_disclosed():
+    """无运行时消费者的声明字段必须在两版 §9 同时披露，且 invariants.gate 保持 false。"""
+    anchors = {
+        "README.md": [
+            "invariants: {gate: false}", "kernel/detector.py", "kernel/dryrun.py",
+            "Agent 权限 = 角色 × 所在上下文", "Frozen bytes cover",
+        ],
+        "docs/README.zh-CN.md": [
+            "invariants: {gate: false}", "kernel/detector.py", "kernel/dryrun.py",
+            "Agent 权限 = 角色 × 所在上下文", "冻结字节仅",
+        ],
+    }
+    for rel, needles in anchors.items():
+        txt = (ROOT / rel).read_text(encoding="utf-8")
+        for needle in needles:
+            assert needle in txt, f"{rel} §9 缺执行边界披露 {needle!r}"
+    cfg = (ROOT / "config/verification.yaml").read_text(encoding="utf-8")
+    assert re.search(r"invariants:\s*\{\s*gate:\s*false\s*\}", cfg), (
+        "invariants.gate 必须为 false：没有 tests/invariants 执行点时不得声称已布线")

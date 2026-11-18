@@ -8,7 +8,7 @@
 from __future__ import annotations
 from kernel.errors import UpcastingFailed
 _CHAINS: dict[tuple[str, int], object] = {}
-CURRENT: dict[str, int] = {"Order": 3}      # 各类型当前交付 schema 版本（声明处）
+CURRENT: dict[str, int] = {"Order": 3, "Contract": 1}  # 各类型当前交付 schema 版本（与示例域同源）
 def register_upcaster(event_type: str, from_version: int, fn):
     """fn: payload -> payload 纯映射；含副作用/读环境的 upcaster 在实例侧注册即拒
     （模板层以行为核对：同输入必同输出，见 VER-14 golden）。"""

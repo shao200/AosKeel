@@ -76,8 +76,8 @@ compiled input, not specification text. Do not describe `spec/` as the canonical
    `CLI 26 命令面（21 顶层 + 5 子命令）` and
    `60 条布线（可执行 60 / 缺失 0 / 〔强〕未布线 1）`, plus 28 INTEGRITY regression guards.
    `tests/conformance/test_doc_consistency.py` locks the strings that consume them.
-   Test-suite size is quoted as **72 test files / 369 `def test_` functions**; pytest
-   collects 383 cases after parametrisation. Both numbers are correct — different units,
+   Test-suite size is quoted as **72 test files / 372 `def test_` functions**; pytest
+   collects 386 cases after parametrisation. Both numbers are correct — different units,
    so do not "correct" one into the other.
 2. **Changing a fact changes both editions.** Any edit to §§1–9 of one README must be
    mirrored in the other in the same commit. This is now a machine check, not just a
@@ -85,7 +85,8 @@ compiled input, not specification text. Do not describe `spec/` as the canonical
    `tests/conformance/test_doc_consistency.py` locks the 11 top-level slots
    (§§1–9 + Appendix A) in both editions, and
    `test_readme_editions_cross_link_and_mirror_shared_facts` locks the cross-links
-   and the shared dual-distribution subsection.
+   and the shared dual-distribution subsection. Execution-boundary disclosures are
+   locked by `test_declaration_execution_boundaries_disclosed`.
 3. **Run the guards after editing docs**: `python -m pytest -q tests/conformance/test_doc_consistency.py`
    and `aos verify`. Editing any document outside `aos-spec.md` / `SPEC-FINGERPRINT.md`
    does not change the canonical hash; changing either of those requires the GOV-3

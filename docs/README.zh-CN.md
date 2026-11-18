@@ -55,7 +55,7 @@ AosKeel 是**治理性本体脚手架**，不是推理机、规划器或三元�
 | 类 Class | `ObjectType` | `spec/ontology/objects/*.object.yaml` |
 | 数据 / 对象属性 | `Property`（可标 `decision_relevant`） | 对象声明 |
 | 关系 Relation | `LinkType`——结构性、零业务语义 | `spec/ontology/links/*.link.yaml` |
-| 公理 / 规则 | 不变量三元组 + 受限布尔函数 | `spec/invariants/`、`src/interpreter/` |
+| 公理 / 规则 | 不变量三元组 + 受限布尔函数（声明与文档视图；运行时检测器属实例侧，见 §9） | `spec/invariants/`、`src/interpreter/` |
 | 个体 / 三元组 | 事件投影状态 / 八字段不可变事件 | `src/kernel/projection.py`、`src/kernel/store.py` |
 | *（无对应）* | `ActionType`、能力清单、会话流、创世窗口 | `spec/ontology/actions/`、`config/capabilities.yaml`、`src/kernel/session.py`、`src/kernel/genesis.py` |
 
@@ -291,6 +291,9 @@ python tools/console.py                # 8. WEB 控制台壳（白名单，fail-
 - **wheel 是构建产物，不是交付物。** `pip wheel .` 可构建 `aos_keel-*.whl`（含 src/ + tools/ 与 `aos` console script），但不含 docs/spec/config；脱离源码树运行输出明确 `REFUSED`（INTEGRITY-20）。唯一受支持的运行形态是源码树 + `pip install -e .`，让正典声明与代码同版本管理。
 - **控制台是壳，且离线的那个。** `tools/console.py` 经 subprocess 驱动 CLI，命令白名单 fail-closed，治理签署类命令（release/register/bootstrap）刻意不提供；`aos shadow` 是离线对账，在线双跑流量比对属部署阶段职责。
 - **结构指纹刻意弱校验。** 只核对条数与首尾锚点；强保证来自密码学全文哈希层。
+- **无运行时消费者的声明字段属实例侧。** `spec/invariants/*.yaml` 的 `declaration.expression` 是规范表达与文档视图（`tools/domain_manual.py` 渲染），注册期只核 `repair_binding`；`Detector` 接口（`kernel/detector.py`）接收 Python callable。接入检测器并开闸是实例侧义务——`config/verification.yaml` 保持 `invariants: {gate: false}` 作为机器标记。同理 `dry_run: required` 编译为布尔标志并蕴含 `audit: required`，但 `Kernel.submit` 从不读取：`kernel/dryrun.py` 是提交前演练的库级 API，CLI 无 `aos dryrun` 命令。
+- **角色强制、上下文仅供环境。** `Kernel.submit` 从证据强制 required roles；`permissions.contexts` 只做注册期引用完整性检查，并作为快照注入条件求值环境。正典的能力面规则（`Agent 权限 = 角色 × 所在上下文`，INV-4）由实例侧能力配置／投影兑现，模板层不设自动上下文门禁。
+- **哈希域刻意收窄。** 冻结字节仅 `docs/aos-spec.md` + `docs/SPEC-FINGERPRINT.md`，另有独立的 `spec/**/*.yaml` 声明摘要。指南、白皮书、战略稿、评审记录与两版 README 均为信息性文档，不在两域内；见语言与效力矩阵。
 - **探针与 LLM 绑定在实例侧。** 内核只给对账协议（`aos shadow-online` 消费探针 NDJSON）与提取适配器契约（`aos extract --extractor`）；拦流探针与真实 LLM 调用属部署侧，内核零部署环境依赖、零 LLM 依赖。
 - **字节精确、处处 fail-closed。** 所有写入点为 UTF-8 + LF，`.gitattributes * -text` 禁止换行转换，外部改成 CRLF 时 `generate` / `release` 以字节漂移拒绝；`config/verification.yaml` 声明了 `path` 而文件不存在 → `aos test` 与 `aos release` **阻断**，不再静默降级。
 - **语言与效力。** 冻结正典（`docs/aos-spec.md` v2.0.0）、指纹清单、九篇指南、白皮书、定位、Runbook 与登记表均为中文。英文配套件各有明确边界：根 README 与本页是同一页的双语版，`STRATEGY.en.md` 是中文战略稿的英文版，`aos-spec.en-overview.md` 是**非规范导航件**（既不翻译条款，也不翻译规范性正文）。任何冲突以中文正典为准。
@@ -309,6 +312,9 @@ python tools/console.py                # 8. WEB 控制台壳（白名单，fail-
 | 事件存储 | `EventStore` 为**纯内存** dict；`kernel/filestore.py` 提供 FileStore 持久化参考实现（JSONL 追加 + 启动重放，单写进程模型） | 生产多进程部署须以数据库实现同一协议（streams 只读 · `commit` 唯一写面 · audit 只增），并自行证明 append-only 与审计持久性 |
 | 探针与 LLM 在实例侧 | 在线影子流量的拦流探针与 LLM 服务绑定都是实例侧职责；内核只提供对账协议与提取契约 | 按部署环境实现探针组件；LLM 调用写进自己的适配器——内核零部署环境依赖、零 LLM 依赖 |
 | 结构层指纹 | 核对"条数 + 首锚 + 末锚"，**不校验中间条款内容**；强保证来自密码学层全文哈希（GOV-2.3） | 中间条款被改而首尾不变 → 结构层 PASS，靠哈希层拦截；这是附录 F 清单定义的取舍 |
+| 声明字段消费者 | `invariant.expression` 为文档视图；`dry_run` 为演练标志；`invariants: {gate: false}` | 实例侧注册 detector callable 并开闸；提交前自行调用 `kernel.dryrun.dryrun()` |
+| 角色 / 上下文 | 提交时从证据强制 roles；contexts 仅引用检查 + 环境快照 | 实例侧以能力配置／投影兑现能力面（INV-4） |
+| 哈希域 | 正典两文件 + `spec/**/*.yaml` 声明摘要 | 指南／白皮书／战略稿为信息性，不在冻结域 |
 | BOOT-2/3 | 模板只给脚手架与检查表，`bootstrap --stage 2/3` 返回拒绝 | 治理工作流与 Identity Context 验收属实例侧世界事件（GOV-1） |
 | 〔强〕项 | VER-24/26/27/28/29 的机器可判部分**已布线进测试套件**（replay/redteam/完备性壳）；VER-20（创制验收）保持纯人工 | 人工执行 + evidence / judge / signer 留档不变——接线 ≠ 替代人签，模板不伪装通过 |
 | 字节精确 | 所有写入点为 UTF-8 + LF 字节写入；`.gitattributes * -text` 禁止换行转换 | 生成物/登记/清单被外部工具改成 CRLF 时，`generate`/`release` 以字节级漂移拒绝 |
