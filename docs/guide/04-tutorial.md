@@ -126,6 +126,7 @@ BOOT-0-DONE: 内核部署 + 能力清单发布 + 工件哈希登记（附录 E �
 
 动作: CreateOrder
   聚合: OrderAggregate
+  角色: order_clerk
   参数: order_id(必填), total(选填)
   结构: exists order_id
   条件: snapshot.status == 'open'

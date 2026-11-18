@@ -105,11 +105,16 @@ python src/cli/main.py draft promote spec/drafts/claims.yaml --proposal-ref SPEC
 
 动作: SettleClaim
   聚合: ClaimAggregate
+  角色: claims_adjuster
   参数: claim_id(必填)
   结构: exists claim_id
   条件: snapshot.status == 'approved'
   效果: status=settled
 ```
+
+`角色:` 键 MUST 非空：无角色动作被 `ROLE-MISSING` 拒绝晋升（P-10/KS-2 fail-closed）——
+否则空 roles 在管线与网关守卫中双短路为"不设限"。晋升时声明角色还须有治理面职责项背书
+（L3/L4 对账），否则 `apply_generated` 失败回滚。
 
 晋升后注册管线单写更新能力清单（P-5），`declared == registered` 对账必然全绿。
 

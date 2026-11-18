@@ -16,6 +16,7 @@
       属性: status, amount, party_refs
     动作: ApproveContract
       聚合: ContractAggregate
+      角色: contract_steward
       参数: contract_id(必填), approver_comment(选填)
       结构: exists contract_id; max_len approver_comment 2000
       条件: snapshot.status == 'pending'
@@ -47,7 +48,8 @@ def parse_requirements(text: str) -> dict:
             objects.append(cur); continue
         if s.startswith("动作:"):
             cur = {"action_type": s.split(":", 1)[1].strip(), "aggregate": "",
-                   "params": {}, "structural": [], "conditional": [], "effects": {}}
+                   "roles": [], "params": {}, "structural": [],
+                   "conditional": [], "effects": {}}
             actions.append(cur); continue
         if s.startswith("聚合体:"):                                   # 与动作块内的"聚合:"键区分
             cur = {"aggregate": s.split(":", 1)[1].strip(),
@@ -60,6 +62,8 @@ def parse_requirements(text: str) -> dict:
                              f"（须位于 对象:/动作:/聚合体: 块内）")
         if cur.get("action_type"):
             if key == "聚合": cur["aggregate"] = val
+            elif key == "角色":
+                cur["roles"] = [x.strip() for x in val.split(",") if x.strip()]
             elif key == "参数":
                 for part in val.split(","):
                     name, _, req = part.strip().partition("(")
@@ -107,7 +111,7 @@ def _action_decl(a: dict, provenance: str) -> dict:
                        for k, req in a["params"].items()},
             "submission_criteria": {"structural": a["structural"],
                                     "conditional": _cond_block(a["conditional"])},
-            "permissions": {"roles": [], "contexts": []},
+            "permissions": {"roles": a.get("roles") or [], "contexts": []},
             "audit": "required"}
     if a.get("effects"):
         decl["effects"] = a["effects"]
@@ -133,6 +137,10 @@ def validate_draft(decls: dict) -> list[str]:
             failures.append(f"AGGREGATE-NOT-DECLARED: {a['action_type']} 引用的聚合 "
                             f"{a['aggregate']} 未登记（先补 聚合体: 块，P-2 闸门先于动作）")
             continue
+        if not a.get("roles"):
+            failures.append(f"ROLE-MISSING: {a['action_type']}（动作 MUST 声明 角色: "
+                            f"—— P-10 / KS-2：空角色 = 管线与网关守卫双短路，即不设限，"
+                            f"fail-closed 拒绝晋升无源之水）")
         try:
             compile_action(_action_decl(a, "DRAFT"), "DRAFT")       # KS-7.1 把关
         except Exception as e:

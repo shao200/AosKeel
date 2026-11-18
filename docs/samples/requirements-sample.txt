@@ -1,6 +1,7 @@
 # 需求文本样例（aos draft docs/samples/requirements-sample.txt --name order）
-# 语法：对象:/动作: 开块；块内 标识/属性/聚合/参数/结构/条件/效果 缩进键。
+# 语法：对象:/动作: 开块；块内 标识/属性/聚合/角色/参数/结构/条件/效果 缩进键。
 # LLM 起草 hook 输出同一格式（GOV-6：起草智能可换，把关机械唯一）。
+# 动作块 角色: 键 MUST 非空 —— 无角色动作会被 ROLE-MISSING 拒绝（P-10/KS-2 fail-closed）。
 
 聚合体: OrderAggregate
   流: domain:OrderAggregate
@@ -12,6 +13,7 @@
 
 动作: CreateOrder
   聚合: OrderAggregate
+  角色: order_clerk
   参数: order_id(必填), total(选填)
   结构: exists order_id
   条件: snapshot.total < 1000000

@@ -20,6 +20,7 @@ REQ = """聚合体: OrderAggregate
 
 动作: CreateOrder
   聚合: OrderAggregate
+  角色: contract_steward
   参数: order_id(必填), total(选填)
   结构: exists order_id
   条件: snapshot.status == 'open'
@@ -46,22 +47,30 @@ def test_parse_is_deterministic():
     assert d1["aggregates"][0]["evaluation_budget"] == 10000
     assert d1["objects"][0]["identity"] == "order_id"
     assert d1["actions"][0]["params"] == {"order_id": True, "total": False}
+    assert d1["actions"][0]["roles"] == ["contract_steward"]
     assert d1["actions"][0]["conditional"] == ["snapshot.status == 'open'"]
 def test_bad_syntax_rejected_not_written(sandbox_spec):
     """把关三线：预算超限 / 聚合缺失 / 条件违反 R2 源头 —— 均不落盘。"""
     bad = REQ.replace("预算: 10000", "预算: 999999") \
              .replace("条件: snapshot.status == 'open'",
                       "条件: contract.status == 'open'")            # R2：条件只可起于快照/主体
-    bad += "\n动作: GhostAction\n  聚合: Ghost\n  参数: x(必填)\n"    # 未登记聚合
+    bad += "\n动作: GhostAction\n  聚合: Ghost\n  参数: x(必填)\n" \
+           "\n动作: NoRoleAction\n  聚合: OrderAggregate\n  参数: x(必填)\n"
     report = od.draft_from_text(bad, "bad")
     assert any("BUDGET-EXCEEDED" in f for f in report["failures"])     # P-2
     assert any("AGGREGATE-NOT-DECLARED" in f for f in report["failures"])
+    assert any("ROLE-MISSING" in f and "NoRoleAction" in f
+               for f in report["failures"])    # 无角色动作 fail-closed（P-10/KS-2）
     assert any("COMPILE-FAILED" in f and "R2" in f for f in report["failures"])  # KS-7.1
     assert not (sandbox_spec / "spec/drafts").exists()                 # 未全绿不落盘
 def test_draft_written_when_green(sandbox_spec):
     report = od.draft_from_text(REQ, "order")
     assert report["failures"] == []
-    assert (sandbox_spec / "spec/drafts/draft-order.yaml").exists()    # 人确认区
+    draft_path = sandbox_spec / "spec/drafts/draft-order.yaml"
+    assert draft_path.exists()                                         # 人确认区
+    import yaml as _yaml
+    act = _yaml.safe_load(draft_path.read_text(encoding="utf-8"))["actions"][0]
+    assert act["roles"] == ["contract_steward"]                        # 角色随草案落盘
 @_SKIP
 def test_promote_requires_proposal_ref(sandbox_spec):
     draft = od.draft_from_text(REQ, "order")["draft"]
@@ -71,12 +80,25 @@ def test_promote_requires_proposal_ref(sandbox_spec):
         od.promote(Path(draft), proposal_ref="MADE-UP")
 @_SKIP
 def test_promote_then_registered_consistent(sandbox_spec):
-    """晋升 → 声明落正典 + apply_generated（P-5）→ run_pipeline 全绿。"""
+    """晋升 → 声明落正典 + apply_generated（P-5）→ run_pipeline 全绿。
+    声明角色必须有治理职责背书（L3/L4 对账）：沙箱补 Order 域职责项。"""
+    (sandbox_spec / "spec/governance/OrderDutyMatrix.governance.yaml").write_text(
+        "governance: OrderDutyMatrix\n"
+        "steward: order-steward-role\n"
+        "duties:\n"
+        "  - duty: create_order_duty\n"
+        "    position: contract_steward\n"
+        "    org_unit: contract-department\n"
+        "    authorizes: [CreateOrder]\n", encoding="utf-8")
     draft = od.draft_from_text(REQ, "order")["draft"]
     r = od.promote(Path(draft), proposal_ref="SPEC-2026-021")
     assert (sandbox_spec / "spec/ontology/objects/Order.object.yaml").exists()
     assert (sandbox_spec / "spec/aggregates/OrderAggregate.aggregate.yaml").exists()
-    assert (sandbox_spec / "spec/ontology/actions/CreateOrder.action.yaml").exists()
+    action_yaml = sandbox_spec / "spec/ontology/actions/CreateOrder.action.yaml"
+    assert action_yaml.exists()
+    import yaml as _yaml
+    act = _yaml.safe_load(action_yaml.read_text(encoding="utf-8"))
+    assert act["permissions"]["roles"] == ["contract_steward"]         # 晋升不丢角色（缺口修复）
     gen = registration.run_pipeline()                                  # declared == registered
     ids = [e["id"] for e in gen["write_actions"]]
     assert "CreateOrder" in ids
