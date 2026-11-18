@@ -45,16 +45,43 @@ def test_s2_env_has_only_two_sources_no_now():
             eval_boolean(expr, ENV)
 
 
-def test_s3_s1_grammar_is_strict_subset_of_r10_profile():
-    """S-3：S.1 是 R10 真子集——白名单含调用/算术/复合字面量，编译器不强制 S.1。"""
-    # 实现白名单超出 S.1（Atom 仅比较 + CONTAINS，Expr 仅 not/and/or）
+def test_s3_whitelisted_calls_reachable_and_compiler_not_restricted_to_s1():
+    """S-3：S.1 是 R10 真子集——白名单调用**真实可求值**（N2 修复），SC 编译器
+    不把表达式限制在 S.1。
+
+    N2 修复前：_lint 把函数名当数据源收进 R2 根集合，9/9 白名单调用全部
+    SOURCE-FORBIDDEN——冻结附录 S 描述的语言在运行时不存在，而本文件的
+    旧守卫只断言集合成员，用代理指标为不存在的语言背书。现以"实际求值成功"
+    正例锁住语言能力（第五轮评议冻结前强制门 ② 的兑现）。"""
     assert {"len", "sorted", "all"} <= _ALLOWED_CALLS
     assert {ast.Call, ast.BinOp, ast.Tuple, ast.List, ast.Dict} <= set(_ALLOWED_NODES)
+    env = {"snapshot": {"tags": ["b", "a"], "amounts": [300, 900], "amount": 500000},
+           "principal": {"role": "contract_steward", "contexts": ("ContractContext",)}}
+    assert eval_boolean("len(snapshot.tags) == 2", env) is True            # 调用可求值
+    assert eval_boolean("sorted(snapshot.tags) == ['a', 'b']", env) is True  # sorted 可达
+    assert eval_boolean("max(snapshot.amounts) == 900", env) is True
+    assert eval_boolean("any(snapshot.tags)", env) is True
+    with pytest.raises(InterpreterRejected):                              # 源封闭不放松
+        eval_boolean("len(time)", env)                                    # 禁用名仍拒
+    with pytest.raises(InterpreterRejected):
+        eval_boolean("open('x')", env)                                    # 非白名单调用仍拒
     # SC 编译器只校验首 token 来源（R2），不把表达式限制在 S.1 文法内
     compiled = compile_action(
         {"action_type": "X", "aggregate": "A", "submission_criteria": {
             "conditional": {"expression": "snapshot.amount + 1 > 0"}}}, "genesis")
     assert compiled.conditional == "snapshot.amount + 1 > 0"   # 算术式通过编译
+
+
+def test_n1_non_boolean_predicate_rejected_not_coerced():
+    """N1：非谓词值表达式不得经 bool() 强转恒真放行——条件必须求值为 bool。
+
+    修复前 snapshot.amount / snapshot.amount + 1 均被静默求值为 True 放行提交，
+    是唯一影响提交门放行方向的缺陷；真谓词行为不变。"""
+    for expr in ("snapshot.amount", "snapshot.status", "snapshot.amount + 1"):
+        with pytest.raises(InterpreterRejected, match="NON-BOOLEAN-PREDICATE"):
+            eval_boolean(expr, ENV)
+    assert eval_boolean("snapshot.amount >= 10**6", ENV) is False          # 真谓词不受影响
+    assert eval_boolean("not snapshot.amount >= 10**6", ENV) is True
 
 
 def test_s4_s1_fragment_terminates_within_ast_node_bound():

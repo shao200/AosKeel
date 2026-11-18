@@ -31,7 +31,7 @@ aos test                            # 布线套件自检
 
 ```
 VERIFY-OK: 三关连续通过 —— 结构 / 密码学 / 注册
-套件 gate: {...} ｜ 选中 61 项，可执行 61，缺失 0，〔强〕项未布线 1
+套件 gate: {...} ｜ 选中 74 项，可执行 74，缺失 0，〔强〕项未布线 1
 ```
 
 若 `aos` 报 `TypeError: main() missing 1 required positional argument: 'argv'`：依赖了旧版入口，重装 `pip install -e .`。
@@ -248,7 +248,7 @@ except UnregisteredAction as e:
 ## 7. 测试、发布与启动序列
 
 ```powershell
-python src/cli/main.py test            # 61 条布线路径
+python src/cli/main.py test            # 74 条布线路径
 python src/cli/main.py release         # 5 关全绿才出制品
 python src/cli/main.py bootstrap --stage 1 --appointment-ref <真实外部凭据>
 ```
@@ -259,8 +259,8 @@ python src/cli/main.py bootstrap --stage 1 --appointment-ref <真实外部凭据
 [PASS] structural
 [PASS] cryptographic
 [PASS] registered        · 6 能力
-[PASS] tests             · 61 条布线路径全部通过
-[PASS] codegen           · 骨架字节级零漂移 · 3 文件
+[PASS] tests             · 74 条布线路径全部通过
+[PASS] codegen           · 骨架字节级零漂移 · 7 文件
 RELEASED: 制品清单已落档 ...\dist\RELEASE-MANIFEST.json
 ```
 

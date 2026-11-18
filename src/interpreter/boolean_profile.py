@@ -19,7 +19,12 @@ _FORBIDDEN_NAMES = {"open", "eval", "exec", "compile", "__import__", "input", "g
                     "locals", "vars", "getattr", "setattr", "delattr", "time", "random",
                     "os", "sys", "subprocess", "socket", "importlib", "builtins"}
 def _lint(node, depth: int = 0, roots: set | None = None) -> None:
-    """单遍遍历：白名单/深度/调用/dunder 校验 + 收集全部 Name（R2 源检查同源）。"""
+    """单遍遍历：白名单/深度/调用/dunder 校验 + 收集全部 Name（R2 源检查同源）。
+
+    白名单函数名（len/sorted/…）不是数据源：作为 Call.func 出现时不入 R2 根集合
+    （否则 9 个白名单调用整体不可达，冻结附录 S 描述的语言在运行时不存在），
+    但仍走 NAME-FORBIDDEN 检查；调用参数照常入根 —— R2 源封闭不放松（N2 修复）。
+    """
     if roots is None:
         roots = set()
     if depth > MAX_DEPTH:                       # R8 预算纪律的静态同源
@@ -32,6 +37,14 @@ def _lint(node, depth: int = 0, roots: set | None = None) -> None:
             fn.attr if isinstance(fn, ast.Attribute) else None)
         if name not in _ALLOWED_CALLS:
             raise InterpreterRejected(f"CALL-FORBIDDEN: {name} 不在布尔档函数白名单（R10）")
+        if isinstance(fn, ast.Name):
+            fn_roots: set = set()               # 函数名：查禁用名，不入 R2 根
+            _lint(fn, depth + 1, fn_roots)
+        for child in ast.iter_child_nodes(node):
+            if child is fn:                     # func 已单独处理
+                continue
+            _lint(child, depth + 1, roots)
+        return
     if isinstance(node, ast.Name):
         roots.add(node.id)
         if node.id in _FORBIDDEN_NAMES:
@@ -65,7 +78,13 @@ def eval_boolean(expr: str, env: dict) -> bool:
         raise InterpreterRejected(f"UNDECLARED-NAME: {e}（R1 输入封闭）") from e
     except (TypeError, ZeroDivisionError) as e:
         raise InterpreterRejected(f"EVAL-FAIL: {e}") from e
-    return bool(result)
+    if not isinstance(result, bool):
+        # N1：条件谓词 MUST 求值为 bool。非谓词值表达式经 bool() 强制转换会
+        # 恒真放行（snapshot.amount → True），使提交门的放行方向被静默改写。
+        raise InterpreterRejected(
+            f"NON-BOOLEAN-PREDICATE: 条件表达式求值结果为 {type(result).__name__} "
+            f"而非 bool —— 谓词必须是比较/成员/逻辑组合（R10 布尔档）")
+    return result
 def _namespace(v):
     """dict → SimpleNamespace（递归）；其余原样。"""
     if isinstance(v, dict):

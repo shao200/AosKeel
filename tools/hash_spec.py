@@ -15,7 +15,7 @@ e6884aed… 历史封存基线（v2.0.0 登记行逐字保留）；改为独立�
 verify 时一并比对。未登记（如 aos init 生成的实例未复制登记表）显式 SKIP，
 不把"没有基线"伪装成"校验通过"。spec/drafts/ 是工作区草案，不入摘要域。
 """
-import hashlib, sys, datetime
+import hashlib, re, sys, datetime
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CANONICAL_FILES = [                    # 顺序即规范：改顺序 = 改工件
@@ -77,7 +77,23 @@ def _append_art_rows(rows: list[str]) -> None:
     lines[last + 1:last + 1] = [r.encode("utf-8") + cr for r in rows]
     REGISTRY.write_bytes(b"\n".join(lines))
 
+_PROPOSAL_RE = re.compile(r"SPEC-\d{4}-\d{3,}")     # 治理提案号统一格式（GOV-3）
+_VERSION_RE = re.compile(r"v\d+(\.\d+){0,3}")       # 登记版本形如 v2 / v2.1 / v2.1.1
+def _check_version_and_ref(spec_version: str, proposal_ref: str | None, required_ref: bool):
+    """N6：登记入口的机器校验 —— 任意字符串版本/提案号曾使
+    supersede("garbage-version", "x") 直接入表，把密码学门重新拉绿（自签信任根）。
+    这里只做格式收口；外部锚（git tag / 签名）属部署侧职责，另行落地。"""
+    if not _VERSION_RE.fullmatch(spec_version):
+        sys.exit(f"REFUSED: 版本号 {spec_version!r} 不合 v<digits>[.digits]* 格式")
+    if required_ref:
+        if not proposal_ref:
+            sys.exit("REFUSED: 冻结文本版本更替 MUST 绑定治理提案（GOV-3）—— "
+                     "用法: aos spec version <new-version> --proposal-ref SPEC-YYYY-NNN")
+        if not _PROPOSAL_RE.fullmatch(proposal_ref):
+            sys.exit(f"REFUSED: 提案引用 {proposal_ref!r} 不合 SPEC-YYYY-NNN 格式（GOV-3）")
+
 def register(spec_version: str) -> int:
+    _check_version_and_ref(spec_version, None, required_ref=False)
     digest = canonical_digest()
     rows = _entries()
     if rows and digest in rows[-1]:
@@ -96,10 +112,9 @@ def register(spec_version: str) -> int:
 def supersede(spec_version: str, proposal_ref: str) -> int:
     """GOV-3 版本通道（CLI: aos spec version）：治理提案产生的规范新版本，
     以新登记条目取代前一登记（append-only，P-15 —— 旧行永不改写）。
-    护栏（GOV-1 精神）：无 proposal_ref 一律拒绝 —— CLI 只记录治理结果，不合成版本。"""
-    if not proposal_ref:
-        sys.exit("REFUSED: 冻结文本版本更替 MUST 绑定治理提案（GOV-3）—— "
-                 "用法: aos spec version <new-version> --proposal-ref SPEC-YYYY-NNN")
+    护栏（GOV-1 精神）：无 proposal_ref 或提案号不合 SPEC-YYYY-NNN 格式一律拒绝
+    —— CLI 只记录治理结果，不合成版本。"""
+    _check_version_and_ref(spec_version, proposal_ref, required_ref=True)
     digest = canonical_digest()
     rows = _entries()
     if rows and digest in rows[-1]:
@@ -164,33 +179,51 @@ def register_declarations(spec_version: str, proposal_ref: str = "") -> int:
     if superseded and not proposal_ref:
         sys.exit("DECL-FROZEN-MUTATED: 声明摘要与最近登记不符 —— 业务声明不得就地"
                  "修改；带 --proposal-ref SPEC-YYYY-NNN 走治理变更后登记。")
+    if superseded and not _PROPOSAL_RE.fullmatch(proposal_ref):
+        sys.exit(f"REFUSED: 提案引用 {proposal_ref!r} 不合 SPEC-YYYY-NNN 格式（GOV-3）")
     art_id, now = _next_decl_id(), datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
     if not REGISTRY.exists():
         REGISTRY.write_bytes(("# AOS 工件登记（append-only；GOV-2.3）\n\n"
                               "| 条目 ID | 版本 | 哈希 | 登记时间 | 状态 |\n"
                               "|---|---|---|---|---|\n").encode("utf-8"))
-    with REGISTRY.open("ab") as f:                 # 字节追加：文本模式会写入 CRLF
-        if DECL_SECTION.strip() not in REGISTRY.read_text(encoding="utf-8"):
-            f.write(DECL_SECTION.encode("utf-8"))
-        f.write(f"| {art_id} | {spec_version} | sha256:{digest} | {now} | registered |\n"
-                .encode("utf-8"))
-        if superseded:
-            f.write(f"# decl-superseded-via: {proposal_ref} → {art_id}（GOV-3 声明变更通道；"
-                    f"旧登记行不改写——append-only P-15）\n".encode("utf-8"))
+    # N7：DECL 路径与 ART 路径同一字节纪律 —— read_bytes/按既有 EOL 追加。
+    # 原 open("ab") 在 CRLF 工作副本下会写出 LF 行，产生混合换行（P-15 失守半条路径）。
+    data = REGISTRY.read_bytes()
+    eol = b"\r\n" if b"\r\n" in data else b"\n"      # 新行随文件既有换行风格
+    decl_header = DECL_SECTION.strip().split("\n")[0].encode("utf-8")
+    body = b""
+    if decl_header not in data:                      # 行级标记：LF/CRLF 副本均可靠
+        body += DECL_SECTION.encode("utf-8").replace(b"\n", eol)
+    elif data and not data.endswith(b"\n"):
+        body += eol                                  # 表已在且末行无换行 → 先补分隔
+    body += f"| {art_id} | {spec_version} | sha256:{digest} | {now} | registered |".encode("utf-8") + eol
+    if superseded:
+        body += (f"# decl-superseded-via: {proposal_ref} → {art_id}（GOV-3 声明变更通道；"
+                 f"旧登记行不改写——append-only P-15）").encode("utf-8") + eol
+    REGISTRY.write_bytes(data + body)
     print(f"DECL-REGISTERED: {art_id}  sha256:{digest[:16]}…  "
           f"（{len(declaration_files())} 份声明；冻结正典未动"
           f"{'；提案 ' + proposal_ref if superseded else ''}）")
     return 0
+_last_decl_skip = False                            # N3：最近一次第四道比对的 SKIP 旗标
+def decl_digest_skip() -> bool:
+    """第四道最近一次是否 SKIP（未登记/无声明）。verify() 返回 0 不代表第四道
+    真的比对过 —— 出制品决策（release gate）据此拒绝 SKIP 实例。"""
+    return _last_decl_skip
 def verify_declarations() -> int:
     """第四道：声明摘要比对。无声明 / 未登记 → 显式 SKIP（不伪装成 PASS）。"""
+    global _last_decl_skip
     digest = declaration_digest()
     rows = _decl_entries()
     if digest is None:
         print("  DECL-DIGEST: SKIP —— 无 spec/*.yaml（实例裁剪）")
+        _last_decl_skip = True
         return 0
     if not rows:
         print("  DECL-DIGEST: SKIP —— 未登记（实例自行登记；GOV-2.3-DECL）")
+        _last_decl_skip = True
         return 0
+    _last_decl_skip = False
     ok = digest in rows[-1]
     print(("  OK       " if ok else "  MISMATCH ") +
           f"DECL sha256:{digest[:16]}…  （{len(declaration_files())} 份声明）")

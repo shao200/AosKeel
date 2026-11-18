@@ -43,6 +43,19 @@ integrity_paths:
   - { id: INTEGRITY-27, path: tests/conformance/test_meta_schema.py }           # 第二轮：元 schema 声明化
   - { id: INTEGRITY-28, path: tests/conformance/test_domain_cq.py }             # 第三轮：域无关 CQ 定义
   - { id: INTEGRITY-29, path: tests/conformance/test_boolean_profile_semantics.py }  # S-4：附录 S 语义机器核对（E-3 布线补登）
+  - { id: INTEGRITY-30, path: tests/conformance/test_declared_registered.py }        # N4：第三轮双射修复守卫（布线外=不存在）
+  - { id: INTEGRITY-31, path: tests/conformance/test_new_capabilities.py }           # N4：A/B/C/E 边界守卫
+  - { id: INTEGRITY-32, path: tests/conformance/test_dual_distribution.py }          # N4：ADR-001 双分发守卫
+  - { id: INTEGRITY-33, path: tests/conformance/test_codegen.py }                    # N4：代码生成器
+  - { id: INTEGRITY-34, path: tests/conformance/test_release_gate.py }               # N4：发布闸门自守卫
+  - { id: INTEGRITY-35, path: tests/conformance/test_ontology_draft.py }             # N4：本体草案治理闸
+  - { id: INTEGRITY-36, path: tests/conformance/test_agent_surface.py }              # N4：Agent 面
+  - { id: INTEGRITY-37, path: tests/conformance/test_governance_effective.py }       # N4：治理生效
+  - { id: INTEGRITY-38, path: tests/conformance/test_saga_compensation.py }          # N4：SAGA 补偿
+  - { id: INTEGRITY-39, path: tests/negative/test_forbidden.py }                     # N4：禁用面负向
+  - { id: INTEGRITY-40, path: tests/negative/test_forbidden_coverage.py }            # N4：禁用面覆盖
+  - { id: INTEGRITY-41, path: tests/negative/test_kernel_roles_enforced.py }         # N4：内核角色强制
+  - { id: INTEGRITY-42, path: tests/conformance/test_wiring_coverage.py }            # N4：测试文件全量在册守卫
 ver:
   - { id: VER-1,  clause: KS-1.2,      kind: auto, path: tests/conformance/test_event_schema.py }
   - { id: VER-2,  clause: KS-7.2,      kind: auto, path: tests/conformance/test_pipeline_order.py }

@@ -10,7 +10,10 @@ from pathlib import Path
 import pytest
 ROOT = Path(__file__).resolve().parents[2]
 def _build_wheel(tmp_path: Path) -> Path:
-    import subprocess, sys
+    import shutil, subprocess, sys
+    # setuptools bdist_wheel 在仓库内 build/ 中转；先前进程被强杀留下的
+    # dist-info 残骸会让重建撞 WinError 183（文件已存在）——先清残留。
+    shutil.rmtree(ROOT / "build", ignore_errors=True)
     out = tmp_path / "whl"
     subprocess.run([sys.executable, "-m", "pip", "wheel", ".", "--no-deps",
                     "-w", str(out)],

@@ -13,14 +13,17 @@
 from __future__ import annotations
 import datetime as dt
 import json
+import os
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "src"))
 from tools import fingerprint, codegen, wiring
-from tools.hash_spec import canonical_digest, verify as hs_verify, _entries
+from tools.hash_spec import (canonical_digest, verify as hs_verify, _entries,
+                             decl_digest_skip)
 from kernel import registration
 def _default_tests() -> str:
     # 承重件统一解析（tools/wiring.py）：正则抠 path 会在合法 YAML 格式微调时
@@ -28,11 +31,32 @@ def _default_tests() -> str:
     # 执行引擎缺失同样 fail-closed：明确报 PYTEST-MISSING，不伪装成"套件失败"。
     wiring.require_pytest()
     paths = [p for _, p in wiring.wired_paths()]
-    r = subprocess.run([sys.executable, "-m", "pytest", "-q"] + list(dict.fromkeys(paths)),
-                       cwd=ROOT, capture_output=True, text=True)
+    # N5：嵌套 pytest 固定 basetemp 到仓库外隔离目录（可经 AOS_GATE_BASETEMP 覆盖）。
+    # 不固定时 pytest 用系统临时目录并自清理，宿主 safe-delete 阈值会让
+    # "61 条测试 100% 通过、进程退出码 1"这类不可诊断的绿出现在本可全绿的环境。
+    # 每次闸门独立 mkdtemp 且不回收：固定目录会被残留进程的 sqlite 句柄锁死
+    # （WinError 32），就地清理又是一次大规模删除。目录留给系统临时目录回收。
+    basetemp = os.environ.get("AOS_GATE_BASETEMP") or tempfile.mkdtemp(prefix="aos-gate-")
+    # AOS_IN_GATE=1：标记嵌套 pytest 运行于闸门之内。test_real_gate_end_to_end
+    # 据此自跳，否则 gate → e2e → gate 无限递归（INTEGRITY-34 补登后实测爆炸）。
+    env = {**os.environ, "AOS_IN_GATE": "1"}
+    r = subprocess.run([sys.executable, "-m", "pytest", "-q", f"--basetemp={basetemp}"]
+                       + list(dict.fromkeys(paths)),
+                       cwd=ROOT, capture_output=True, text=True, env=env)
     if r.returncode != 0:
-        raise RuntimeError(f"pytest exit={r.returncode}（gate 套件失败即不出制品）")
+        tail = "\n".join((r.stdout or "").splitlines()[-25:]
+                         + (r.stderr or "").splitlines()[-10:])
+        raise RuntimeError(f"pytest exit={r.returncode}（gate 套件失败即不出制品）\n{tail}")
     return f"{len(paths)} 条布线路径全部通过"
+def _crypto_step() -> str:
+    if hs_verify() != 0:
+        raise RuntimeError("哈希漂移（GOV-2.5）")
+    if decl_digest_skip():
+        # N3：实例未登记声明基线时第四道是 SKIP —— 业务声明（条件阈值/权限/副作用）
+        # 的篡改不被密码学门发现。verify() 返回 0 只是三关绿；出制品必须四道全比对。
+        raise RuntimeError("第四道声明摘要 SKIP —— 实例未登记 spec/ 声明基线，"
+                           "篡改不可检测 → 拒出制品（aos spec register-declarations）")
+    return "PASS（正典 + 声明摘要 双比对）"
 def _first_fail() -> str:
     fails = fingerprint.check()
     if fails:
@@ -50,8 +74,7 @@ def run_gate(out_dir: Path | None = None, run_tests=None) -> dict:
         return ok
     ok = True
     ok &= step("structural", lambda: _first_fail())
-    ok &= step("cryptographic", lambda: "PASS" if hs_verify() == 0
-               else (_ for _ in ()).throw(RuntimeError("哈希漂移（GOV-2.5）")))
+    ok &= step("cryptographic", _crypto_step)
     ok &= step("registered", lambda: f"declared==registered · {len(registration.run_pipeline()['write_actions'])} 能力")
     ok &= step("tests", run_tests or _default_tests)
     ok &= step("codegen", lambda: f"骨架字节级零漂移 · {len(codegen.generate()['files'])} 文件")

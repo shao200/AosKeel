@@ -107,3 +107,29 @@ def test_latest_spec_version_follows_registry_then_canonical(tmp_path, monkeypat
     assert cm._latest_spec_version() == "v2.1.1"                  # 空 → 正典头部回落
     hs.register("v9.9.9")
     assert cm._latest_spec_version() == "v9.9.9"                  # 登记后跟随最新条目
+def test_supersede_rejects_malformed_version_and_proposal(tmp_path, monkeypatch):
+    """N6：任意字符串版本/提案号不再入表——登记表曾是自签信任根，
+    supersede("garbage-version","x") 一度把密码学门重新拉绿。"""
+    _sandbox(tmp_path, monkeypatch)
+    hs.register("v1")
+    (tmp_path / "docs/aos-spec.md").write_text("# 规范 v2", encoding="utf-8")
+    with pytest.raises(SystemExit, match="REFUSED"):
+        hs.supersede("garbage-version", "SPEC-2026-014")          # 版本格式
+    with pytest.raises(SystemExit, match="REFUSED"):
+        hs.supersede("v2", "x")                                   # 提案号格式
+    with pytest.raises(SystemExit, match="REFUSED"):
+        hs.register("1.0.0")                                      # register 同收口
+    assert hs._entries() == [l for l in hs._entries() if "garbage" not in l]
+def test_decl_path_crlf_symmetry(tmp_path, monkeypatch):
+    """N7：DECL 路径与 ART 路径同一字节纪律——CRLF 副本登记 DECL 不产生混合换行。"""
+    _sandbox(tmp_path, monkeypatch)
+    hs.register("v1")
+    spec = tmp_path / "spec/competence"; spec.mkdir(parents=True)   # 有声明才有登记对象
+    (spec / "CQ-1.cq.yaml").write_text("id: CQ-1\ntitle: t\n", encoding="utf-8")
+    reg = hs.REGISTRY
+    reg.write_bytes(reg.read_bytes().replace(b"\n", b"\r\n"))     # 模拟编辑器 CRLF
+    assert hs.register_declarations("v1") == 0
+    raw = reg.read_bytes()
+    assert raw.count(b"\r\n") == raw.count(b"\n")                 # 无裸 LF（混合换行=0）
+    assert raw.count("## 声明摘要登记".encode("utf-8")) == 1       # DECL 区只写一次
+    assert next(l for l in raw.split(b"\r\n") if l.startswith(b"| AOS-DECL-001 |"))

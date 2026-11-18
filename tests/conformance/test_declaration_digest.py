@@ -88,6 +88,27 @@ def test_skip_when_declarations_not_registered(tmp_path, monkeypatch):
     hs.register("v1")
     assert hs.verify_declarations() == 0
 
+def test_skip_flag_is_exposed_not_disguised(tmp_path, monkeypatch):
+    """N3：SKIP 时 verify() 仍返回 0（三关绿），但旗标置位——出制品决策可见。"""
+    _sandbox(tmp_path, monkeypatch, with_decls=True)
+    hs.register("v1")
+    assert hs.verify() == 0
+    assert hs.decl_digest_skip() is True               # 未登记：三关绿 ≠ 四道比对过
+    hs.register_declarations("v1")
+    assert hs.verify() == 0
+    assert hs.decl_digest_skip() is False              # 登记后第四道真实比对
+
+def test_gate_refuses_artifacts_on_decl_skip(tmp_path, monkeypatch):
+    """N3：release gate 对 SKIP 实例拒出制品——篡改不可检测的形态不配出库。"""
+    from tools import release_gate
+    monkeypatch.setattr(release_gate, "hs_verify", lambda: 0)
+    monkeypatch.setattr(release_gate, "decl_digest_skip", lambda: True)
+    report = release_gate.run_gate(out_dir=tmp_path, run_tests=lambda: "stub")
+    assert report["ok"] is False
+    assert not (tmp_path / "RELEASE-MANIFEST.json").exists()
+    crypto = next(s for s in report["steps"] if s["step"] == "cryptographic")
+    assert not crypto["ok"] and "SKIP" in crypto["detail"]
+
 def test_real_registry_declaration_is_current():
     """真实仓库：声明摘要已登记且当前一致；v2.0.0 封存登记行逐字保留。"""
     registry = (ROOT / "docs/ARTIFACT-REGISTRY.md").read_text(encoding="utf-8")

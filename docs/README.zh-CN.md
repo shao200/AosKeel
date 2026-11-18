@@ -289,7 +289,7 @@ python tools/console.py                # 8. WEB 控制台壳（白名单，fail-
 - **以源码树交付。** wheel 不含 `docs/spec/config`，启动自检拒绝它（机器验证 INTEGRITY-20）——见下方工程边界表。
 - **事件存储是内存态。** `EventStore` 为 dict，进程退出即失；`kernel/filestore.py` 提供 FileStore **持久化参考实现**（JSONL 追加 + 重放，单写进程模型），持久化的多进程存储属实例侧职责，须实现同一协议。
 - **wheel 是构建产物，不是交付物。** `pip wheel .` 可构建 `aos_keel-*.whl`（含 src/ + tools/ 与 `aos` console script），但不含 docs/spec/config；脱离源码树运行输出明确 `REFUSED`（INTEGRITY-20）。唯一受支持的运行形态是源码树 + `pip install -e .`，让正典声明与代码同版本管理。
-- **控制台是壳，且离线的那个。** `tools/console.py` 经 subprocess 驱动 CLI，命令白名单 fail-closed，治理签署类命令（release/register/bootstrap）刻意不提供；`aos shadow` 是离线对账，在线双跑流量比对属部署阶段职责。
+- **控制台是壳，且离线的那个。** `tools/console.py` 经 subprocess 驱动 CLI，命令白名单 fail-closed，治理签署类命令（release/register/bootstrap）刻意不提供；`aos shadow` 是离线对账，在线双跑流量比对属部署阶段职责。控制台默认仅绑 127.0.0.1 且**无认证层**（N11 披露：白名单只限命令面，不承担身份鉴别——生产部署须在前置反向代理/网关层补认证）。
 - **结构指纹刻意弱校验。** 只核对条数与首尾锚点；强保证来自密码学全文哈希层。
 - **无运行时消费者的声明字段属实例侧。** `spec/invariants/*.yaml` 的 `declaration.expression` 是规范表达与文档视图（`tools/domain_manual.py` 渲染），注册期只核 `repair_binding`；`Detector` 接口（`kernel/detector.py`）接收 Python callable。接入检测器并开闸是实例侧义务——`config/verification.yaml` 保持 `invariants: {gate: false}` 作为机器标记。同理 `dry_run: required` 编译为布尔标志并蕴含 `audit: required`，但 `Kernel.submit` 从不读取：`kernel/dryrun.py` 是提交前演练的库级 API，CLI 无 `aos dryrun` 命令。
 - **角色强制、上下文仅供环境。** `Kernel.submit` 从证据强制 required roles；`permissions.contexts` 只做注册期引用完整性检查，并作为快照注入条件求值环境。正典的能力面规则（`Agent 权限 = 角色 × 所在上下文`，INV-4）由实例侧能力配置／投影兑现，模板层不设自动上下文门禁。
@@ -400,6 +400,6 @@ tools/console.py                WEB 治理控制台壳（subprocess 驱动 CLI�
 packages/kernel/               aoskeel-kernel wheel（pyproject.toml + README）
 packages/template/             aoskeel-template sdist 构建脚本（build_sdist.py + README）
 tests/                         一致性 + negative 双射 + golden + genesis + replay + redteam 套件
-                               + conformance（含 29 条 INTEGRITY 回归守卫，布线执行）
+                               + conformance（含 42 条 INTEGRITY 回归守卫，布线执行）
 bootstrap/checklists/          _schema + VER-20/24/26/27/28/29（P-14 证据留档）
 ```

@@ -14,7 +14,8 @@ from tools.hash_spec import (canonical_digest, _entries, register as hs_register
                              verify as hs_verify, supersede as hs_supersede,
                              register_declarations as hs_register_declarations,
                              declaration_digest as hs_declaration_digest,
-                             _decl_entries as hs_decl_entries)
+                             _decl_entries as hs_decl_entries,
+                             decl_digest_skip as hs_decl_skip)
 from tools import fingerprint, wiring, gate_history
 from kernel import registration
 USAGE = """\
@@ -158,7 +159,13 @@ def cmd_verify() -> int:
         gates["registered"] = "FAIL"; gate_history.record("verify", gates)
         return 1
     gate_history.record("verify", gates)
-    print("VERIFY-OK: 三关连续通过 —— 结构 / 密码学 / 注册")
+    if hs_decl_skip():
+        # N3：SKIP 不得被包装成与全比对无差别的"三关连续通过" —— 实例未登记
+        # 声明基线时，第四道（业务声明的密码学比对）并未真正执行。
+        print("VERIFY-OK-WITH-SKIP: 三关连续通过 —— 结构 / 密码学 / 注册"
+              "（第四道声明摘要 SKIP：未登记基线；aos spec register-declarations 后方可出制品）")
+    else:
+        print("VERIFY-OK: 三关连续通过 —— 结构 / 密码学 / 注册")
     return 0
 
 
