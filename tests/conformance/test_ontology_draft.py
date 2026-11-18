@@ -13,6 +13,7 @@ from kernel import registration
 REQ = """聚合体: OrderAggregate
   流: domain:OrderAggregate
   预算: 10000
+  根对象: Order
 
 对象: Order
   标识: order_id
@@ -45,6 +46,7 @@ def test_parse_is_deterministic():
     d1 = od.parse_requirements(REQ); d2 = od.parse_requirements(REQ)
     assert d1 == d2
     assert d1["aggregates"][0]["evaluation_budget"] == 10000
+    assert d1["aggregates"][0]["root"] == "Order"                      # 根对象绑定随草案解析
     assert d1["objects"][0]["identity"] == "order_id"
     assert d1["actions"][0]["params"] == {"order_id": True, "total": False}
     assert d1["actions"][0]["roles"] == ["contract_steward"]
@@ -55,12 +57,18 @@ def test_bad_syntax_rejected_not_written(sandbox_spec):
              .replace("条件: snapshot.status == 'open'",
                       "条件: contract.status == 'open'")            # R2：条件只可起于快照/主体
     bad += "\n动作: GhostAction\n  聚合: Ghost\n  参数: x(必填)\n" \
-           "\n动作: NoRoleAction\n  聚合: OrderAggregate\n  参数: x(必填)\n"
+           "\n动作: NoRoleAction\n  聚合: OrderAggregate\n  参数: x(必填)\n" \
+           "\n聚合体: LooseAgg\n  流: domain:LooseAgg\n  预算: 500\n" \
+           "\n聚合体: GhostRootAgg\n  流: domain:GhostRootAgg\n  预算: 500\n  根对象: Ghost\n"
     report = od.draft_from_text(bad, "bad")
     assert any("BUDGET-EXCEEDED" in f for f in report["failures"])     # P-2
     assert any("AGGREGATE-NOT-DECLARED" in f for f in report["failures"])
     assert any("ROLE-MISSING" in f and "NoRoleAction" in f
                for f in report["failures"])    # 无角色动作 fail-closed（P-10/KS-2）
+    assert any("AGGREGATE-ROOT-MISSING" in f and "LooseAgg" in f
+               for f in report["failures"])    # 聚合无根对象 → 投影无身份
+    assert any("AGGREGATE-ROOT-UNKNOWN" in f and "Ghost" in f
+               for f in report["failures"])    # 根对象悬空引用 fail-closed
     assert any("COMPILE-FAILED" in f and "R2" in f for f in report["failures"])  # KS-7.1
     assert not (sandbox_spec / "spec/drafts").exists()                 # 未全绿不落盘
 def test_draft_written_when_green(sandbox_spec):
@@ -71,6 +79,8 @@ def test_draft_written_when_green(sandbox_spec):
     import yaml as _yaml
     act = _yaml.safe_load(draft_path.read_text(encoding="utf-8"))["actions"][0]
     assert act["roles"] == ["contract_steward"]                        # 角色随草案落盘
+    agg = _yaml.safe_load(draft_path.read_text(encoding="utf-8"))["aggregates"][0]
+    assert agg["root"] == "Order"                                      # 根对象随草案落盘
 @_SKIP
 def test_promote_requires_proposal_ref(sandbox_spec):
     draft = od.draft_from_text(REQ, "order")["draft"]
@@ -94,9 +104,11 @@ def test_promote_then_registered_consistent(sandbox_spec):
     r = od.promote(Path(draft), proposal_ref="SPEC-2026-021")
     assert (sandbox_spec / "spec/ontology/objects/Order.object.yaml").exists()
     assert (sandbox_spec / "spec/aggregates/OrderAggregate.aggregate.yaml").exists()
+    import yaml as _yaml
+    agg_yaml = sandbox_spec / "spec/aggregates/OrderAggregate.aggregate.yaml"
+    assert _yaml.safe_load(agg_yaml.read_text(encoding="utf-8"))["root"] == "Order"
     action_yaml = sandbox_spec / "spec/ontology/actions/CreateOrder.action.yaml"
     assert action_yaml.exists()
-    import yaml as _yaml
     act = _yaml.safe_load(action_yaml.read_text(encoding="utf-8"))
     assert act["permissions"]["roles"] == ["contract_steward"]         # 晋升不丢角色（缺口修复）
     gen = registration.run_pipeline()                                  # declared == registered

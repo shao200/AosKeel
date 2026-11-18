@@ -98,6 +98,7 @@ python src/cli/main.py draft promote spec/drafts/claims.yaml --proposal-ref SPEC
 聚合体: ClaimAggregate
   流: domain:ClaimAggregate
   预算: 10000
+  根对象: Claim
 
 对象: Claim
   标识: claim_id
@@ -113,7 +114,9 @@ python src/cli/main.py draft promote spec/drafts/claims.yaml --proposal-ref SPEC
 ```
 
 `角色:` 键 MUST 非空：无角色动作被 `ROLE-MISSING` 拒绝晋升（P-10/KS-2 fail-closed）——
-否则空 roles 在管线与网关守卫中双短路为"不设限"。晋升时声明角色还须有治理面职责项背书
+否则空 roles 在管线与网关守卫中双短路为"不设限"。聚合体块 `根对象:` 键同样 MUST 非空
+且引用已声明对象（`AGGREGATE-ROOT-MISSING/UNKNOWN`）：根对象是 T24 效果校验的锚与
+reducer/query 读侧实例标识的来源。晋升时声明角色还须有治理面职责项背书
 （L3/L4 对账），否则 `apply_generated` 失败回滚。
 
 晋升后注册管线单写更新能力清单（P-5），`declared == registered` 对账必然全绿。

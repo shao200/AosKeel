@@ -11,6 +11,10 @@
              即拒绝，晋升不覆盖正典）+ apply_generated（P-5 单写者）——
              晋升后 run_pipeline 必然全绿，aos generate 随后刷新代码骨架。
 需求 DSL 样式（docs/samples/requirements-sample.txt）：
+    聚合体: ContractAggregate
+      流: domain:ContractAggregate
+      预算: 100000
+      根对象: Contract
     对象: Contract
       标识: contract_id
       属性: status, amount, party_refs
@@ -53,7 +57,7 @@ def parse_requirements(text: str) -> dict:
             actions.append(cur); continue
         if s.startswith("聚合体:"):                                   # 与动作块内的"聚合:"键区分
             cur = {"aggregate": s.split(":", 1)[1].strip(),
-                   "stream": "", "evaluation_budget": None}
+                   "stream": "", "evaluation_budget": None, "root": ""}
             aggregates.append(cur); continue
         k, _, v = s.partition(":")
         key, val = k.strip(), v.strip()
@@ -84,6 +88,7 @@ def parse_requirements(text: str) -> dict:
         else:                                                        # 聚合体块
             if key == "流": cur["stream"] = val
             elif key == "预算": cur["evaluation_budget"] = int(val)
+            elif key == "根对象": cur["root"] = val                  # 聚合根：T24 效果校验 + 读侧实例标识
     if not (objects or actions or aggregates):
         raise DraftError("PARSE-FAIL: 未识别任何 对象:/动作:/聚合体: 块")
     return {"objects": objects, "actions": actions, "aggregates": aggregates}
@@ -121,6 +126,9 @@ def validate_draft(decls: dict) -> list[str]:
     aggregates = {p.stem.replace(".aggregate", "") for p in
                   (registration.SPEC_DIR / "aggregates").glob("*.aggregate.yaml")}
     aggregates |= {a["aggregate"] for a in decls.get("aggregates", [])}  # 草案内聚合视同已声明
+    objects_known = {p.stem.replace(".object", "") for p in
+                     (registration.SPEC_DIR / "ontology/objects").glob("*.object.yaml")}
+    objects_known |= {o["object_type"] for o in decls["objects"]}
     for a in decls.get("aggregates", []):
         if not a.get("stream") or not a.get("evaluation_budget"):
             failures.append(f"AGGREGATE-INCOMPLETE: {a['aggregate']}"
@@ -128,6 +136,13 @@ def validate_draft(decls: dict) -> list[str]:
         elif int(a["evaluation_budget"]) > registration.R8_BUDGET_LIMIT:
             failures.append(f"BUDGET-EXCEEDED: {a['aggregate']} 预算 "
                             f"{a['evaluation_budget']} > R8 上限 {registration.R8_BUDGET_LIMIT}（P-2）")
+        if not a.get("root"):
+            failures.append(f"AGGREGATE-ROOT-MISSING: {a['aggregate']}"
+                            f"（聚合 MUST 绑定 根对象: —— T24 效果校验锚 + "
+                            f"reducer/query 读侧实例标识源，缺失即投影无身份）")
+        elif a["root"] not in objects_known:
+            failures.append(f"AGGREGATE-ROOT-UNKNOWN: {a['aggregate']} 根对象 "
+                            f"{a['root']} 未声明（补 对象: 块或引用正典已登记对象）")
     for o in decls["objects"]:
         if not o.get("identity"):
             failures.append(f"OBJECT-IDENTITY-MISSING: {o['object_type']}"
@@ -188,8 +203,8 @@ def promote(draft_path: Path, proposal_ref: str) -> dict:
             doc = {"object_type": o["object_type"], "identity": o["identity"],
                    "properties": o["properties"]}
         elif t.name.endswith(".aggregate.yaml"):
-            doc = {"aggregate": o["aggregate"], "stream": o["stream"],
-                   "evaluation_budget": o["evaluation_budget"]}
+            doc = {"aggregate": o["aggregate"], "root": o["root"],
+                   "stream": o["stream"], "evaluation_budget": o["evaluation_budget"]}
         else:
             doc = _action_decl(o, proposal_ref)                      # provenance = 提案
         t.write_bytes(yaml.safe_dump(doc, allow_unicode=True, sort_keys=False)

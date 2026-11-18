@@ -156,6 +156,7 @@ def _decls_from_schema(schema: dict) -> dict:
                             for c in meta["columns"]}}
         objects.append(o)
         aggregates.append({"aggregate": f"{_pascal(t)}Aggregate",
+                           "root": _pascal(t),         # 同名聚合 → 根即表对象（读侧实例标识）
                            "stream": f"domain:{_pascal(t)}Aggregate",
                            "evaluation_budget": DEFAULT_BUDGET})
         for fk in meta["fks"]:

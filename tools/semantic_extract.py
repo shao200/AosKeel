@@ -114,7 +114,9 @@ def extract(path: str, name: str, extractor: str | None = None) -> dict:
                         "note": "语义提取候选——晋升须 GOV-1 提案（来源可审计）"},
              "objects": [{"object_type": o["object_type"], "identity": o["identity"],
                           "properties": o.get("properties") or {}} for o in objs],
-             "aggregates": [{"aggregate": o["object_type"], "stream": o["object_type"],
+             "aggregates": [{"aggregate": o["object_type"],
+                             "root": o["object_type"],          # 同名聚合 → 根即对象（读侧实例标识）
+                             "stream": o["object_type"],
                              "evaluation_budget": 10000} for o in objs],
              "actions": []}                       # 行为层如实留空——不编造
     report = draft_from_decls(decls, name)        # 同一三段闸（编译不过不落盘）

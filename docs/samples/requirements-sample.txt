@@ -6,6 +6,7 @@
 聚合体: OrderAggregate
   流: domain:OrderAggregate
   预算: 10000
+  根对象: Order
 
 对象: Order
   标识: order_id

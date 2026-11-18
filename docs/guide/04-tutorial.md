@@ -119,6 +119,7 @@ BOOT-0-DONE: 内核部署 + 能力清单发布 + 工件哈希登记（附录 E �
 聚合体: OrderAggregate
   流: domain:OrderAggregate
   预算: 10000
+  根对象: Order
 
 对象: Order
   标识: order_id
