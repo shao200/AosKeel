@@ -1,4 +1,4 @@
-spec_ref: AOS-ART-001
+spec_ref: AOS-ART-002   # 登记条目 ID（GOV-2.2）；哈希见登记表
 foundation:
   - audit_append_only
   - perimeter_integrity

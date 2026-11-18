@@ -21,7 +21,7 @@ SECTIONS = [
     ("事故",18, r"(?m)^([A-R])\s\S",              "A",      "R",     r"(?s)### B\.2.*?(?=\n## )"),
 ]
 GOV_SUBITEMS = [f"GOV-2.{i}" for i in range(1, 6)]
-APPENDICES = list("ABCDEFG")
+APPENDICES = list("ABCDEFG") + ["R", "S"]   # v2.1.0：R/S 为信息性附录，仍属附录清单
 def check(text: str | None = None) -> list[str]:
     text = text if text is not None else SPEC.read_text(encoding="utf-8")
     failures = []

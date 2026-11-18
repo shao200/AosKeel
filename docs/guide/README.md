@@ -1,8 +1,8 @@
 # AosKeel 理论与实操指南（Guide）
 
-> **语言 / Language**：本指南以**中文**撰写，与冻结正典 `docs/aos-spec.md` v2.0.0 同语言，保证条款级术语零损失；术语同时标注英文。项目 README 有两种语言版本：仓库根 [英文首屏](../../README.md) 与 [中文完整版](../README.zh-CN.md)（§1–§9 逐节对应）；[docs/README.md](../README.md) 是文档索引与语言/效力矩阵。
+> **语言 / Language**：本指南以**中文**撰写，与冻结正典 `docs/aos-spec.md` v2.1.0 同语言，保证条款级术语零损失；术语同时标注英文。项目 README 有两种语言版本：仓库根 [英文首屏](../../README.md) 与 [中文完整版](../README.zh-CN.md)（§1–§9 逐节对应）；[docs/README.md](../README.md) 是文档索引与语言/效力矩阵。
 >
-> **效力 / Status**：本目录全部文档为**信息性（informative）**材料——只解释与教学，**不产生任何规范条款**。一切 MUST / MUST NOT 以 [AOS 规范 v2.0.0](../aos-spec.md) 为准；条款冲突时以 INV 裁决，不得援引本指南推翻规范。
+> **效力 / Status**：本目录全部文档为**信息性（informative）**材料——只解释与教学，**不产生任何规范条款**。一切 MUST / MUST NOT 以 [AOS 规范 v2.1.0](../aos-spec.md) 为准；条款冲突时以 INV 裁决，不得援引本指南推翻规范。
 
 ## 一句话定位
 
@@ -41,7 +41,7 @@ AosKeel 是**双重定位**的工具：① 向使用者普及"基于本体论的
 ## 与本仓库其他文档的关系
 
 ```
-docs/aos-spec.md            正典规范 v2.0.0（冻结；含 AX/KS/P/INV/BOOT/GOV/VER/术语/附录 A-G）
+docs/aos-spec.md            正典规范 v2.1.0（冻结；含 AX/KS/P/INV/BOOT/GOV/VER/术语/附录 A-G、R、S）
 docs/SPEC-FINGERPRINT.md    条款指纹清单（GOV-2.4；结构层核对）
 docs/ARTIFACT-REGISTRY.md   工件登记（append-only；GOV-2.3）
 docs/aos-spec.en-overview.md 英文概览（非规范导航件，只给条款地图）

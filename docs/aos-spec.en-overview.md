@@ -1,8 +1,8 @@
 # AOS Specification — English Overview (non-normative companion)
 
 > **Status: informational navigation aid, NOT the specification.** The only normative
-> text is the frozen Chinese canonical [`aos-spec.md`](aos-spec.md) (sha256 `e6884aed…`,
-> registered as `AOS-ART-001`). This file is deliberately **outside** the hash coverage
+> text is the frozen Chinese canonical [`aos-spec.md`](aos-spec.md) (sha256 `48df813a…`,
+> registered as `AOS-ART-002`, spec v2.1.0). This file is deliberately **outside** the hash coverage
 > set (`tools/hash_spec.py:CANONICAL_FILES`) and outside the declaration digest domain
 > (`spec/**/*.yaml`). If anything here conflicts with the canonical text, the Chinese
 > canonical wins. Clause identifiers are preserved verbatim; no clause is translated.

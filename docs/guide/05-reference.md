@@ -39,7 +39,7 @@
 
 | 路径 | 职责 |
 |---|---|
-| `docs/aos-spec.md` | 正典规范 v2.0.0（冻结；AX/KS/P/INV/BOOT/GOV/VER/T/附录 A–G） |
+| `docs/aos-spec.md` | 正典规范 v2.1.0（冻结；AX/KS/P/INV/BOOT/GOV/VER/T/附录 A–G、R、S） |
 | `docs/SPEC-FINGERPRINT.md` | 条款指纹清单（GOV-2.4，第二正典） |
 | `docs/ARTIFACT-REGISTRY.md` | 工件登记（append-only；实例不复制，自行登记） |
 | `docs/POSITIONING.md` / `RUNBOOK.md` | 定位与条款级对照 / BOOT-2/3 脚手架 |

@@ -6,7 +6,7 @@
 27 条布线可以变成 26 条而闸门照样出制品 —— 与 fail-closed 相悖。
 此处统一用 pyyaml 解析，并把"声明了 path 但文件不存在"从打印降级改成阻断。
 
-不新增 VER 条款：v2.0.0 的 VER-1..33 是冻结条款集；`integrity_paths` 段只登记
+不新增 VER 条款：v2.1.0 继承 v2.0.0 的 VER-1..33 冻结条款集；`integrity_paths` 段只登记
 回归补充测试的执行路径，不构成条款，也不改指纹清单。
 
 另提供 `require_pytest()`：`aos test` 与发布闸门共同的执行前置。pytest 是布线

@@ -3,6 +3,8 @@
 | 条目 ID | 版本 | 哈希 | 登记时间 | 状态 |
 |---|---|---|---|---|
 | AOS-ART-001 | v2.0.0 | sha256:e6884aedc60e171ea7e5e72b8033518026b6933153126e3fdbb51998b82724d6 | 2026-11-15T13:32:19+00:00 | registered |
+| AOS-ART-002 | v2.1.0 | sha256:48df813aa7dba890ab4e624d202e95f004ba2c31d9cada7af7cef9320f836d27 | 2026-11-18T01:58:19+00:00 | registered |
+# superseded-via: SPEC-2026-001 → AOS-ART-002（GOV-3 版本通道；前一登记条目由本条目取代，旧行不改写——append-only P-15）
 
 ## 声明摘要登记（GOV-2.3-DECL；append-only；独立于冻结正典域）
 

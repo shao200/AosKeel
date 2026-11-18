@@ -177,7 +177,7 @@ def cmd_init(target: str, wizard: dict | None = None) -> int:
             shutil.copy2(p, dst / rel); copied += 1
     rows = _entries()
     art_id = rows[-1].split("|")[1].strip() if rows else "NOT-REGISTERED"
-    spec_ver = "v2.0.0"
+    spec_ver = "v2.1.0"
     # 根层文件：.gitattributes 的 `* -text` 是 GOV-2.3 字节精确防线的一部分，
     # 实例缺失时换行转换可破坏冻结哈希；pyproject/.gitignore 直接复制。
     for f in (".gitattributes", ".gitignore", "pyproject.toml"):
@@ -290,7 +290,7 @@ def cmd_bootstrap(stage: int, appointment_ref: str | None, dry_run: bool) -> int
             print("DRY-RUN: 检查表 —— 指纹", "PASS" if not failures else f"FAIL {failures}",
                   "｜ 登记", "已有（幂等重跑，无写入）" if _entries() else "缺失（正式执行将写入）")
             return 0 if not failures else 1
-        code = hs_register("v2.0.0") or cmd_verify()
+        code = hs_register("v2.1.0") or cmd_verify()
         if code == 0:
             marker_dir.mkdir(exist_ok=True)
             (marker_dir / "boot-0.done").write_bytes(

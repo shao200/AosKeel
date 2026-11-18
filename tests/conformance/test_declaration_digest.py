@@ -1,6 +1,6 @@
 """tests/conformance/test_declaration_digest.py —— GOV-2.3-DECL 第四道比对。
 判据：spec/ 业务声明（条件阈值/权限/副作用）入独立摘要域，冻结正典与
-e6884aed… 正典哈希不受影响；摘要漂移 = verify 失败；未登记/无声明显式
+e6884aed… 历史封存行不改写；摘要漂移 = verify 失败；未登记/无声明显式
 SKIP（不把"没有基线"伪装成 PASS）；spec/drafts/ 是工作区，不入摘要域。
 """
 import sys
@@ -89,7 +89,7 @@ def test_skip_when_declarations_not_registered(tmp_path, monkeypatch):
     assert hs.verify_declarations() == 0
 
 def test_real_registry_declaration_is_current():
-    """真实仓库：声明摘要已登记且当前一致；正典条目仍为 e6884aed…。"""
+    """真实仓库：声明摘要已登记且当前一致；v2.0.0 封存登记行逐字保留。"""
     registry = (ROOT / "docs/ARTIFACT-REGISTRY.md").read_text(encoding="utf-8")
     old = registry.splitlines()
     assert any(l.startswith("| AOS-ART-001 |") and "e6884aed" in l for l in old)

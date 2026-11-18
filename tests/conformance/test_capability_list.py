@@ -26,7 +26,10 @@ def test_capability_tool_fail_closed_on_drift(tmp_path):
     shutil.copy2(registry, backup)
     try:
         text = registry.read_text(encoding="utf-8")
-        drifted = text.replace("| AOS-ART-001 |", "| AOS-ART-999 |", 1)
+        arts = [l for l in text.splitlines() if l.startswith("| AOS-ART-")]
+        assert arts, "登记表格式与预期不符（测试失效）"
+        latest = arts[-1].split("|")[1].strip()          # 随 GOV-3 更替自动适配
+        drifted = text.replace(f"| {latest} |", "| AOS-ART-999 |", 1)
         assert drifted != text, "登记表格式与预期不符（测试失效）"
         registry.write_text(drifted, encoding="utf-8")
         r = subprocess.run([sys.executable, str(TOOL)], capture_output=True,

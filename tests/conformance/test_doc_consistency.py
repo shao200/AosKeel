@@ -160,3 +160,20 @@ def test_declaration_execution_boundaries_disclosed():
     cfg = (ROOT / "config/verification.yaml").read_text(encoding="utf-8")
     assert re.search(r"invariants:\s*\{\s*gate:\s*false\s*\}", cfg), (
         "invariants.gate 必须为 false：没有 tests/invariants 执行点时不得声称已布线")
+
+
+def test_canonical_v21_registration_and_informative_appendices():
+    """v2.1.0 信息性附录与 GOV-3 登记联动；封存登记行逐字保留（P-15）。"""
+    spec = (ROOT / "docs/aos-spec.md").read_text(encoding="utf-8")
+    fp = (ROOT / "docs/SPEC-FINGERPRINT.md").read_text(encoding="utf-8")
+    reg = (ROOT / "docs/ARTIFACT-REGISTRY.md").read_text(encoding="utf-8")
+    assert "## 附录 R：理论谱系与立场（信息性）" in spec
+    assert "## 附录 S：条件语言最小求值语义（信息性）" in spec
+    assert "附录 ×9" in spec and "附录 ×9" in fp
+    assert any(l.startswith("| AOS-ART-002 |") and "v2.1.0" in l
+               for l in reg.splitlines())
+    assert any(l.startswith("| AOS-ART-001 |") and "e6884aed" in l
+               for l in reg.splitlines())
+    assert "SPEC-2026-001" in reg
+    for rel in ("config/capabilities.yaml", "config/verification.yaml"):
+        assert "spec_ref: AOS-ART-002" in (ROOT / rel).read_text(encoding="utf-8")
