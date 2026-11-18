@@ -88,3 +88,20 @@ def require_pytest(probe=None) -> None:
         raise WiringError(
             "PYTEST-MISSING: 缺少 pytest —— 执行 pip install -e . 重新安装依赖"
             "（pytest 是 aos test / aos release 声明的运行时依赖）")
+
+
+def pytest_basetemp(prefix: str, env_var: str) -> str:
+    """两条 pytest 入口共用的隔离纪律（F1 收口 N5 的半闭合）。
+
+    `aos test`（src/cli/main.py::cmd_test）与发布闸门内嵌套件
+    （tools/release_gate.py::_default_tests）曾是两套实现：闸门已固定 basetemp，
+    标准命令没有 —— 宿主 safe-delete 阈值拦下 pytest 临时目录自清理时，
+    会出现「74 条全点通过、进程退出码 1」的不可诊断绿，CI 判红而闸门判绿。
+
+    每次调用独立 mkdtemp 且刻意不回收：固定目录会被残留进程的 sqlite 句柄
+    锁死（WinError 32），就地清理又是一次大规模删除。目录留给系统临时目录回收。
+    `env_var` 允许部署侧显式指定目录；两条入口用不同变量，避免并发共用一目录。
+    """
+    import os
+    import tempfile
+    return os.environ.get(env_var) or tempfile.mkdtemp(prefix=prefix)

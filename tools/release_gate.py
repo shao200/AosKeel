@@ -17,7 +17,6 @@ import os
 import re
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "src"))
@@ -31,12 +30,10 @@ def _default_tests() -> str:
     # 执行引擎缺失同样 fail-closed：明确报 PYTEST-MISSING，不伪装成"套件失败"。
     wiring.require_pytest()
     paths = [p for _, p in wiring.wired_paths()]
-    # N5：嵌套 pytest 固定 basetemp 到仓库外隔离目录（可经 AOS_GATE_BASETEMP 覆盖）。
-    # 不固定时 pytest 用系统临时目录并自清理，宿主 safe-delete 阈值会让
-    # "61 条测试 100% 通过、进程退出码 1"这类不可诊断的绿出现在本可全绿的环境。
-    # 每次闸门独立 mkdtemp 且不回收：固定目录会被残留进程的 sqlite 句柄锁死
-    # （WinError 32），就地清理又是一次大规模删除。目录留给系统临时目录回收。
-    basetemp = os.environ.get("AOS_GATE_BASETEMP") or tempfile.mkdtemp(prefix="aos-gate-")
+    # F1：basetemp 纪律收敛到 tools/wiring.py::pytest_basetemp，与 `aos test`
+    # 同一真源。此前只有本内嵌路径固定 basetemp，标准命令仍被宿主 safe-delete
+    # 阈值打断（74 项全过、退出码 1），造成「闸门绿 / CI 红」两套结论。
+    basetemp = wiring.pytest_basetemp("aos-gate-", "AOS_GATE_BASETEMP")
     # AOS_IN_GATE=1：标记嵌套 pytest 运行于闸门之内。test_real_gate_end_to_end
     # 据此自跳，否则 gate → e2e → gate 无限递归（INTEGRITY-34 补登后实测爆炸）。
     env = {**os.environ, "AOS_IN_GATE": "1"}
