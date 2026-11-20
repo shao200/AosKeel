@@ -42,6 +42,26 @@ def test_agent_has_no_raw_write_path():
         assert not hasattr(agent, banned)
 
 
+def test_agent_capabilities_are_ledger_projection():
+    """能力面消除第二张皮：AgentRuntime.capabilities() 与能力账簿 supply() 同一实现。
+
+    结构守卫：Agent 能力面 = 能力账簿（compiled 权限矩阵）的投影，不允许任何旁路。
+    若未来有人试图在 runtime.py 里再手写一遍投影循环，本测试的等价断言会漂移。
+    """
+    from kernel.capability_ledger import CapabilityLedger
+    k, agent = _runtime(roles=("contract_steward", "qc_inspector"))
+    ledger = CapabilityLedger(k.compiled)
+    assert agent.capabilities() == list(ledger.supply(agent.roles))
+    # 显式注入同一本账时仍一致（测试/编排共用事实源）
+    shared = CapabilityLedger(k.compiled)
+    agent2 = AgentRuntime(k, "agent-2", ("contract_steward",), ledger=shared)
+    assert agent2.capabilities() == list(shared.supply(agent2.roles))
+    # 源文件必须"可见地"委托能力账簿——不残留自行遍历 compiled 的能力面
+    src = (ROOT / "src" / "agents" / "runtime.py").read_text(encoding="utf-8")
+    assert "self._ledger.supply" in src, "能力面必须委托能力账簿（消除第二张皮）"
+    assert src.count("for aid, act in") == 0, "Agent 不得自研 compiled 投影循环"
+
+
 # ---------- 管理域：实体主动性的可见性边界（实例侧参考实现） ----------
 # 三条规则：创建者拥有域 / 仅域内角色可被扫描到 / 仅域内角色可参与互动。
 # 判据全部可计算（owner 来自首事件 principal，scan 为集合交），不是声称。

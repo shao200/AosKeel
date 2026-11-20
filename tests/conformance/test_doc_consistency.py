@@ -19,11 +19,27 @@ def test_metrics_derived_from_source():
     assert dm.cli_clause() in dm.canonical_line()
     assert dm.wiring_clause() in dm.canonical_line()
 
+
+def test_suite_size_metrics_derived_from_tests_dir():
+    """测试套件规模（文件数 / def test_ 函数数）从 tests/ 派生，杜绝手抄漂移。
+
+    pytest 实际收集数含参数化展开增量，与函数数单位不同——第二条断言只锁
+    "收集数 ≥ 函数数"的大小关系，不做跨单位换算。
+    """
+    s = dm.stats()
+    assert s["test_files"] >= 1 and s["test_fns"] >= s["test_files"]
+    collected = dm.pytest_collected()
+    assert collected >= s["test_files"]
+    assert collected >= s["test_fns"]
+
 def test_documents_follow_authoritative_counts():
     s = dm.stats()
     n, w = s["cli_total"], s["wiring"]
+    collected = dm.pytest_collected()
     expected = {
         "README.md": [f"{n} commands ({s['cli_top']} top-level + {s['cli_sub']} subcommands)"],
+        "docs/README.md": [f"**{s['test_files']} test files / {s['test_fns']} `def test_` functions**",
+                           f"pytest collects {collected} cases"],
         "docs/README.zh-CN.md": [f"命令面 {n}（{s['cli_top']} 顶层 + {s['cli_sub']} 子命令）",
                                  f"CLI {n} 命令面",
                                  f"{n} 命令面 = {s['cli_top']} 顶层 + {s['cli_sub']} 子命令"],
@@ -36,13 +52,15 @@ def test_documents_follow_authoritative_counts():
                                       "骨架字节级零漂移 · 7 文件"],
         "docs/WHITEPAPER.md": [f"{w} 条布线"],
         "docs/STRATEGY.md": [f"{w} 条布线（可执行 {w} / 缺失 {s['missing']}）",
-                             f"{n} 个命令面"],
+                             f"{n} 个命令面",
+                             f"{s['test_files']} 个测试文件 / {s['test_fns']} 个测试函数"],
         "docs/STRATEGY.en.md": [f"{w} wired paths ({w} executable / {s['missing']} missing)",
-                                f"{n} command surfaces"],
+                                f"{n} command surfaces",
+                                f"{s['test_files']} test files / {s['test_fns']} test functions"],
         "dist/RELEASE-MANIFEST.json": [f"{w} 条布线路径全部通过"],
     }
     for rel, needles in expected.items():
-        txt = (ROOT / rel).read_text(encoding="utf-8")
+        txt = re.sub(r"\s+", " ", (ROOT / rel).read_text(encoding="utf-8"))
         for needle in needles:
             assert needle in txt, f"{rel} 口径漂移：期望含 {needle!r}"
 

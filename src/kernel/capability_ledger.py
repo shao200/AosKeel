@@ -72,8 +72,9 @@ class CapabilityLedger:
     def supply(self, roles) -> tuple[str, ...]:
         """给定持有的角色，返回这些角色有资格提交的 Action 集（排序去重）。
 
-        与 AgentRuntime.capabilities() 同推导（编译权限矩阵 ∩ 持有角色），
-        但不依赖 Agent 实例——任何人/Agent 出示角色即可查询。
+        AgentRuntime.capabilities() 委托本方法（见 agents/runtime.py）——全系统仅此
+        一份能力面实现，杜绝"匹配"与"门控"两本账分叉。不依赖 Agent 实例：任何人/
+        Agent 出示角色即可查询。
         """
         have = set(roles or ())
         if not have:

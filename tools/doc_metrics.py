@@ -3,10 +3,13 @@
 README / 指南 / 白皮书 / RELEASE-MANIFEST 中的"CLI ×N、布线 N 条"不再手抄：
 命令面从 src/cli/main.py 的分派分支派生，布线数从 config/verification.yaml
 经 tools/wiring.scan() 派生。test_doc_consistency 锁住文档与本模块一致。
+测试套件规模（文件数 / `def test_` 函数数）亦从 tests/ 派生；pytest 实际收集数
+（含参数化）经 collect-only 子进程派出——三类数字在文档中一律不得手抄。
 """
 from __future__ import annotations
-import json, re, sys
+import json, re, subprocess, sys
 from pathlib import Path
+from functools import lru_cache
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from tools import wiring
@@ -19,12 +22,33 @@ def stats() -> dict:
     paths = len(set(p for _, p in ready))
     config = (ROOT / "config/verification.yaml").read_text(encoding="utf-8")
     integrity = len(re.findall(r'^\s*-\s*\{ id: INTEGRITY-', config, re.M))
+    test_files = sorted(p for p in (ROOT / "tests").rglob("test_*.py"))
+    test_fns = sum(
+        len(re.findall(r"^\s*def test_", p.read_text(encoding="utf-8"), re.M))
+        for p in test_files
+    )
     return {"cli_top": len(top), "cli_sub": len(sub),
             "cli_total": len(top) + len(sub),
             "wiring": paths, "executable": paths - len(missing),
             "missing": len(missing), "unwired": len(unwired),
             "integrity": integrity,
+            "test_files": len(test_files), "test_fns": test_fns,
             "top_commands": top, "sub_commands": sub}
+
+@lru_cache(maxsize=1)
+def pytest_collected() -> int:
+    """pytest 实际收集的用例数（含参数化）——完整 node-id 解析派生。
+
+    不用 `-q` 逐文件计数（其行末数字依赖终端列宽、易被截断丢掉尾行）。
+    逐条 `tests/xxx.py::<node>` 累积，参数化展开成多条 node-id 天然计入。
+    注意：结果 = 测试函数数 + 参数化展开增量，与 stats() 的 test_fns 二者单位不同，
+    不得互相换算；文档中引用任一只手抄其值即触发守卫。
+    """
+    r = subprocess.run(
+        [sys.executable, "-m", "pytest", "tests", "--collect-only"],
+        cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    combined = (r.stdout or "") + "\n" + (r.stderr or "")
+    return len(re.findall(r"^\s*\S+\.py::\S+", combined, re.M))
 
 def cli_clause() -> str:
     s = stats()
