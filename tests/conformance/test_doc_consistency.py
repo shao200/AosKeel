@@ -9,6 +9,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "src"))
 from tools import doc_metrics as dm
+from tools import codegen as cg
 
 def test_metrics_derived_from_source():
     s = dm.stats()
@@ -36,6 +37,7 @@ def test_documents_follow_authoritative_counts():
     s = dm.stats()
     n, w = s["cli_total"], s["wiring"]
     collected = dm.pytest_collected()
+    skeleton_files = len(cg.generate()["files"])
     expected = {
         "README.md": [f"{n} commands ({s['cli_top']} top-level + {s['cli_sub']} subcommands)"],
         "docs/README.md": [f"**{s['test_files']} test files / {s['test_fns']} `def test_` functions**",
@@ -49,7 +51,7 @@ def test_documents_follow_authoritative_counts():
                                        "三关四道"],
         "docs/guide/04-tutorial.md": [f"选中 {w} 项，可执行 {w}",
                                       f"{w} 条布线路径",
-                                      "骨架字节级零漂移 · 7 文件"],
+                                      f"骨架字节级零漂移 · {skeleton_files} 文件"],
         "docs/WHITEPAPER.md": [f"{w} 条布线"],
         "docs/STRATEGY.md": [f"{w} 条布线（可执行 {w} / 缺失 {s['missing']}）",
                              f"{n} 个命令面",

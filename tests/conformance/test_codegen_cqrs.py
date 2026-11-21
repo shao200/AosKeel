@@ -75,8 +75,9 @@ def test_deselected_capability_pruned(monkeypatch):
     monkeypatch.setattr(codegen, "profile_resolve", lambda *a, **k: empty)
     try:
         report = codegen.generate(force=True)  # 摘除全部未声明能力模块
-        assert sorted(report["pruned"]) == ["admin_console.py", "auth_oauth2.py",
-                                            "command_api.py", "query_api.py"]
+        expected = sorted(codegen.ALL_CAPABILITY_MODULES
+                          + codegen.ALL_ROOT_CAPABILITY_MODULES)
+        assert sorted(report["pruned"]) == expected
         assert not (ROOT / "src/generated/command_api.py").exists()
     finally:
         monkeypatch.undo()         # 先解除补丁再恢复，否则恢复本身仍走空 profile

@@ -56,6 +56,7 @@ integrity_paths:
   - { id: INTEGRITY-40, path: tests/negative/test_forbidden_coverage.py }            # N4：禁用面覆盖
   - { id: INTEGRITY-41, path: tests/negative/test_kernel_roles_enforced.py }         # N4：内核角色强制
   - { id: INTEGRITY-42, path: tests/conformance/test_wiring_coverage.py }            # N4：测试文件全量在册守卫
+  - { id: INTEGRITY-43, path: tests/conformance/test_codegen_openwebui.py }          # ADR-006：Open WebUI 前端生成守卫
 ver:
   - { id: VER-1,  clause: KS-1.2,      kind: auto, path: tests/conformance/test_event_schema.py }
   - { id: VER-2,  clause: KS-7.2,      kind: auto, path: tests/conformance/test_pipeline_order.py }

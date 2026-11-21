@@ -23,3 +23,5 @@
 # decl-superseded-via: REVIEW-2026-11-17-R2 → AOS-DECL-004（GOV-3 声明变更通道；旧登记行不改写——append-only P-15）
 | AOS-DECL-005 | v2.0.0 | sha256:91ffe5a11ec0a49876adf765d5e31c57492ca330a8943f54a383999c2325e449 | 2026-11-17T08:06:51+00:00 | registered |
 # decl-superseded-via: REVIEW-2026-11-17-R3 → AOS-DECL-005（GOV-3 声明变更通道；旧登记行不改写——append-only P-15）
+| AOS-DECL-006 | v2.2.0 | sha256:7c653e79e3b29875611c267f21edfee75fc66a982c1abdff3b207a6f35d291f2 | 2026-11-21T15:04:13+00:00 | registered |
+# decl-superseded-via: SPEC-2026-006 → AOS-DECL-006（GOV-3 声明变更通道；旧登记行不改写——append-only P-15）

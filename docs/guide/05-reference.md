@@ -65,7 +65,7 @@
 | `src/agents/runtime.py` | Agent 能力面（清单严格子集） |
 | `src/generated/` | 生成物（字节级零漂移 gate 强制）：actions.py / reducers.py + command_api.py / query_api.py（CQRS 双端）+ auth_oauth2.py（OAuth 2.1 IdP + 治理面 claims + DPoP）+ admin_console.py（前端守卫/表单/页面三张表） |
 | `tools/` | `hash_spec` / `fingerprint` / `wiring` / `codegen` / `db_import` / `data_import` / `semantic_extract` / `shadow` / `shadow_online` / `review` / `console` / `release_gate` / `ontology_draft` / `domain_manual` / `impact` / `audit_export` / `gate_history` |
-| `tests/` | conformance（含 42 条 INTEGRITY 回归守卫）/ negative / golden / genesis / invariants / replay / redteam |
+| `tests/` | conformance（含 43 条 INTEGRITY 回归守卫）/ negative / golden / genesis / invariants / replay / redteam |
 | `bootstrap/checklists/` | 〔强〕项检查表（VER-20/24/26/27/28/29） |
 
 ---
@@ -143,9 +143,9 @@
 | VER-32 | KS-8.5 | 〔自〕 | `test_genesis_ttl.py` |
 | VER-33 | KS-2.6 | 〔自〕 | `test_decision_stream.py` |
 
-另有 `integrity_paths` 段登记 `tests/conformance/test_integrity.py` 等 **42 条 INTEGRITY 回归守卫**（INTEGRITY-1..42：工作区清零、能力清单完备性、生成物零漂移、wheel 可安装性、语义提取契约、在线对账协议、声明摘要第四道、声明执行点、口径单一权威源、CQ 可执行契约、元 schema 声明化、域无关 CQ 定义、附录 S 语义机器核对、十二个补登测试文件与全量在册守卫等）。**它不构成新 VER 条款**——冻结条款集仍是 VER-1..33，指纹清单与登记哈希均未改动。
+另有 `integrity_paths` 段登记 `tests/conformance/test_integrity.py` 等 **43 条 INTEGRITY 回归守卫**（INTEGRITY-1..43：工作区清零、能力清单完备性、生成物零漂移、wheel 可安装性、语义提取契约、在线对账协议、声明摘要第四道、声明执行点、口径单一权威源、CQ 可执行契约、元 schema 声明化、域无关 CQ 定义、附录 S 语义机器核对、十二个补登测试文件与全量在册守卫等）。**它不构成新 VER 条款**——冻结条款集仍是 VER-1..33，指纹清单与登记哈希均未改动。
 
-`aos test` 当前统计：选中 74 / 可执行 74 / 缺失 0 / 〔强〕项未布线 1（VER-20 属实例侧人工留档）。口径由 `tools/doc_metrics.py` 从源码与布线文件派生，不由人工抄写。
+`aos test` 当前统计：选中 75 / 可执行 75 / 缺失 0 / 〔强〕项未布线 1（VER-20 属实例侧人工留档）。口径由 `tools/doc_metrics.py` 从源码与布线文件派生，不由人工抄写。
 
 ---
 

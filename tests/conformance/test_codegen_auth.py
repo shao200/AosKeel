@@ -118,8 +118,9 @@ def test_gating_prune_and_restore(monkeypatch):
     monkeypatch.setattr(codegen, "profile_resolve", lambda *a, **k: empty)
     try:
         report = codegen.generate(force=True)
-        assert sorted(report["pruned"]) == ["admin_console.py", "auth_oauth2.py",
-                                            "command_api.py", "query_api.py"]
+        expected = sorted(codegen.ALL_CAPABILITY_MODULES
+                          + codegen.ALL_ROOT_CAPABILITY_MODULES)
+        assert sorted(report["pruned"]) == expected
         assert "auth_oauth2.py" in report["pruned"]
         assert not (ROOT / "src/generated/auth_oauth2.py").exists()
     finally:

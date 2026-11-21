@@ -19,5 +19,6 @@ profile:
     frontend:
       admin_console: true        # 管理控制台（依赖 cqrs + mappings 锚点）
       form_generation: true      # 由 objects + invariants 驱动表单生成
+      open_webui: true           # ADR-006：生成 Open WebUI Pipe + compose（外部运行时，胶水才入实例树）
     workflow:
       enabled: true              # 跨聚合编排（依赖 cqrs）

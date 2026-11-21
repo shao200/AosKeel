@@ -25,8 +25,8 @@ def test_canonical_digest_unchanged_by_new_docs():
 
 
 def test_declaration_digest_unchanged():
-    """样例与旁挂件不得写入 spec/ 声明域。"""
-    assert hs.declaration_digest().startswith("91ffe5a1")
+    """样例与旁挂件不得写入 spec/ 声明域；当前摘要经 SPEC-2026-006 治理登记。"""
+    assert hs.declaration_digest().startswith("7c653e79")
     assert all("samples" not in str(p) and "owl" not in str(p)
                for p in hs.declaration_files())
 

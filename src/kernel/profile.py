@@ -26,6 +26,9 @@ DEPENDENCIES: dict[str, list[str]] = {
     "backend.projections":      ["backend.event_sourcing"],   # 读端投影依赖事件流
     "frontend.admin_console":   ["backend.cqrs"],
     "frontend.form_generation": ["frontend.admin_console"],
+    # ADR-006：Open WebUI 是生成实例的外部前端运行时，胶水由 codegen 产出；
+    # 它消费 admin_console.GUARD 与 query_api，故以后端 CQRS + 控制台元数据为前置。
+    "frontend.open_webui":      ["frontend.admin_console", "auth.oauth2_1"],
     "auth.oauth2_1":            ["governance.duty_matrix"],   # claims 语义来自治理面
     "auth.pkce":                ["auth.oauth2_1"],
     "auth.token_binding":       ["auth.oauth2_1"],            # 值 none 视为未选
@@ -41,12 +44,14 @@ DEPTH_PRESETS: dict[str, dict] = {
     "minimal":  {"governance.duty_matrix": True},
     "standard": {"governance.duty_matrix": True, "governance.audit_trail": True,
                  "backend.cqrs": True, "auth.oauth2_1": True,
-                 "auth.token_binding": "dpop"},
+                 "auth.token_binding": "dpop",
+                 "frontend.admin_console": True, "frontend.open_webui": True},
     "full":     {"governance.duty_matrix": True, "governance.audit_trail": True,
                  "backend.cqrs": True, "backend.projections": True,
                  "auth.oauth2_1": True, "auth.pkce": True,
                  "auth.token_binding": "dpop",
                  "frontend.admin_console": True, "frontend.form_generation": True,
+                 "frontend.open_webui": True,
                  "workflow.enabled": True},
 }
 # 能力 → spec/ 锚点目录（勾选了就必须有声明在场，否则拒绝）
@@ -54,6 +59,7 @@ ANCHORS: dict[str, str] = {
     "governance.duty_matrix":   "governance",
     "backend.cqrs":             "aggregates",
     "frontend.admin_console":   "mappings",
+    "frontend.open_webui":      "mappings",   # 与控制台元数据同源（ADR-006）
 }
 class ProfileError(Exception):
     """Profile 声明非法（未知能力/非法值/结构错误）—— 一律明确拒绝。"""

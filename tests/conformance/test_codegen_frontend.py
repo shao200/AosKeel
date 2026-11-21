@@ -46,9 +46,11 @@ def test_capability_gating(tmp_path):
     try:
         prof.write_text(original.replace("admin_console: true",
                                          "admin_console: false")
-                         .replace("form_generation: true",
-                                  "form_generation: false"),
-                        encoding="utf-8")
+                        .replace("form_generation: true",
+                                 "form_generation: false")
+                        # ADR-006：open_webui 依赖 admin_console，不一起关会被依赖展开补回
+                        .replace("open_webui: true", "open_webui: false"),
+                       encoding="utf-8")
         r = codegen.generate(force=True)
         assert "admin_console.py" in r["pruned"]
         assert not (ROOT / "src/generated/admin_console.py").exists()

@@ -400,6 +400,6 @@ tools/console.py                WEB 治理控制台壳（subprocess 驱动 CLI�
 packages/kernel/               aoskeel-kernel wheel（pyproject.toml + README）
 packages/template/             aoskeel-template sdist 构建脚本（build_sdist.py + README）
 tests/                         一致性 + negative 双射 + golden + genesis + replay + redteam 套件
-                               + conformance（含 42 条 INTEGRITY 回归守卫，布线执行）
+                               + conformance（含 43 条 INTEGRITY 回归守卫，布线执行）
 bootstrap/checklists/          _schema + VER-20/24/26/27/28/29（P-14 证据留档）
 ```

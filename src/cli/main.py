@@ -251,6 +251,19 @@ def cmd_init(target: str, wizard: dict | None = None) -> int:
     else:
         print("下一步: cd 实例 && python src/cli/main.py bootstrap --stage 0"
               "（或 aos init <dir> --depth standard 定制能力广度）")
+    # ADR-006：根层生成物不在目录白名单内 —— 按实例最终 profile 决定是否随脚手架带走。
+    # 模板自身必须先跑过 aos generate 产出 compose；能力关闭时实例侧 generate 会摘除。
+    try:
+        import yaml as _yaml
+        _prof = _yaml.safe_load((dst / "spec/profile.yaml").read_text(encoding="utf-8")) or {}
+        _caps = (_prof.get("profile") or {}).get("capabilities") or {}
+        _open_webui = bool((_caps.get("frontend") or {}).get("open_webui"))
+    except Exception:
+        _open_webui = False
+    if _open_webui:
+        _compose = ROOT / "docker-compose.openwebui.yml"
+        if _compose.is_file():
+            shutil.copy2(_compose, dst / _compose.name)
     return 0
 
 
