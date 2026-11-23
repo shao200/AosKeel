@@ -51,7 +51,7 @@
 | `config/capabilities.yaml` | 能力清单三段式（固定段/生成段/provenance） |
 | `config/verification.yaml` | VER-1..33 布线（承重件；单一读取点 `tools/wiring.py`） |
 | `spec/` | 九类声明 + `profile.yaml`（能力画像）+ `drafts/`（工作区，不入实例） |
-| `src/cli/main.py` | 22 命令分发；`main()` 兼容 console script 无参调用；启动自检拒绝误装 wheel |
+| `src/cli/main.py` | 26 命令面（21 顶层 + 5 子命令）；`main()` 兼容 console script 无参调用；启动自检拒绝误装 wheel |
 | `src/kernel/registration.py` | 注册五步，生成段唯一写者（P-5） |
 | `src/kernel/profile.py` | 能力画像解析（依赖图展开、Kahn 拓扑生成序、锚点核对、fail-closed） |
 | `src/kernel/sc_compiler.py` | SC 两段式编译（Check AST / BooleanFunctionRef） |
@@ -61,6 +61,12 @@
 | `src/kernel/session.py` | 会话事件流（物理分离） |
 | `src/kernel/projection.py` | 只读投影与重放 |
 | `src/kernel/{detector,upcasting,merge,saga,dryrun,governance,genesis,errors}.py` | 探测器 / 读时升级 / 归并史 / 编排 / 演练 / 治理 / 创世窗口 / 类型化异常 |
+| `src/kernel/initiative.py` | 实体主动行为（run / seek；只写观察通道） |
+| `src/kernel/stewardship.py` | 管理域投影（可见集 V） |
+| `src/kernel/capability_ledger.py` | 能力账簿（Action × Role 双向，与 submit 门控同源） |
+| `src/kernel/assurance.py` | 校验档位求值（不可变闸门为常量，只可加严） |
+| `src/kernel/selection.py` | 选择行为审计账本（append-only） |
+| `src/kernel/continuation.py` | 续办只读视图（不臆造期限） |
 | `src/interpreter/` | 受限解释器（布尔档 / 映射档 / 审计） |
 | `src/agents/runtime.py` | Agent 能力面（清单严格子集） |
 | `src/generated/` | 生成物（字节级零漂移 gate 强制）：actions.py / reducers.py + command_api.py / query_api.py（CQRS 双端）+ auth_oauth2.py（OAuth 2.1 IdP + 治理面 claims + DPoP）+ admin_console.py（前端守卫/表单/页面三张表） |

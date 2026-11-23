@@ -220,7 +220,11 @@ duty + GOV 提案），不是当前缺陷；模型的容量已经留出。
    全量 430 passed，verify 三关 OK，正典 `fff3d7e7…` / 声明摘要 `91ffe5a1…` 仍未变。
 6. **P2（条件触发，未做）**：实例级动态成员 + 事件投影，需单独提案与授权。
    调度点已另起 `docs/adr/ADR-005-trigger-scheduling.md`（Proposed，未授权、未执行）。
-7. **不做**：接写路径（模型变更，需 ADR→PR→gates→regression）、跨域消息总线。
+7. **P1.8（已落地，本轮：责任传递闭环 + 校验强度可调）**：把"状态事件驱动任务完成"
+   落成观察侧闭环，写路径与正典零变更。新增 `assurance / selection / continuation`
+   三个模块，`Projection.entity_key` 转为必填，发起人身份只进审计元数据；生成期新增
+   聚合标识与域画像 `entity_key` 的 fail-closed 校验。细节与红线见 §8.6。
+8. **不做**：接写路径（模型变更，需 ADR→PR→gates→regression）、跨域消息总线。
 
 ## 8.3 实体主动行为闭环（initiative.py）的三条红线
 
@@ -235,6 +239,9 @@ duty + GOV 提案），不是当前缺陷；模型的容量已经留出。
 V/E 在此闭环里的分工得到实证：在册只声明 contract_steward 一岗，owner 显式锚定
 `qc_inspector` 入 V 后，它 `can_execute=False`、只收 notice——**可见 ≠ 可执行**落地为
 可观测的两种邀请类型。切线仍是：运行态"谁认领"属调度层，不进成员集。
+
+P1.8 之后同类约束又多了两条——**选择不落事件、续办不臆造期限**，与上表三条同性质，
+见 §8.6 的红线表。
 
 ## 8.4 能力账簿：双向匹配的单一事实源（capability_ledger.py）
 
@@ -282,9 +289,43 @@ V/E 语义分离；明确模块只补 E 不覆盖的可见集与 owner，**不�
 代价：模块仍是参考实现、无生产消费者——接写路径需模型变更授权，这是刻意保留的边界，
 不是遗漏。
 
+## 8.6 责任传递闭环与校验强度可调（本轮 P1.8）
+
+状态事件发生后，谁该接着做什么——这件事从"概念"落成可跑链路，但**agent 只在读侧**：
+
+```
+状态事件 → 投影折叠（实体级水位）→ 候选集（档位 + 渲染时戳）
+        → 上一轮发起人选择（审计三元组 + 新颖性校验）
+        → 责任落到持岗人（assignment）
+        → 持岗人 submit(initiator=…) → 原门控 → 新事件
+```
+
+| 能力 | 落点 | 关键约束 |
+|---|---|---|
+| 校验强度分档 | `src/kernel/assurance.py` + `config/assurance-policy.yaml` | 四档 autonomous / single_review / dual_review / supervised；下限是常量 `IMMUTABLE_GATES`，声明里出现 `gates` 即拒绝加载；自主档必须带 dry_run；未声明 Action 无默认档 |
+| 选择审计 | `src/kernel/selection.py` | who / when / basis 三元组成对落账；basis 取投影 `decision_ref()`（KS-2.5 双引用的一半），可用 `resolve_decision_ref` 机械复核 |
+| 责任传递入口 | `InitiativeEngine.select()` | 只能选本轮已给出且确有执行权的候选；写 `initiative.assignment`，**不写 EventStore** |
+| 陈旧判定 | `Projection.stamp(entity)` / `entity_head()` | 候选携带渲染水位；选择时与实体当前水位不一致即 `SELECTION-STALE-BASIS`，留账前拒绝 |
+| 续办视图 | `src/kernel/continuation.py` | 待办 / 陈旧 / 逾期；每次派生不缓存；无声明 SLA 则 `due_at=None` |
+| 发起人身份 | `Kernel.submit(initiator=…)` → store 审计记录 + FileStore 重放 | `Event` 仍为八字段（KS-1.2 未动），initiator 只进审计元数据 |
+| 实体归属 | `Projection.entity_key`（必填） | 归属由 `Contract.object.yaml` 的 identity 驱动；「payload 值匹配」的隐式口径已删除 |
+| 生成期守卫 | `tools/codegen.py::_assert_identities` | 聚合缺标识 → `AGGREGATE-IDENTITY-MISSING`；域画像 `entity_key` 与 identity 分叉 → `ENTITY-KEY-MISMATCH`；均在落盘前拒绝 |
+
+**本轮红线表**（与 §8.3 同性质，写进结构不靠自觉）：
+
+| 红线 | 结构保证 | 守卫测试 |
+|---|---|---|
+| 选择 ≠ 执行 | `select()` 只写选择账本与观察通道，EventStore 零增长；提交仍由持岗人发起 | `test_selection_records_triad_and_routes_to_holder` |
+| 陈旧即拒 | 依据携带实体水位，与当前 `entity_head()` 不一致则在留账前拒绝 | `test_selection_rejects_stale_basis` |
+| 续办只读 | 每次派生不缓存；不臆造期限；调用前后事件流、账本、水位零变化 | `test_continuation_is_read_only` / `test_continuation_lists_open_assignment_without_fake_deadline` |
+| 档位不可破底 | 闸门清单为常量，声明无法缩减；自主档仍需 dry_run 取证 | `test_policy_rejects_gate_removal_declaration` / `test_policy_rejects_autonomous_without_dry_run` |
+
+**证据**：全量 430 → 461 测试函数 / 446 → 475 用例；verify 三关、release 五关通过；
+正典 `fff3d7e7…` 与声明摘要 `7c653e79…` 均未变——本轮全程未触碰 `spec/`。
+
 ## 9. 诚实边界
 
-- 本文的设计主体已落地（§8 P0/P1/P1.5/P1.6/P1.7），P2 与写路径接入仍属未做。
+- 本文的设计主体已落地（§8 P0/P1/P1.5/P1.6/P1.7/P1.8），P2 与写路径接入仍属未做。
 - B 的成员粒度是**域级**（org_unit / 岗位），不是单实例级；实例差异靠 owner 归属层与显式覆盖。
 - 可见集 V 的完备性依赖该项目**全部 Action 都已声明**——若某切面的动作未进在册声明，
   该切面角色就不在 V 里（fail-closed 的正确表现，但需治理面补齐才完整）。

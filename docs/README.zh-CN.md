@@ -371,6 +371,12 @@ src/kernel/saga.py             跨聚合编排（P-9；补偿本身是 Action，
 src/kernel/dryrun.py           演练模拟器（P-12；可重复、零副作用，VER-25）
 src/kernel/governance.py       治理层（GOV-4 生效重跑；失败 = 阻断 + governance 类违规对象）
 src/kernel/errors.py           类型化异常（异常类型即条款的运行时形态）
+src/kernel/initiative.py       实体主动行为（事找人 run / 人找事 seek；只写观察通道，不碰写路径）
+src/kernel/stewardship.py      管理域投影（可见集 V；切面 / 跨组织 / owner 归属）
+src/kernel/capability_ledger.py 能力账簿（Action × Role 双向只读投影；与 submit 门控同源）
+src/kernel/assurance.py        校验档位求值（plan → GatePlan；不可变闸门为常量，只可加严）
+src/kernel/selection.py        选择行为审计账本（who / when / basis；append-only）
+src/kernel/continuation.py     续办只读视图（待办 / 陈旧 / 逾期；不臆造期限）
 src/agents/runtime.py          AGENT 能力面（P-10；清单严格子集，无特权通道）
 src/interpreter/boolean_profile.py   布尔档受限解释器（R10 AST 白名单，含 dunder 属性拦截）
 src/interpreter/mapping_profile.py   映射档受限解释器（R11 无谓词分派 / VER-9）

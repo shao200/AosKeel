@@ -147,7 +147,7 @@ def test_no_stale_hand_copied_counts():
         "README.md": ["12 commands"],
         "docs/README.zh-CN.md": ["×24", "×22", "×25", "22 条 INTEGRITY", "25 条 INTEGRITY",
                                  "27 条 INTEGRITY", "（22 命令", "两者等价"],
-        "docs/guide/05-reference.md": ["命令 ×22", "命令 ×25", "22 条 INTEGRITY",
+        "docs/guide/05-reference.md": ["命令 ×22", "命令 ×25", "22 命令分发", "22 条 INTEGRITY",
                                        "25 条 INTEGRITY", "27 条 INTEGRITY", "选中 54",
                                        "选中 57", "选中 59"],
         "docs/guide/04-tutorial.md": ["选中 35 项", "选中 57 项", "选中 59 项",
