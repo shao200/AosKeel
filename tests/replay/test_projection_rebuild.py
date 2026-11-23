@@ -25,7 +25,7 @@ def _store_with_events(n=3):
     return store
 def test_rebuild_deterministic():
     store = _store_with_events()
-    proj = Projection(store, "decisions", reducer)
+    proj = Projection(store, "decisions", reducer, entity_key="projection_ref")
     s1 = proj.rebuild()
     s2 = proj.rebuild()
     assert s1 == s2 and len(s1["decisions"]) == 3
@@ -33,7 +33,7 @@ def test_rebuild_deterministic():
 def test_discard_then_rebuild_restores_state():
     """VER-26 item1-2：删除任一物化 → 全量重放 → 逐属性一致。"""
     store = _store_with_events()
-    proj = Projection(store, "decisions", reducer)
+    proj = Projection(store, "decisions", reducer, entity_key="projection_ref")
     before = proj.rebuild()
     proj.discard()
     with pytest.raises(ProjectionNotMaterialized):
@@ -45,7 +45,7 @@ def test_session_channel_does_not_reach_projection():
     store = _store_with_events(2)
     ch = SessionChannel()
     ch.append("agent-1", {"observed": "noise"})
-    proj = Projection(store, "decisions", reducer)
+    proj = Projection(store, "decisions", reducer, entity_key="projection_ref")
     state = proj.rebuild()
     assert len(state["decisions"]) == 2                        # 会话事件未进入投影
     assert proj.decision_ref()["transaction_time"] == \
@@ -53,11 +53,12 @@ def test_session_channel_does_not_reach_projection():
 def test_session_stream_rejected_as_source():
     store = _store_with_events()
     with pytest.raises(ProjectionViolation):
-        Projection(store, "leaky", reducer, streams=["session"])   # KS-2.4 闭包禁读会话（防御纵深）
+        Projection(store, "leaky", reducer, entity_key="projection_ref",
+                   streams=["session"])   # KS-2.4 闭包禁读会话（防御纵深）
 def test_double_references_resolvable():
     """VER-26 item3 / INV-4：决策事件双引用全部可解析。"""
     store = _store_with_events()
-    proj = Projection(store, "decisions", reducer)
+    proj = Projection(store, "decisions", reducer, entity_key="projection_ref")
     proj.rebuild()
     assert resolve_decision_ref(store, proj.decision_ref(), {"decisions": proj})
     for ev in store.streams["decision"]:

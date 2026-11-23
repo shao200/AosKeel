@@ -25,12 +25,15 @@ def test_kernel_reevals_on_conflict():
     k = _kernel()
     real_commit = k.store.commit
     calls = {"n": 0}
-    def racing(action_id, stream, expected_version, event_type, payload, principal):
+    def racing(action_id, stream, expected_version, event_type, payload, principal,
+               initiator=None):
         calls["n"] += 1
         if calls["n"] == 1:
-            real_commit(action_id, stream, expected_version, event_type, payload, principal)
+            real_commit(action_id, stream, expected_version, event_type, payload,
+                        principal, initiator)
             raise VersionConflict("并发写入（模拟）")            # 快照过期
-        return real_commit(action_id, stream, expected_version, event_type, payload, principal)
+        return real_commit(action_id, stream, expected_version, event_type, payload,
+                           principal, initiator)
     k.store.commit = racing
     ev = k.submit("VoidContract", {"contract_id": "c-1"}, "svc", roles=("contract_steward",))
     assert calls["n"] >= 2 and ev is not None                   # 重求值后成功

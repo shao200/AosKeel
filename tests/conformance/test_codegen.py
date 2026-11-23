@@ -35,6 +35,66 @@ def test_generation_is_idempotent():
     generate()
     src2 = (ROOT / "src/generated/reducers.py").read_text(encoding="utf-8")
     assert src1 == src2
+
+
+# ---------- 聚合标识属性：生成期 fail-closed（AGGREGATE-IDENTITY-MISSING） ----------
+def test_aggregate_root_without_identity_is_refused(monkeypatch):
+    """根对象缺 identity → 拒绝生成，禁止静默写出空标识（隐式归属退化）。"""
+    monkeypatch.setattr(codegen, "_load_dir", lambda sub: (
+        [{"aggregate": "ContractAggregate", "root": "Contract"}]
+        if sub == "aggregates" else []))
+    with pytest.raises(codegen.CodegenIdentity, match="AGGREGATE-IDENTITY-MISSING"):
+        codegen._assert_identities([{"object_type": "Contract", "properties": {}}])
+
+
+def test_aggregate_without_root_object_is_refused(monkeypatch):
+    """聚合已声明但没有任何绑定根对象 → 同样拒绝（IDENTITIES 不得缺项）。"""
+    monkeypatch.setattr(codegen, "_load_dir", lambda sub: (
+        [{"aggregate": "ContractAggregate", "root": "Contract"}]
+        if sub == "aggregates" else []))
+    with pytest.raises(codegen.CodegenIdentity, match="AGGREGATE-IDENTITY-MISSING"):
+        codegen._assert_identities([])
+
+
+def test_every_declared_aggregate_has_identity():
+    """随仓声明必须全部有标识属性，且 IDENTITIES 覆盖每个聚合（无空值）。"""
+    codegen._assert_identities(codegen._load_dir("ontology/objects"))
+    idents = _load("reducers.py").IDENTITIES
+    assert set(idents) == {a["aggregate"] for a in codegen._load_dir("aggregates")}
+    assert all(idents.values()), "任何聚合都不得落到空标识"
+
+
+def test_domain_entity_key_must_match_object_identity(monkeypatch):
+    """域画像 entity_key 与根对象 identity 分叉 → 生成期拒绝（ENTITY-KEY-MISMATCH）。"""
+    def fake(sub):
+        if sub == "aggregates":
+            return [{"aggregate": "ContractAggregate", "root": "Contract"}]
+        if sub == "competence/domains":
+            return [{"domain": "contract",
+                     "aggregate": {"type": "Contract", "name": "ContractAggregate",
+                                   "entity_key": "wrong_id"}}]
+        return []
+    monkeypatch.setattr(codegen, "_load_dir", fake)
+    with pytest.raises(codegen.CodegenIdentity, match="ENTITY-KEY-MISMATCH"):
+        codegen._assert_identities([{"object_type": "Contract",
+                                     "identity": "contract_id"}])
+
+
+def test_domain_aggregate_without_entity_key_is_refused(monkeypatch):
+    """域画像声明了聚合却不给 entity_key → 同样拒绝（查询定位会运行期才炸）。"""
+    def fake(sub):
+        if sub == "aggregates":
+            return [{"aggregate": "ContractAggregate", "root": "Contract"}]
+        if sub == "competence/domains":
+            return [{"domain": "contract",
+                     "aggregate": {"type": "Contract", "name": "ContractAggregate"}}]
+        return []
+    monkeypatch.setattr(codegen, "_load_dir", fake)
+    with pytest.raises(codegen.CodegenIdentity, match="ENTITY-KEY-MISSING"):
+        codegen._assert_identities([{"object_type": "Contract",
+                                     "identity": "contract_id"}])
+
+
 def test_hand_edit_refused(tmp_path):
     """手改检测：生成物被人工修改后，再生成必拒（禁止静默覆盖人工代码）。"""
     p = ROOT / "src/generated/actions.py"

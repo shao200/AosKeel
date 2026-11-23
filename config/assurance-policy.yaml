@@ -1,0 +1,58 @@
+# config/assurance-policy.yaml —— 校验强度策略（实例侧可调，运行期只读）
+#
+# 可调的是"控制 / 验证 / 检验的强度"，不是"闸门是否存在"。三步：
+#   参数可调   requires_dry_run / min_approvals / sla_hours
+#   组合可调   required_facets（必须是治理面可见集的子集）
+#   语义禁调   fail_closed / single_submit_point / audit_triad / role_constraint
+#              —— 由 src/kernel/assurance.py 的 IMMUTABLE_GATES 常量强制携带，
+#              本文件没有任何字段可以关闭它们；写了 gates/immutable_gates 即拒绝加载。
+#
+# 修改本文件即"调整强度"：需随提交留档（digest 可复算），不得在运行期热改。
+version: 1
+policy: contract-assurance
+
+# 宪法下限：必须完整声明（只能加严，不能缩减）。缺项即 POLICY-FLOOR-WEAKENED。
+floor:
+  - fail_closed
+  - single_submit_point
+  - audit_triad
+  - role_constraint
+
+tiers:
+  # 低风险：dry_run 取证后可自动提交（自主 ≠ 免检）
+  autonomous:
+    requires_dry_run: true
+    min_approvals: 0
+    sla_hours: null
+    required_facets: []
+    auto_commit: true
+
+  # 常规：单人复核，48h 响应
+  single_review:
+    requires_dry_run: false
+    min_approvals: 1
+    sla_hours: 48
+    required_facets: []
+    auto_commit: false
+
+  # 中风险：双人复核 + 演练取证，24h 响应
+  dual_review:
+    requires_dry_run: true
+    min_approvals: 2
+    sla_hours: 24
+    required_facets: []
+    auto_commit: false
+
+  # 高风险：监理切面必须在场 + 双人复核 + 演练取证，8h 响应
+  supervised:
+    requires_dry_run: true
+    min_approvals: 2
+    sla_hours: 8
+    required_facets: [contract_steward]
+    auto_commit: false
+
+# Action → 档位（未声明的 Action 无默认档位，求值即 fail-closed）
+actions:
+  RegisterContract: { tier: single_review }
+  ApproveContract: { tier: dual_review }
+  VoidContract: { tier: supervised }

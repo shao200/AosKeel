@@ -18,7 +18,8 @@ def _store_with_events():
     return store
 def test_rebuild_deterministic():
     store = _store_with_events()
-    p = Projection(store, "contract", _void, streams=["domain:ContractAggregate"])
+    p = Projection(store, "contract", _void, entity_key="contract_id",
+                   streams=["domain:ContractAggregate"])
     p.rebuild(); s1 = p.snapshot()
     p.discard(); p.rebuild(); s2 = p.snapshot()
     assert s1 == s2                                              # 同流同终态（确定性）
@@ -26,7 +27,8 @@ def test_replay_does_not_mutate_stream():
     store = _store_with_events()
     events = store.streams["domain:ContractAggregate"]
     before = [(e.stream_id, e.event_id, e.transaction_time, dict(e.payload)) for e in events]
-    p = Projection(store, "contract", _void, streams=["domain:ContractAggregate"])
+    p = Projection(store, "contract", _void, entity_key="contract_id",
+                   streams=["domain:ContractAggregate"])
     p.rebuild()
     after = [(e.stream_id, e.event_id, e.transaction_time, dict(e.payload)) for e in events]
     assert before == after                                       # 重放不修改事件流（R11 纯性）

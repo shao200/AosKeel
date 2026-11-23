@@ -19,7 +19,7 @@ def reducer(state, ev):
 def _setup(store, statuses=("open",)):
     for i, s in enumerate(statuses):
         store.commit("RecordDecision", "decision", i, "Decision@1", DECISION_PAYLOAD(s), "agent-1")
-    proj = Projection(store, "decisions", reducer)
+    proj = Projection(store, "decisions", reducer, entity_key="projection_ref")
     proj.rebuild()
     return proj
 def test_violation_objectized_via_action():

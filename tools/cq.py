@@ -112,7 +112,8 @@ def _projection(ctx):
     from generated import reducers
     agg = ctx["profile"]["aggregate"]
     p = Projection(ctx["store"], agg["type"], reducers.REDUCERS[agg["reducer"]],
-                   streams=[agg["stream"]])
+                   streams=[agg["stream"]],
+                   entity_key=agg["entity_key"])
     p.rebuild()
     return p
 
@@ -218,7 +219,8 @@ def _p_projection_rebuild(ctx, probe, profile):
     from generated import reducers
     agg = profile["aggregate"]
     p = Projection(ctx["store"], agg["type"], reducers.REDUCERS[agg["reducer"]],
-                   streams=[agg["stream"]])
+                   streams=[agg["stream"]],
+                   entity_key=agg["entity_key"])
     before = p.rebuild()
     p.discard()
     dematerialized = False

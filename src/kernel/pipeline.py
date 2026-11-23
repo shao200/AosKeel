@@ -58,7 +58,8 @@ class Kernel:
         self.store, self.session, self.compiled = store, session, compiled
         self.interpreter_audit: list[dict] = []        # KS-3.3：评估审计留档
     def submit(self, action_type: str, params: dict, principal: str,
-               roles: tuple[str, ...] = (), contexts: tuple[str, ...] = ()):
+               roles: tuple[str, ...] = (), contexts: tuple[str, ...] = (),
+               initiator: str | None = None):
         act = self.compiled.get(action_type)
         if act is None:
             raise UnregisteredAction(f"{action_type} 未注册 —— 不注册即不可执行（INV-1 / P-1）")
@@ -79,7 +80,8 @@ class Kernel:
             try:
                 return self.store.commit(action_type, stream,
                                          len(self.store.streams.get(stream, [])),
-                                         f"{action_type}@1", payload, principal)
+                                         f"{action_type}@1", payload, principal,
+                                         initiator)
             except VersionConflict:
                 continue                               # 下轮以新版本视图重新求值
         raise BudgetExceeded(f"重求值超过 {MAX_REEVAL} 次 —— 竞争过热，fail-closed（R8）")

@@ -48,7 +48,7 @@ class EventStore:
         raise exc
     # ---------- 唯一追加路径 ----------
     def _append(self, stream_id, expected_version, event_type, payload,
-                action_id, principal) -> Event:
+                action_id, principal, initiator=None) -> Event:
         if "@" not in event_type:                                   # KS-5.1
             self._reject(f"schema: {event_type} 缺版本号",
                          StoreRejection(f"SCHEMA-FAIL: event_type 须含 schema 版本号: {event_type}"))
@@ -73,11 +73,14 @@ class EventStore:
         self.streams.setdefault(stream_id, []).append(ev)
         self._next_id += 1
         self.audit.append({"kind": "appended", "event_id": ev.event_id,
-                           "stream": stream_id, "action": action_id, "tx": tx})
+                           "stream": stream_id, "action": action_id, "tx": tx,
+                           # 发起人身份：追加审计元数据，不进入事件八字段（KS-1.2）
+                           "initiator": initiator})
         return ev
     # ---------- 能力清单上的唯一写面（INV-13 / KS-2.1） ----------
     def commit(self, action_id: str, stream_id: str, expected_version: int,
-               event_type: str, payload: dict, principal: str) -> Event:
+               event_type: str, payload: dict, principal: str,
+               initiator: str | None = None) -> Event:
         if action_id not in self._actions:
             self._reject(f"未知能力 {action_id}",
                          UnknownAction(f"{action_id} 不在能力清单 write_actions 段（INV-13）"))
@@ -123,7 +126,7 @@ class EventStore:
                 reject("越权写入保留流", StreamRuleViolation(
                     f"{action_id} 不得写决策流/会话流（KS-2.1 / INV-5）"))
             return self._append(stream_id, expected_version, event_type, payload,
-                                action_id, principal)
+                                action_id, principal, initiator)
         except StoreRejection:
             raise          # _append / reject 已记审计：不重复记第二笔（审计双记缺陷）
     # ---------- 直写陷阱（必拒；VER-28 item1 模板层执行点） ----------

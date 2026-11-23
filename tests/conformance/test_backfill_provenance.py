@@ -23,7 +23,7 @@ def test_violation_events_traceable():
     """探测器写违规对象 → action_id = RaiseInvariantViolation（能力清单内建）。"""
     store = EventStore()
     proj = Projection(store, "contract", lambda s, e: {**(s or {}), e.payload["contract_id"]: "voided"},
-                      streams=["domain:ContractAggregate"])
+                      entity_key="contract_id", streams=["domain:ContractAggregate"])
     store.commit("VoidContract", "domain:ContractAggregate", 0, "VoidContract@1",
                  {"valid_time": VT, "contract_id": "c-1"}, "svc")
     det = Detector(store)

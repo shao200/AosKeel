@@ -258,7 +258,8 @@ def _initiative_setup():
         s = dict(state or {})
         s[ev.payload.get("contract_id", "?")] = {"status": ev.payload.get("status", "pending")}
         return s
-    proj = Projection(k.store, "contract", reducer, streams=["domain:ContractAggregate"])
+    proj = Projection(k.store, "contract", reducer, streams=["domain:ContractAggregate"],
+                      entity_key="contract_id")
     proj.rebuild()
     engine = InitiativeEngine({"contract": proj}, k.session,
                               StewardshipRegistry(k.store), CapabilityLedger(k.compiled))
@@ -445,7 +446,7 @@ def test_engine_rejects_missing_ledger():
     k.submit("RegisterContract", {"contract_id": "C-X", "amount": 1, "party_refs": []},
              "creator", roles=("contract_steward",))
     p = Projection(k.store, "contract", reducers.REDUCERS["ContractAggregate"],
-                   streams=["domain:ContractAggregate"])
+                   streams=["domain:ContractAggregate"], entity_key="contract_id")
     p.rebuild()
     with pytest.raises(InitiativeViolation):
         InitiativeEngine({"contract": p}, k.session, StewardshipRegistry(k.store), None)
@@ -487,3 +488,414 @@ def test_entity_scoped_trigger_avoids_cross_target_fanout():
     recs2 = engine.seek(principal="agent-2", roles=["contract_steward"],
                         projection_name="contract", triggers=[legacy])
     assert len(recs2) == 2, "单参谓词保持旧语义（全快照判定），兼容既有写法"
+
+
+# ---------- 校验强度策略：可调，但不跌破宪法下限 ----------
+# 三层可调性：参数（dry_run/复核人数/SLA）与组合（检验切面）可调；
+# 语义层（fail-closed/单一提交点/审计三元组/角色约束）由常量强制携带，声明无法关闭。
+def _policy_mapping(actions=None, **over):
+    base = {
+        "version": 1,
+        "floor": ["fail_closed", "single_submit_point", "audit_triad",
+                  "role_constraint"],
+        "tiers": {
+            "autonomous": {"requires_dry_run": True, "min_approvals": 0,
+                           "sla_hours": None, "required_facets": [],
+                           "auto_commit": True},
+            "dual_review": {"requires_dry_run": True, "min_approvals": 2,
+                            "sla_hours": 24, "required_facets": [],
+                            "auto_commit": False},
+        },
+        "actions": {"ApproveContract": {"tier": "dual_review"}},
+    }
+    if actions is not None:
+        base["actions"] = actions
+    base.update(over)
+    return base
+
+
+def _policy(**over):
+    from kernel.assurance import AssurancePolicy
+    return AssurancePolicy.from_mapping(_policy_mapping(**over))
+
+
+def _engine_with_policy(policy):
+    """在既有闭环装置上挂策略引擎（投影/账簿/注册表全部复用，只加 policy）。"""
+    from kernel.initiative import InitiativeEngine
+    k, engine, trig = _initiative_setup()
+    return k, InitiativeEngine(engine.projections, k.session, engine.registry,
+                               engine.ledger, policy=policy), trig
+
+
+def test_policy_plan_always_carries_immutable_gates():
+    """宪法下限与声明无关：任何档位的 GatePlan 都恒定携带四道不可关的闸。"""
+    from kernel.assurance import IMMUTABLE_GATES
+    p = _policy()
+    plan = p.plan("ApproveContract")
+    assert plan.immutable_gates == IMMUTABLE_GATES
+    assert plan.tier.name == "dual_review"
+    assert plan.tier.min_approvals == 2 and plan.tier.sla_hours == 24
+    assert p.digest() == _policy().digest(), "策略指纹须稳定可复算（审计可比对）"
+
+
+def test_policy_rejects_gate_removal_declaration():
+    """语义禁调：声明里出现 gates/immutable_gates 即拒绝加载，不是静默忽略。"""
+    from kernel.assurance import AssurancePolicy, FloorViolation
+    evil = _policy_mapping()
+    evil["tiers"]["dual_review"]["gates"] = ["audit_triad"]
+    with pytest.raises(FloorViolation, match="POLICY-GATE-REMOVAL"):
+        AssurancePolicy.from_mapping(evil)
+    evil2 = _policy_mapping()
+    evil2["immutable_gates"] = []
+    with pytest.raises(FloorViolation, match="POLICY-GATE-REMOVAL"):
+        AssurancePolicy.from_mapping(evil2)
+
+
+def test_policy_rejects_autonomous_without_dry_run():
+    """自主 ≠ 免检：允许自动提交的档位必须先 dry_run 取证。"""
+    from kernel.assurance import AssurancePolicy, FloorViolation
+    m = _policy_mapping()
+    m["tiers"]["autonomous"]["requires_dry_run"] = False
+    with pytest.raises(FloorViolation, match="AUTO-WITHOUT-EVIDENCE"):
+        AssurancePolicy.from_mapping(m)
+
+
+def test_policy_rejects_non_bool_and_weakened_floor():
+    """布尔严格 isinstance；floor 只可加严不可缩减。"""
+    from kernel.assurance import AssurancePolicy, FloorViolation
+    m = _policy_mapping()
+    m["tiers"]["dual_review"]["auto_commit"] = 1          # 非 bool，禁止 bool() 兜底
+    with pytest.raises(FloorViolation, match="POLICY-NON-BOOL"):
+        AssurancePolicy.from_mapping(m)
+    m2 = _policy_mapping()
+    m2["floor"] = ["fail_closed"]                          # 试图缩减宪法下限
+    with pytest.raises(FloorViolation, match="FLOOR-WEAKENED"):
+        AssurancePolicy.from_mapping(m2)
+    m3 = _policy_mapping()
+    m3["version"] = True                                   # bool 不得冒充版本号 1
+    with pytest.raises(FloorViolation, match="POLICY-VERSION"):
+        AssurancePolicy.from_mapping(m3)
+
+
+def test_policy_unknown_action_is_fail_closed():
+    """未声明强度的 Action 无默认档位，求值即拒绝。"""
+    from kernel.assurance import UnknownActionTier
+    with pytest.raises(UnknownActionTier):
+        _policy().plan("NoSuchAction")
+
+
+def test_shipped_policy_config_loads_and_covers_sample_actions():
+    """随仓策略文件可加载，且三个样例 Action 全部有档位与下限。"""
+    from kernel.assurance import AssurancePolicy, DEFAULT_POLICY_PATH
+    assert DEFAULT_POLICY_PATH.exists(), "策略声明文件缺失（可调性无载体）"
+    p = AssurancePolicy.load()
+    for action in ("RegisterContract", "ApproveContract", "VoidContract"):
+        plan = p.plan(action)
+        assert plan.immutable_gates, f"{action} 档位丢失宪法下限"
+    assert p.plan("VoidContract").tier.name == "supervised"
+
+
+def test_engine_policy_annotates_tier_and_keeps_write_path_closed():
+    """策略只增观察字段，不碰写路径：档位/复核人数/SLA 可审计，事件流零增长。"""
+    k, engine, trig = _engine_with_policy(_policy())
+    before = sum(len(s) for s in k.store.streams.values())
+    recs = engine.run(projection_name="contract", stream_id="domain:ContractAggregate",
+                      entity_id="C-ACT", candidates=["contract_steward"],
+                      triggers=[trig], action_types=["ApproveContract"])
+    after = sum(len(s) for s in k.store.streams.values())
+    assert before == after, "策略层不得写权威事件流"
+    rec = recs[0]
+    assert rec["assurance_tier"] == "dual_review"
+    assert rec["min_approvals"] == 2 and rec["sla_hours"] == 24
+    assert rec["auto_commit"] is False
+    assert rec["kind"] == "initiative.invitation"
+    assert rec["immutable_gates"], "观察记录须携带宪法下限供审计"
+
+
+def test_engine_policy_never_grants_auto_to_unauthorized_role():
+    """自主 = 档位允许 ∧ 确有执行权：可见但无执行权的切面不得被判为自主。"""
+    k, engine, trig = _engine_with_policy(
+        _policy(actions={"ApproveContract": {"tier": "autonomous"}}))
+    engine.registry.anchor("domain:ContractAggregate", "C-ACT", "creator-A",
+                           ["contract_steward", "qc_inspector"])
+    recs = engine.run(projection_name="contract", stream_id="domain:ContractAggregate",
+                      entity_id="C-ACT", candidates=["contract_steward", "qc_inspector"],
+                      triggers=[trig], action_types=["ApproveContract"])
+    by_role = {r["to_role"]: r for r in recs}
+    assert by_role["contract_steward"]["auto_commit"] is True
+    assert by_role["contract_steward"]["kind"] == "initiative.auto"
+    assert by_role["qc_inspector"]["auto_commit"] is False
+    assert by_role["qc_inspector"]["kind"] == "initiative.notice"
+
+
+def test_engine_rejects_policy_facet_missing_from_visible_set():
+    """组合可调的下限：要求的检验切面不可见 → 拒绝发出无法兑现的邀请。"""
+    from kernel.assurance import AssurancePolicy, FacetNotAuthorized
+    m = _policy_mapping()
+    m["tiers"]["dual_review"]["required_facets"] = ["qc_inspector"]
+    k, engine, trig = _engine_with_policy(AssurancePolicy.from_mapping(m))
+    with pytest.raises(FacetNotAuthorized):
+        engine.run(projection_name="contract", stream_id="domain:ContractAggregate",
+                   entity_id="C-ACT", candidates=["contract_steward"],
+                   triggers=[trig], action_types=["ApproveContract"])
+    assert k.session.read_all() == [], "切面不满足即拒，不得先写观察"
+
+
+def test_engine_without_policy_keeps_legacy_record_shape():
+    """未注入策略时行为与记录形态完全不变（向后兼容，不是新增必经项）。"""
+    k, engine, trig = _initiative_setup()
+    recs = engine.run(projection_name="contract", stream_id="domain:ContractAggregate",
+                      entity_id="C-ACT", candidates=["contract_steward"],
+                      triggers=[trig], action_types=["ApproveContract"])
+    assert "assurance_tier" not in recs[0]
+    assert recs[0]["kind"] == "initiative.invitation"
+
+
+# ---------- 责任传递：发起人身份 + 选择审计三元组 ----------
+# 选择 = 观察层行为：记 who / when / basis，不写权威事件流；执行仍走 submit。
+def _run_once(engine, trig, candidates=("contract_steward",)):
+    return engine.run(projection_name="contract", stream_id="domain:ContractAggregate",
+                      entity_id="C-ACT", candidates=list(candidates),
+                      triggers=[trig], action_types=["ApproveContract"])
+
+
+def test_selection_records_triad_and_routes_to_holder():
+    """三元组落账（谁 / 何时 / 依据），责任传到持岗人，事件流零增长。"""
+    k, engine, trig = _initiative_setup()
+    _run_once(engine, trig)
+    before = sum(len(s) for s in k.store.streams.values())
+    rec = engine.select(principal="creator-A", entity_id="C-ACT",
+                        action="ApproveContract", to_role="contract_steward")
+    after = sum(len(s) for s in k.store.streams.values())
+    assert before == after, "选择 ≠ 执行：不得写权威事件流"
+    assert rec["kind"] == "initiative.assignment"
+    assert rec["initiator"] == "creator-A" and rec["assignee"] == "contract_steward"
+    assert rec["principal"] == "creator-A" and rec["ts"]
+    assert rec["basis"]["projection"] == "contract" and rec["basis"]["transaction_time"]
+    assert rec["selection_digest"]
+    triad = engine.selections.read_all()[0]
+    assert (triad["principal"], triad["to_role"]) == ("creator-A", "contract_steward")
+    assert triad["ts"] and triad["basis"]["transaction_time"]
+    assert engine.selections.resolve("C-ACT") == "creator-A"
+
+
+def test_selection_requires_principal_and_basis():
+    """无主体或无投影依据不得选择；拒绝不留半条账。"""
+    from kernel.selection import (SelectionLedger, SelectionPrincipalRequired,
+                                  SelectionBasisRequired)
+    led = SelectionLedger()
+    good_basis = {"projection": "contract", "transaction_time": "2026-01-01T00:00:00+00:00"}
+    with pytest.raises(SelectionPrincipalRequired):
+        led.record(principal="", entity="C-ACT", action="ApproveContract",
+                   to_role="contract_steward", basis=good_basis)
+    with pytest.raises(SelectionBasisRequired):
+        led.record(principal="creator-A", entity="C-ACT", action="ApproveContract",
+                   to_role="contract_steward", basis={})
+    assert led.read_all() == []
+
+
+def test_selection_rejects_option_not_offered():
+    """选择不得造选项：未给出的 Action 一律拒绝。"""
+    from kernel.selection import SelectionNotOffered
+    _, engine, trig = _initiative_setup()
+    _run_once(engine, trig)
+    with pytest.raises(SelectionNotOffered):
+        engine.select(principal="creator-A", entity_id="C-ACT",
+                      action="VoidContract", to_role="contract_steward")
+    assert engine.selections.read_all() == []
+
+
+def test_selection_rejects_role_without_execute_right():
+    """可见但无执行权的切面不得承接责任（notice 不能变 assignment）。"""
+    from kernel.selection import SelectionNotOffered
+    _, engine, trig = _initiative_setup()
+    engine.registry.anchor("domain:ContractAggregate", "C-ACT", "creator-A",
+                           ["contract_steward", "qc_inspector"])
+    _run_once(engine, trig, candidates=("contract_steward", "qc_inspector"))
+    with pytest.raises(SelectionNotOffered):
+        engine.select(principal="creator-A", entity_id="C-ACT",
+                      action="ApproveContract", to_role="qc_inspector")
+
+
+def test_initiator_lands_in_event_metadata_without_touching_eight_fields():
+    """发起人进追加审计元数据；执行人 principal 与事件八字段均不变（KS-1.2）。"""
+    k, _, _ = _initiative_setup()
+    ev = k.submit("ApproveContract",
+                  {"contract_id": "C-ACT", "status": "pending", "amount": 500000},
+                  "holder-B", roles=("contract_steward",), initiator="creator-A")
+    assert ev.principal == "holder-B", "执行人身份不变（责任不串位）"
+    assert set(vars(ev)) == {"event_id", "stream_id", "expected_version",
+                             "event_type", "payload", "transaction_time",
+                             "action_id", "principal"}, "八字段结构不得扩张"
+    appended = [a for a in k.store.audit if a["kind"] == "appended"][-1]
+    assert appended["initiator"] == "creator-A"
+
+
+def test_initiator_survives_filestore_replay(tmp_path):
+    """发起人身份随事件日志持久化，重启重放后可重建（责任链不断）。"""
+    from kernel.filestore import FileStore
+    p = tmp_path / "events.jsonl"
+    FileStore(p).commit(
+        "RecordDecision", "decision", 0, "Decision@1",
+        {"valid_time": "2026-01-01T00:00:00+00:00",
+         "projection_ref": "proj-1", "session_ref": "sess-1"},
+        "steward", initiator="agent-1")
+    again = FileStore(p)                                   # 重启：以文件为准重放
+    appended = [a for a in again.audit if a["kind"] == "appended"][-1]
+    assert appended["initiator"] == "agent-1"
+    assert set(vars(again.streams["decision"][0])) == {
+        "event_id", "stream_id", "expected_version", "event_type",
+        "payload", "transaction_time", "action_id", "principal"}
+
+
+def test_selection_rejects_stale_basis():
+    """本实体被推进后候选依据陈旧，必须重渲染后再选（SELECTION-STALE-BASIS）。"""
+    from kernel.selection import SelectionStaleBasis
+    k, engine, trig = _initiative_setup()
+    _run_once(engine, trig)
+    k.submit("ApproveContract",
+             {"contract_id": "C-ACT", "status": "pending", "amount": 500000},
+             "holder-B", roles=("contract_steward",))          # 同一实体被推进
+    with pytest.raises(SelectionStaleBasis, match="SELECTION-STALE-BASIS"):
+        engine.select(principal="creator-A", entity_id="C-ACT",
+                      action="ApproveContract", to_role="contract_steward")
+    assert engine.selections.read_all() == [], "陈旧依据不得留账"
+
+
+def test_selection_basis_carries_render_watermark():
+    """候选与选择记录都携带渲染水位，事后可复核选择基于哪个快照。"""
+    _, engine, trig = _initiative_setup()
+    recs = _run_once(engine, trig)
+    proj = engine.projections["contract"]
+    assert recs[0]["basis"]["watermark"] == proj.head()
+    chosen = engine.select(principal="creator-A", entity_id="C-ACT",
+                           action="ApproveContract", to_role="contract_steward")
+    assert chosen["basis"]["watermark"] == proj.head()
+    assert engine.selections.read_all()[0]["basis"]["watermark"] == proj.head()
+
+
+def test_projection_stamp_declares_freshness():
+    """投影自报水位与新鲜度：源流推进后 is_fresh 转 False，rebuild 后恢复。"""
+    k, engine, _ = _initiative_setup()
+    proj = engine.projections["contract"]
+    assert proj.is_fresh()
+    assert proj.stamp() == {"projection": "contract",
+                            "transaction_time": proj.decision_ref()["transaction_time"],
+                            "watermark": proj.head()}
+    k.submit("RegisterContract",
+             {"contract_id": "C-NEW", "amount": 1, "party_refs": []},
+             "creator-A", roles=("contract_steward",))
+    assert not proj.is_fresh(), "源流推进后投影必须自报不新鲜"
+    proj.rebuild()
+    assert proj.is_fresh()
+
+
+# ---------- 续办只读视图：谁在等谁、办什么、何时到期 ----------
+def _assigned(policy=None):
+    """跑一轮候选 + 选择，返回 (k, engine)，已有一条责任传递记录。"""
+    if policy is None:
+        k, engine, trig = _initiative_setup()
+    else:
+        k, engine, trig = _engine_with_policy(policy)
+    _run_once(engine, trig)
+    engine.select(principal="creator-A", entity_id="C-ACT",
+                  action="ApproveContract", to_role="contract_steward")
+    return k, engine
+
+
+def test_continuation_lists_open_assignment_without_fake_deadline():
+    """无 SLA 档位时不臆造期限：due_at 为 None，状态 open。"""
+    _, engine = _assigned()
+    rows = engine.continuation.assignments()
+    assert len(rows) == 1
+    row = rows[0]
+    assert (row["entity"], row["action"], row["assignee"], row["initiator"]) == (
+        "C-ACT", "ApproveContract", "contract_steward", "creator-A")
+    assert row["projection"] == "contract"
+    assert row["status"] == "open" and row["watermark"] == row["head"]
+    assert row["due_at"] is None, "未声明 SLA 就不得编造到期时间"
+    assert engine.continuation.awaiting("C-ACT")["assignee"] == "contract_steward"
+    assert engine.continuation.summary() == {"assignments": 1, "open": 1,
+                                             "stale": 0, "overdue": 0}
+
+
+def test_continuation_derives_due_at_from_policy_sla():
+    """有 SLA 档位时到期 = 选择时刻 + sla_hours（同一档位口径，不另立规则）。"""
+    import datetime as dt
+    _, engine = _assigned(policy=_policy())
+    row = engine.continuation.assignments()[0]
+    assert row["tier"] == "dual_review" and row["sla_hours"] == 24
+    assert dt.datetime.fromisoformat(row["due_at"]) > \
+        dt.datetime.fromisoformat(row["assigned_at"])
+    assert row["overdue"] is False
+
+
+def test_continuation_marks_stale_after_stream_advances():
+    """本实体被推进后，既有责任传递立即转 stale（与 SELECTION-STALE-BASIS 同口径）。"""
+    k, engine = _assigned()
+    k.submit("ApproveContract",
+             {"contract_id": "C-ACT", "status": "pending", "amount": 500000},
+             "holder-B", roles=("contract_steward",))
+    row = engine.continuation.assignments()[0]
+    assert row["status"] == "stale" and row["head"] > row["watermark"]
+    assert engine.continuation.summary() == {"assignments": 1, "open": 0,
+                                             "stale": 1, "overdue": 0}
+
+
+def test_entity_watermark_isolates_cross_entity_advance():
+    """同一流内其它实体推进不得误伤：C-ACT 的待办仍 open，且仍可选择。"""
+    k, engine = _assigned()
+    k.submit("RegisterContract",
+             {"contract_id": "C-NEW", "amount": 100, "party_refs": []},
+             "creator-A", roles=("contract_steward",))          # 另一实体推进
+    row = engine.continuation.assignments()[0]
+    assert row["status"] == "open", "跨实体推进不应让 C-ACT 的待办陈旧"
+    assert row["head"] == row["watermark"], "实体水位只看本实体事实"
+    sel = engine.select(principal="creator-A", entity_id="C-ACT",
+                        action="ApproveContract", to_role="contract_steward")
+    assert sel["kind"] == "initiative.assignment"
+
+
+def test_projection_requires_entity_key():
+    """投影必须声明实体标识：缺失即拒绝；显式归属只认标识字段（禁止隐式归属）。"""
+    from kernel.projection import Projection, ProjectionViolation
+    from kernel.store import EventStore
+    store = EventStore()
+    store.commit("RegisterContract", "domain:ContractAggregate", 0,
+                 "ContractRegistered@1",
+                 {"contract_id": "C-NEW", "party_ref": "C-ACT",
+                  "valid_time": "2026-01-01T00:00:00+00:00"}, "holder-A")
+    with pytest.raises(ProjectionViolation, match="ENTITY-KEY-MISSING"):
+        Projection(store, "loose", lambda s, e: s,
+                   streams=["domain:ContractAggregate"])
+    strict = Projection(store, "strict", lambda s, e: s,
+                        streams=["domain:ContractAggregate"], entity_key="contract_id")
+    assert strict.entity_head("C-ACT") == 0, "显式归属不得被同名字段值污染"
+    assert strict.entity_head("C-NEW") == 1
+
+
+def test_continuation_timeline_merges_events_and_observations():
+    """时间线同时给出权威事件与观察记录，且邀请早于责任传递。"""
+    _, engine = _assigned()
+    tl = engine.continuation.timeline("C-ACT", "contract")
+    kinds = [e["kind"] for e in tl]
+    assert {"event", "invitation", "assignment"} <= set(kinds)
+    assert kinds.index("invitation") < kinds.index("assignment")
+    assert {e["source"] for e in tl} == {"event", "observation"}
+
+
+def test_continuation_is_read_only():
+    """只读视图不得改变任何状态：事件流 / 会话 / 选择账本计数全不变。"""
+    k, engine = _assigned()
+    def snapshot():
+        return (sum(len(s) for s in k.store.streams.values()),
+                len(k.session.read_all()), len(engine.selections.read_all()),
+                engine.projections["contract"].head())
+    before = snapshot()
+    view = engine.continuation
+    view.assignments()
+    view.assignments("contract")
+    view.awaiting("C-ACT")
+    view.timeline("C-ACT", "contract")
+    view.summary()
+    assert snapshot() == before

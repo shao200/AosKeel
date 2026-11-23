@@ -225,7 +225,7 @@ def reducer(state, event):
     return state
 
 proj = Projection(store, "contract_state", reducer,
-                  streams=["domain:ContractAggregate"])
+                  entity_key="contract_id", streams=["domain:ContractAggregate"])
 print("重建:", proj.rebuild())
 print("快照:", proj.snapshot())
 

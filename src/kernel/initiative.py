@@ -41,6 +41,17 @@ from kernel.stewardship import (  # noqa: E402  可见集 V（治理面，切面
     StewardshipRegistry,
 )
 from kernel.capability_ledger import CapabilityLedger  # noqa: E402  执行集 E（能力面，门控同源）
+from kernel.assurance import (  # noqa: E402  校验强度档位（可调，但不跌破宪法下限）
+    AssurancePolicy,
+    GatePlan,
+    ensure_facets_visible,
+)
+from kernel.selection import (  # noqa: E402  选择审计（责任传递：谁 / 何时 / 依据）
+    SelectionLedger,
+    SelectionNotOffered,
+    SelectionStaleBasis,
+)
+from kernel.continuation import ContinuationView  # noqa: E402  续办只读视图（观察接口）
 
 
 class InitiativeViolation(AosError):
@@ -110,18 +121,25 @@ class InitiativeEngine:
     session:     SessionChannel         —— 观察通道（唯一写入目标）
     registry:    StewardshipRegistry    —— 可见集 V（治理面：切面/跨组织）
     ledger:      CapabilityLedger       —— 执行集 E（能力面：submit 门控同源）
+    policy:      AssurancePolicy | None —— 校验强度档位（可调；注入后意向记录
+                 携带档位/复核人数/SLA/是否可自主提交，不改变"邀请≠执行"红线）
     """
 
     def __init__(self, projections: dict, session, registry: StewardshipRegistry,
-                 ledger: CapabilityLedger):
+                 ledger: CapabilityLedger, policy: AssurancePolicy | None = None):
         if not isinstance(ledger, CapabilityLedger):
             raise InitiativeViolation(
                 "LEDGER-REQUIRED: 必须注入 CapabilityLedger（匹配与 submit 门控同源，"
                 "拒绝治理面推导的第二张皮）")
+        if policy is not None and not isinstance(policy, AssurancePolicy):
+            raise InitiativeViolation(
+                "POLICY-REQUIRED: policy 必须是 AssurancePolicy（拒绝形似策略的第二张皮）")
         self.projections = projections
         self.session = session
         self.registry = registry
         self.ledger = ledger
+        self.policy = policy
+        self.selections = SelectionLedger()   # 责任传递审计账本（观察层，不写事件流）
         self._last: list[dict] = []
 
     def _snapshot(self, projection_name: str) -> dict:
@@ -139,6 +157,27 @@ class InitiativeEngine:
                         candidates, action_types=None) -> tuple[str, ...]:
         """可见集扫描（V）：仅返回 V 内角色（切面成员：当事人+检验+监理…）。"""
         return self.registry.scan(stream_id, entity_id, candidates, action_types)
+
+    def _plan(self, action: str) -> GatePlan | None:
+        """求值该 Action 的校验强度档位；未注入策略时返回 None（保持旧行为）。"""
+        return None if self.policy is None else self.policy.plan(action)
+
+    @staticmethod
+    def _assurance_fields(plan: GatePlan | None, can_exec: bool) -> dict:
+        """档位字段：可调的强度 + 恒定的宪法下限一并进观察记录（可审计）。"""
+        if plan is None:
+            return {}
+        tier = plan.tier
+        return {
+            "assurance_tier": tier.name,
+            "requires_dry_run": tier.requires_dry_run,
+            "min_approvals": tier.min_approvals,
+            "sla_hours": tier.sla_hours,
+            "required_facets": list(tier.required_facets),
+            # 自主 = 档位允许 ∧ 确有执行权：无执行权者一律不得自主
+            "auto_commit": bool(tier.auto_commit and can_exec),
+            "immutable_gates": sorted(plan.immutable_gates),
+        }
 
     # ------------------------------------------------------------------
     # 方向一：事找人（demand）
@@ -161,27 +200,104 @@ class InitiativeEngine:
                 f"NO-CANDIDATES: {stream_id}/{entity_id} 可见集为空 —— 无可邀角色")
 
         records: list[dict] = []
+        basis = self.projections[projection_name].stamp(entity_id)  # 渲染时戳（含实体水位）
         for trig in fired:
+            plan = self._plan(trig.action)
+            if plan is not None:
+                # 组合可调的下限：要求的检验切面必须真的可见，否则不发出无法兑现的邀请
+                ensure_facets_visible(plan, visible)
             for role in visible:
                 can_exec = self.ledger.can_execute(trig.action, [role])
+                fields = self._assurance_fields(plan, can_exec)
+                if fields.get("auto_commit"):
+                    kind = "initiative.auto"
+                else:
+                    kind = ("initiative.invitation" if can_exec
+                            else "initiative.notice")
                 invitation = Invitation(
-                    kind="initiative.invitation" if can_exec else "initiative.notice",
+                    kind=kind,
                     entity=entity_id, to_role=role, action=trig.action,
                     trigger=trig.name, can_execute=can_exec,
                     rule_hash=_stable_hash(f"{trig.name}|{trig.action}"))
                 # 唯一写入：观察通道；principal=entity_id（事作为发起主体的归属）
-                rec = self.session.append(
-                    entity_id,
-                    {"kind": invitation.kind,
-                     "entity": invitation.entity,
-                     "to_role": invitation.to_role,
-                     "action": invitation.action,
-                     "trigger": invitation.trigger,
-                     "can_execute": invitation.can_execute,
-                     "rule_hash": invitation.rule_hash})
+                payload = {"kind": invitation.kind,
+                           "entity": invitation.entity,
+                           "to_role": invitation.to_role,
+                           "action": invitation.action,
+                           "trigger": invitation.trigger,
+                           "can_execute": invitation.can_execute,
+                           "rule_hash": invitation.rule_hash,
+                           "projection": projection_name,
+                           "basis": basis}
+                payload.update(fields)
+                rec = self.session.append(entity_id, payload)
                 records.append(rec)
         self._last = records
         return records
+
+    # ------------------------------------------------------------------
+    # 责任传递：上一轮发起人对已给出的候选做选择（选择 ≠ 执行）
+    # ------------------------------------------------------------------
+    def select(self, *, principal: str, entity_id: str, action: str,
+               to_role: str) -> dict:
+        """上一轮发起人在候选集中做出选择 → 责任传递到承接岗位。
+
+        fail-closed：
+          * 只能选引擎刚刚给出、且确有执行权的候选（SELECTION-NOT-OFFERED）——
+            选择不得造选项；
+          * 依据取自已物化投影的 decision_ref（KS-2.5 双引用），不得凭印象；
+          * 不写 EventStore —— 真正的变更仍由持岗人以自己的主体走 submit 与全部闸门。
+        """
+        offered = {(r.get("entity"), r.get("action"), r.get("to_role")): r
+                   for r in self._last if r.get("can_execute")}
+        rec = offered.get((entity_id, action, to_role))
+        if rec is None:
+            raise SelectionNotOffered(
+                f"SELECTION-NOT-OFFERED: {entity_id}/{action}/{to_role} 不在本轮候选"
+                f"（或该岗位无执行权）—— 选择不得造选项（fail-closed）")
+        projection_name = rec.get("projection")
+        proj = self.projections.get(projection_name)
+        if proj is None:
+            raise SelectionNotOffered(
+                f"SELECTION-NOT-OFFERED: 候选记录缺可锚定投影 {projection_name!r}")
+        basis = rec.get("basis")
+        if not isinstance(basis, dict) or "watermark" not in basis:
+            raise SelectionNotOffered(
+                "SELECTION-NOT-OFFERED: 候选缺渲染时戳，无法校验依据新颖性")
+        # 实体级新颖性：只有"本实体"被新事实推进才算陈旧（跨实体推进不误伤）
+        if "entity_watermark" in basis:
+            expected, current = basis["entity_watermark"], proj.entity_head(entity_id)
+        else:
+            expected, current = basis["watermark"], proj.head()
+        if current != expected:
+            raise SelectionStaleBasis(
+                f"SELECTION-STALE-BASIS: {entity_id} 自渲染后已被新事实推进"
+                f"（水位 {expected} → {current}）—— "
+                f"必须重新渲染候选后再选（fail-closed）")
+
+        chosen = self.selections.record(
+            principal=principal, entity=entity_id, action=action, to_role=to_role,
+            basis=basis, tier=rec.get("assurance_tier"),
+            sla_hours=rec.get("sla_hours"))
+        return self.session.append(principal, {
+            "kind": "initiative.assignment",
+            "entity": entity_id,
+            "action": action,
+            "initiator": principal,
+            "assignee": to_role,
+            "basis": chosen["basis"],
+            "tier": chosen["tier"],
+            "sla_hours": chosen["sla_hours"],
+            "selection_digest": chosen["digest"],
+        })
+
+    # ------------------------------------------------------------------
+    # 观察接口：续办只读视图（谁在等谁、办什么、何时到期）
+    # ------------------------------------------------------------------
+    @property
+    def continuation(self) -> ContinuationView:
+        """只读视图：不缓存、不物化、不写入（每次取当前事实的最新派生）。"""
+        return ContinuationView(self.projections, self.session, self.selections)
 
     # ------------------------------------------------------------------
     # 方向二：人找事（supply）
@@ -219,6 +335,7 @@ class InitiativeEngine:
         for trig in triggers:
             if trig.action not in eligible:                 # 能力账簿过滤：我做不了的不推给我
                 continue
+            plan = self._plan(trig.action)
             for target in targets:
                 # 逐目标判定：单参谓词全快照判定；双参谓词按该实体精确判定，
                 # 避免"一个实体命中 → 所有实体都收到 offer"的扇出错误。
@@ -230,14 +347,14 @@ class InitiativeEngine:
                     trigger=trig.name, can_execute=True,
                     rule_hash=_stable_hash(f"seek|{trig.name}|{trig.action}"))
                 # 唯一写入：观察通道；principal = 找事的人/Agent（主体归属）
-                rec = self.session.append(
-                    principal,
-                    {"kind": invitation.kind,
-                     "entity": invitation.entity,
-                     "action": invitation.action,
-                     "trigger": invitation.trigger,
-                     "can_execute": invitation.can_execute,
-                     "rule_hash": invitation.rule_hash})
+                payload = {"kind": invitation.kind,
+                           "entity": invitation.entity,
+                           "action": invitation.action,
+                           "trigger": invitation.trigger,
+                           "can_execute": invitation.can_execute,
+                           "rule_hash": invitation.rule_hash}
+                payload.update(self._assurance_fields(plan, can_exec=True))
+                rec = self.session.append(principal, payload)
                 records.append(rec)
         self._last = records
         return records

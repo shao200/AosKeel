@@ -13,7 +13,7 @@ VT = "2026-01-01T00:00:00+00:00"
 def _proj(store):
     return Projection(store, "contract",
                       lambda s, e: {**(s or {}), e.payload["contract_id"]: "voided"},
-                      streams=["domain:ContractAggregate"])
+                      entity_key="contract_id", streams=["domain:ContractAggregate"])
 def test_registration_without_repair_refused():
     det = Detector(EventStore())
     with pytest.raises(ValueError, match="REPAIR-BINDING-MISSING"):

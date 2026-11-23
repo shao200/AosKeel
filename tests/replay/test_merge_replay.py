@@ -23,7 +23,7 @@ def _registry_with_merges(n=3):
 def test_double_path_replay_matches():
     """VER-24 item1 模板层判据：两条独立路径终态逐属性一致。"""
     store, reg = _registry_with_merges()
-    proj = Projection(store, "identity", identity_reducer)
+    proj = Projection(store, "identity", identity_reducer, entity_key="absorbed")
     assert reg.verify_replay({"identity": proj}) is True
     assert reg.replay() == {"ident-old-0": "ident-canonical",
                             "ident-old-1": "ident-canonical",
