@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "src"))
 from kernel.sc_compiler import run_structural
 from kernel.pipeline import materialize
+from kernel.errors import SnapshotUnavailable
 from interpreter.boolean_profile import eval_boolean
 def dryrun(kernel, action_type: str, params: dict, principal: str,
            roles: tuple[str, ...] = ()) -> dict:
@@ -37,7 +38,12 @@ def dryrun(kernel, action_type: str, params: dict, principal: str,
         report["reason"] = f"structural: {e}"
         return report
     if act.conditional:                                 # 条件（R2 快照；不入评估审计）
-        snap, contra = materialize(kernel.store, act, params)
+        try:
+            snap, contra = materialize(kernel.store, act, params)
+        except SnapshotUnavailable as e:
+            report["checks"]["conditional"] = "fail"
+            report["reason"] = f"snapshot: {e}"
+            return report
         if contra is not None:
             report["checks"]["conditional"] = "fail"
             report["reason"] = (

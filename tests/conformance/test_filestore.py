@@ -13,11 +13,16 @@ from kernel.pipeline import Kernel
 from kernel.session import SessionChannel
 from kernel.store import EventStore, VersionConflict
 from kernel.filestore import FileStore
-from kernel.errors import DirectWriteForbidden
+from kernel.errors import DirectWriteForbidden, StoreRejection
 PARAMS = {"contract_id": "C-1", "status": "pending", "amount": 500000}
 def _kernel(store) -> Kernel:
     return Kernel(store, SessionChannel(), compile_all())
 def _submit(k, cid="C-1") -> None:
+    # 非创建型动作须先有权威投影：注册事件是实体存在的唯一来源（P-16）。
+    if not any(ev.payload.get("contract_id") == cid
+               for ev in k.store.streams.get("domain:ContractAggregate", [])):
+        k.submit("RegisterContract", {"contract_id": cid, "amount": 500000},
+                 "alice", roles=("contract_steward",))
     k.submit("ApproveContract", dict(PARAMS, contract_id=cid), "alice",
              roles=("contract_steward",))
 def test_replay_rebuilds_eight_field_events(tmp_path):
@@ -52,3 +57,30 @@ def test_filestore_is_a_dropin_of_eventstore(tmp_path):
         assert not hasattr(s, banned)
     _submit(_kernel(s))
     assert s.path.exists() and s.path.read_text(encoding="utf-8").endswith("\n")
+
+
+def test_persist_failure_rolls_back_memory_and_audit(tmp_path):
+    """落盘失败必须回滚内存视图/事件号/appended 审计；修复存储后重试无空洞或谎账。"""
+    p = tmp_path / "events.jsonl"
+    k = _kernel(FileStore(p))
+    _submit(k)                                    # 已持久化 2 条（register + approve）
+    stream = "domain:ContractAggregate"
+    mem_events = len(k.store.streams[stream])
+    next_id = k.store._next_id
+    appended = sum(1 for r in k.store.audit if r.get("kind") == "appended")
+    blocked = tmp_path / "blocked"
+    blocked.mkdir()
+    k.store.path = blocked                        # 模拟落盘不可写
+    with pytest.raises(StoreRejection, match="PERSIST-FAIL"):
+        _submit(k, "C-2")
+    assert len(k.store.streams[stream]) == mem_events          # 内存追加已回滚
+    assert k.store._next_id == next_id                         # 事件号已回滚
+    assert sum(1 for r in k.store.audit if r.get("kind") == "appended") == appended
+    assert k.store.audit[-1]["kind"] == "structurally-rejected"  # 恰一条拒绝审计
+    k.store.path = p                              # 修复存储后重试
+    _submit(k, "C-2")
+    reg_c2 = [e for e in k.store.streams[stream]
+              if e.event_type.startswith("RegisterContract")
+              and e.payload.get("contract_id") == "C-2"]
+    assert reg_c2 and reg_c2[0].event_id == next_id, "重试不得出现事件号空洞"
+    assert FileStore(p)._next_id == k.store._next_id, "文件与内存必须重新一致"

@@ -6,6 +6,12 @@
 "控制 / 验证 / 检验的强度"从写死常量升格为可声明的策略档位，同时保证任何
 档位都无法跌破宪法下限。
 
+关键边界（P1.8 诚实口径）：档位是**建议复核强度（advisory）**，不是写路径
+闸门。`Kernel.submit` 不消费本模块；档位只进入邀请/指派观察记录，并由
+`assurance_enforced: false` 显式标注，避免读者误以为 min_approvals /
+requires_dry_run / auto_commit 已在提交点强制。真正强制需要审批证据与演练
+票据的持久化模型，属另立交付；`auto_commit` 亦不自动提交（人员提交边界）。
+
 三层可调性（只有前两层落在本模块）：
     参数可调   dry_run 强度、复核人数、SLA 时限（纯取值，安全）
     组合可调   需要几道检验、哪些切面角色必须参与（受下限约束）
@@ -102,11 +108,15 @@ class AssuranceTier:
 
 @dataclass(frozen=True)
 class GatePlan:
-    """某 Action 的求值结果：档位 + 恒定携带的宪法下限。"""
+    """某 Action 的求值结果：档位 + 恒定携带的宪法下限。
+
+    advisory 恒为 True：档位只标注建议复核强度，`Kernel.submit` 不消费。
+    """
 
     action: str
     tier: AssuranceTier
     immutable_gates: frozenset[str]
+    advisory: bool = True
 
 
 class AssurancePolicy:

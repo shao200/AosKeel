@@ -287,11 +287,12 @@ python tools/console.py                # 8. WEB 控制台壳（白名单，fail-
 - **不给合规证明。** `mandatory` 条款须人工在运行系统上执行并留档（evidence + judge + signer）；模板永不代你打勾。
 - **不制造正当性。** steward 与创制任命是世界事件，模板只记录、不合成（GOV-1）；BOOT-2/3 模板层未实装，命令返回拒绝。
 - **以源码树交付。** wheel 不含 `docs/spec/config`，启动自检拒绝它（机器验证 INTEGRITY-20）——见下方工程边界表。
-- **事件存储是内存态。** `EventStore` 为 dict，进程退出即失；`kernel/filestore.py` 提供 FileStore **持久化参考实现**（JSONL 追加 + 重放，单写进程模型），持久化的多进程存储属实例侧职责，须实现同一协议。
+- **事件存储是内存态。** `EventStore` 为 dict，进程退出即失；`kernel/filestore.py` 提供 FileStore **持久化参考实现**（JSONL 追加 + 重放，单写进程模型），持久化的多进程存储属实例侧职责，须实现同一协议。落盘失败（权限/磁盘/IO）会回滚内存追加、事件号与 `appended` 审计，并留一条 `PERSIST-FAIL` 拒绝审计后抛出 `StoreRejection` —— 进程内视图不与文件分叉，修复存储后可安全重试。
+- **观察链默认内存态，可选持久化。** `SessionChannel` 与事件日志物理分离；给路径即 `FileSession`（JSONL 追加 + 重放，先落盘成功再入内存，失败抛 `SESSION-PERSIST-FAIL` 且内存不留半条记录）。选择审计账本与管理域显式锚定随同一通道重放恢复，恢复时**重新校验**主体、owner 归属与在册角色，篡改记录即拒绝构造；恢复的只是观察账，不参与任何权威投影重建（KS-2.2）。
 - **wheel 是构建产物，不是交付物。** `pip wheel .` 可构建 `aos_keel-*.whl`（含 src/ + tools/ 与 `aos` console script），但不含 docs/spec/config；脱离源码树运行输出明确 `REFUSED`（INTEGRITY-20）。唯一受支持的运行形态是源码树 + `pip install -e .`，让正典声明与代码同版本管理。
 - **控制台是壳，且离线的那个。** `tools/console.py` 经 subprocess 驱动 CLI，命令白名单 fail-closed，治理签署类命令（release/register/bootstrap）刻意不提供；`aos shadow` 是离线对账，在线双跑流量比对属部署阶段职责。控制台默认仅绑 127.0.0.1 且**无认证层**（N11 披露：白名单只限命令面，不承担身份鉴别——生产部署须在前置反向代理/网关层补认证）。
 - **结构指纹刻意弱校验。** 只核对条数与首尾锚点；强保证来自密码学全文哈希层。
-- **无运行时消费者的声明字段属实例侧。** `spec/invariants/*.yaml` 的 `declaration.expression` 是规范表达与文档视图（`tools/domain_manual.py` 渲染），注册期只核 `repair_binding`；`Detector` 接口（`kernel/detector.py`）接收 Python callable。接入检测器并开闸是实例侧义务——`config/verification.yaml` 保持 `invariants: {gate: false}` 作为机器标记。同理 `dry_run: required` 编译为布尔标志并蕴含 `audit: required`，但 `Kernel.submit` 从不读取：`kernel/dryrun.py` 是提交前演练的库级 API，CLI 无 `aos dryrun` 命令。
+- **无运行时消费者的声明字段属实例侧。** `spec/invariants/*.yaml` 的 `declaration.expression` 是规范表达与文档视图（`tools/domain_manual.py` 渲染），注册期只核 `repair_binding`；`Detector` 接口（`kernel/detector.py`）接收 Python callable。接入检测器并开闸是实例侧义务——`config/verification.yaml` 保持 `invariants: {gate: false}` 作为机器标记。同理 `dry_run: required` 编译为布尔标志并蕴含 `audit: required`，但 `Kernel.submit` 从不读取：`kernel/dryrun.py` 是提交前演练的库级 API，CLI 无 `aos dryrun` 命令。同理 `config/assurance-policy.yaml` 的档位（`min_approvals` / `requires_dry_run` / `auto_commit`）只标注**建议复核强度**，`Kernel.submit` 不消费、不构成写路径闸门；邀请/指派记录显式携带 `assurance_advisory: true` 与 `assurance_enforced: false`，强制化须待审批证据与演练票据的持久化模型。
 - **角色强制、上下文仅供环境。** `Kernel.submit` 从证据强制 required roles；`permissions.contexts` 只做注册期引用完整性检查，并作为快照注入条件求值环境。正典的能力面规则（`Agent 权限 = 角色 × 所在上下文`，INV-4）由实例侧能力配置／投影兑现，模板层不设自动上下文门禁。
 - **哈希域刻意收窄。** 冻结字节仅 `docs/aos-spec.md` + `docs/SPEC-FINGERPRINT.md`，另有独立的 `spec/**/*.yaml` 声明摘要。指南、白皮书、战略稿、评审记录与两版 README 均为信息性文档，不在两域内；见语言与效力矩阵。
 - **探针与 LLM 绑定在实例侧。** 内核只给对账协议（`aos shadow-online` 消费探针 NDJSON）与提取适配器契约（`aos extract --extractor`）；拦流探针与真实 LLM 调用属部署侧，内核零部署环境依赖、零 LLM 依赖。
@@ -361,7 +362,7 @@ src/kernel/sc_compiler.py      SC 两段式编译器（KS-7.1 / VER-18）
 src/kernel/pipeline.py         内核提交管线（结构→条件→追加，事件载荷携带声明式 T24 副作用；冲突完整重求值）
 src/kernel/store.py            本体事件日志（append-only；INV-1 写路径闭环）
 src/kernel/filestore.py        FileStore：持久化参考实现（JSONL 追加 + 重放；单写进程模型）
-src/kernel/session.py          会话事件流（KS-2.2 物理分离存储 / VER-4）
+src/kernel/session.py          会话事件流（KS-2.2 物理分离存储 / VER-4；FileSession 可选持久化 + 重放）
 src/kernel/genesis.py          创世窗口状态机（KS-8；熄灭不可逆）
 src/kernel/projection.py       投影与决策输入（P-16；可重建 / 会话禁入）
 src/kernel/detector.py         探测器（T25；违规对象经 RaiseInvariantViolation，P-7/INV-10）
@@ -374,7 +375,7 @@ src/kernel/errors.py           类型化异常（异常类型即条款的运行�
 src/kernel/initiative.py       实体主动行为（事找人 run / 人找事 seek；只写观察通道，不碰写路径）
 src/kernel/stewardship.py      管理域投影（可见集 V；切面 / 跨组织 / owner 归属）
 src/kernel/capability_ledger.py 能力账簿（Action × Role 双向只读投影；与 submit 门控同源）
-src/kernel/assurance.py        校验档位求值（plan → GatePlan；不可变闸门为常量，只可加严）
+src/kernel/assurance.py        校验档位求值（plan → GatePlan；不可变闸门为常量，只可加严；建议档位不接写路径）
 src/kernel/selection.py        选择行为审计账本（who / when / basis；append-only）
 src/kernel/continuation.py     续办只读视图（待办 / 陈旧 / 逾期；不臆造期限）
 src/agents/runtime.py          AGENT 能力面（P-10；清单严格子集，无特权通道）

@@ -127,6 +127,8 @@ def test_handler_uses_same_pipeline():
         assert banned not in src                       # 骨架层无绕行（静态）
     mod = _load("actions.py")
     k = Kernel(EventStore(), SessionChannel(), compile_all())
+    k.submit("RegisterContract", {"contract_id": "C-1", "amount": 500000},
+             "contract_steward", roles=("contract_steward",))
     ev = mod.approve_contract(k, "contract_steward", contract_id="C-1",
                               roles=("contract_steward",),
                               status="pending", amount=500000)   # 快照字段经 **snapshot 透传

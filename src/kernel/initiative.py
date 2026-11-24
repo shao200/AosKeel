@@ -50,6 +50,7 @@ from kernel.selection import (  # noqa: E402  选择审计（责任传递：谁 
     SelectionLedger,
     SelectionNotOffered,
     SelectionStaleBasis,
+    SelectionPrincipalMismatch,
 )
 from kernel.continuation import ContinuationView  # noqa: E402  续办只读视图（观察接口）
 
@@ -139,7 +140,7 @@ class InitiativeEngine:
         self.registry = registry
         self.ledger = ledger
         self.policy = policy
-        self.selections = SelectionLedger()   # 责任传递审计账本（观察层，不写事件流）
+        self.selections = SelectionLedger(session)   # 责任传递审计账本（观察层，随通道持久化）
         self._last: list[dict] = []
 
     def _snapshot(self, projection_name: str) -> dict:
@@ -177,6 +178,9 @@ class InitiativeEngine:
             # 自主 = 档位允许 ∧ 确有执行权：无执行权者一律不得自主
             "auto_commit": bool(tier.auto_commit and can_exec),
             "immutable_gates": sorted(plan.immutable_gates),
+            # 诚实边界：档位是建议复核强度，写路径不消费（advisory）
+            "assurance_advisory": plan.advisory,
+            "assurance_enforced": not plan.advisory,
         }
 
     # ------------------------------------------------------------------
@@ -228,6 +232,7 @@ class InitiativeEngine:
                            "can_execute": invitation.can_execute,
                            "rule_hash": invitation.rule_hash,
                            "projection": projection_name,
+                           "stream_id": stream_id,
                            "basis": basis}
                 payload.update(fields)
                 rec = self.session.append(entity_id, payload)
@@ -245,7 +250,10 @@ class InitiativeEngine:
         fail-closed：
           * 只能选引擎刚刚给出、且确有执行权的候选（SELECTION-NOT-OFFERED）——
             选择不得造选项；
+          * 选择主体必须是该实体的发起人（SELECTION-PRINCIPAL-MISMATCH）——
+            "上一轮发起人选择"不能由任意调用方自称；
           * 依据取自已物化投影的 decision_ref（KS-2.5 双引用），不得凭印象；
+          * 同一决策重试幂等：主体/岗位/依据/档位全同 → 返回原记录，不重复留账；
           * 不写 EventStore —— 真正的变更仍由持岗人以自己的主体走 submit 与全部闸门。
         """
         offered = {(r.get("entity"), r.get("action"), r.get("to_role")): r
@@ -255,6 +263,15 @@ class InitiativeEngine:
             raise SelectionNotOffered(
                 f"SELECTION-NOT-OFFERED: {entity_id}/{action}/{to_role} 不在本轮候选"
                 f"（或该岗位无执行权）—— 选择不得造选项（fail-closed）")
+        stream_id = rec.get("stream_id")
+        if not stream_id:
+            raise SelectionNotOffered(
+                "SELECTION-NOT-OFFERED: 候选记录缺聚合流标识，发起人不可重建")
+        owner = self.registry.owner_of(stream_id, entity_id)
+        if principal != owner:
+            raise SelectionPrincipalMismatch(
+                f"SELECTION-PRINCIPAL-MISMATCH: {principal} 不是 {entity_id} 的发起人"
+                f"（应为 {owner}）—— 选择权只归上一轮发起人（fail-closed）")
         projection_name = rec.get("projection")
         proj = self.projections.get(projection_name)
         if proj is None:
@@ -279,6 +296,12 @@ class InitiativeEngine:
             principal=principal, entity=entity_id, action=action, to_role=to_role,
             basis=basis, tier=rec.get("assurance_tier"),
             sla_hours=rec.get("sla_hours"))
+        # 幂等：同一决策的重试不得重复写 assignment（选择账本已返回原记录）
+        existing = next((r for r in reversed(self.session.read_all())
+                         if r.get("kind") == "initiative.assignment"
+                         and r.get("selection_digest") == chosen["digest"]), None)
+        if existing is not None:
+            return existing
         return self.session.append(principal, {
             "kind": "initiative.assignment",
             "entity": entity_id,

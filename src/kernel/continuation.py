@@ -115,17 +115,17 @@ class ContinuationView:
     def timeline(self, entity: str, projection_name: str | None = None) -> list[dict]:
         """实体时间线：权威事件 + 观察记录，按时间稳定排序（同秒内事件在前）。"""
         entries: list[dict] = []
-        # 权威事件（只读；实体归属按 payload 值匹配）
+        # 权威事件（只读；实体归属只认投影声明的 entity_key，禁止 payload 任意值匹配）
         for name, proj in self.projections.items():
             if projection_name is not None and name != projection_name:
                 continue
             for ev in proj._scanned_events():
-                if not any(str(v) == entity for v in ev.payload.values()):
+                if str(ev.payload.get(proj.entity_key)) != str(entity):
                     continue
                 entries.append({"at": ev.transaction_time, "kind": "event",
                                 "source": "event", "action": ev.action_id,
                                 "principal": ev.principal, "event_id": ev.event_id})
-        # 观察记录（invitation / notice / auto / assignment）
+        # 观察记录（invitation / notice / auto / selection / assignment）；实体按显式字段匹配
         for rec in self.session.read_all():
             if rec.get("entity") != entity:
                 continue

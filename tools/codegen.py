@@ -249,26 +249,13 @@ def _render_query_api(objects: list[dict]) -> str:
                       f'QUERIES["{agg}.list"] = list_{var}', ""]
     return "\n".join(lines)
 def _governance_positions() -> dict[str, dict]:
-    """岗位 → 治理投影（duties/org_units/authorizes）。claims 的唯一语义来源：
-    roles 只能取声明岗位，duties/org_units 由声明推导，不可自报（图1 → Token）。"""
-    out: dict[str, dict] = {}
-    for g in _load_dir("governance"):
-        for d in g.get("duties", []) or []:
-            pos = d.get("position") or ""
-            if not pos:
-                continue
-            e = out.setdefault(pos, {"duties": [], "org_units": set(), "authorizes": []})
-            if d.get("duty") and d["duty"] not in e["duties"]:
-                e["duties"].append(d["duty"])
-            if d.get("org_unit"):
-                e["org_units"].add(d["org_unit"])
-            for a in d.get("authorizes") or []:
-                if a not in e["authorizes"]:
-                    e["authorizes"].append(a)
-    for e in out.values():
-        e["org_units"] = sorted(e["org_units"])
-        e["authorizes"] = sorted(e["authorizes"])
-    return out
+    """岗位 → 治理投影（duties/org_units/authorizes）。
+
+    推导已下沉到内核单一事实源 `kernel.stewardship.governance_positions()`：
+    本函数只做委托，工具链不再持有第二份解析实现（消除 kernel → tools 反向依赖）。
+    """
+    from kernel.stewardship import governance_positions
+    return governance_positions()
 def _render_auth_oauth(prof: dict) -> str:
     """OAuth 2.1 IdP 骨架（最小实现，声明驱动）。
     仅 Authorization Code + PKCE（S256）—— implicit/ROPC 无生成路径（OAuth 2.1 废除）；

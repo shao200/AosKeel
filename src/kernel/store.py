@@ -57,7 +57,20 @@ class EventStore:
         if not vt:
             self._reject("schema: 缺 valid_time",
                          StoreRejection("SCHEMA-FAIL: payload 缺 valid_time（KS-1.2 八字段）"))
-        if dt.datetime.fromisoformat(str(vt)) > dt.datetime.fromisoformat(tx):
+        try:
+            vt_dt = dt.datetime.fromisoformat(str(vt))
+            tx_dt = dt.datetime.fromisoformat(tx)
+        except (ValueError, TypeError) as e:
+            self._reject(f"schema: valid_time {vt!r} 不可解析",
+                         ValidTimeViolation(
+                             f"VALID-TIME-DOMAIN: valid_time {vt!r} 不是合法 ISO-8601 "
+                             f"时间（KS-6.1 / VER-16）：{e}"))
+        if vt_dt.tzinfo is None or tx_dt.tzinfo is None:
+            self._reject(f"schema: valid_time {vt!r} 缺时区偏移",
+                         ValidTimeViolation(
+                             f"VALID-TIME-DOMAIN: valid_time {vt!r} 缺时区偏移 —— "
+                             f"禁止 naive/aware 混比（KS-6.1 / VER-16）"))
+        if vt_dt > tx_dt:
             self._reject(f"valid_time {vt} > transaction_time {tx}",   # KS-6.1
                          ValidTimeViolation(f"VALID-TIME-DOMAIN: valid_time {vt} "
                                             f"> transaction_time {tx}（KS-6.1 / VER-16）"))

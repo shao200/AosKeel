@@ -24,3 +24,20 @@ def test_valid_boundary_accepted():
     store.commit("VoidContract", "domain:ContractAggregate", 0, "VoidContract@1",
                  {"valid_time": "2026-01-01T00:00:00+00:00", "contract_id": "c-1"}, "svc")
     assert len(store.streams["domain:ContractAggregate"]) == 1
+def test_naive_valid_time_rejected_with_audit():
+    """naive 时间不得裸抛 TypeError：走拒绝口、恰好一条审计、不追加。"""
+    store = EventStore()
+    with pytest.raises(ValidTimeViolation, match="缺时区偏移"):
+        store.commit("VoidContract", "domain:ContractAggregate", 0, "VoidContract@1",
+                     {"valid_time": "2026-01-01T00:00:00",           # 无时区
+                      "contract_id": "c-1"}, "svc")
+    assert [r["kind"] for r in store.audit] == ["structurally-rejected"]
+    assert "domain:ContractAggregate" not in store.streams
+def test_malformed_valid_time_rejected_with_audit():
+    """不可解析的 valid_time 同样 fail-closed 且留痕，不得抛 ValueError 绕过审计。"""
+    store = EventStore()
+    with pytest.raises(ValidTimeViolation, match="VALID-TIME-DOMAIN"):
+        store.commit("VoidContract", "domain:ContractAggregate", 0, "VoidContract@1",
+                     {"valid_time": "not-a-time", "contract_id": "c-1"}, "svc")
+    assert [r["kind"] for r in store.audit] == ["structurally-rejected"]
+    assert "domain:ContractAggregate" not in store.streams

@@ -32,6 +32,8 @@ def test_disjoint_roles_rejected():
     assert not k.store.streams
 def test_matching_roles_pass_single_enforcement():
     k = _k()
+    k.submit("RegisterContract", {"contract_id": "C-1", "amount": 500000},
+             "svc", roles=("contract_steward",))
     ev = k.submit("ApproveContract", PARAMS, "svc", roles=("contract_steward",))
     assert ev.action_id == "ApproveContract"
 def test_dryrun_reports_permission_stage():

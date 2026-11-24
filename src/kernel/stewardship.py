@@ -6,10 +6,12 @@
 它完全建立在既有事实上，兑现可计算的可见性与归属判据。
 
 【本轮收敛（2026-11-20）】消除"第二张皮"风险：
-- 成员事实源**唯一**：`tools/codegen.py::_governance_positions()` —— 与生成物
+- 成员事实源**唯一**：本模块的 `governance_positions()` —— 与生成物
   `GOV_POSITIONS`（auth_oauth2.py）同源同推导，但不依赖 auth 模块门控（精简
   profile 下 auth_oauth2.py 会被摘除，硬依赖它会使本模块崩溃）。治理声明改动
   经摘要哈希保护并走 GOV 通道，本模块只是它的只读投影。
+  **推导已下沉到内核**：`tools.codegen` 反过来委托本函数，内核不再反向依赖
+  tools 包（`src/kernel` 只向上暴露、不向下引用）。
 - 可见集 V 与执行集 E 分离（用户三轮修正的落点）：
     V = visible_roles(actions) = ⋃ 覆盖这些 Action 的授权岗位（跨切面/跨组织并集）
         —— scan 用它；当事人 + 检验 + 监理等切面角色都在内。
@@ -29,16 +31,24 @@ fail-closed：未锚定 / 非 owner 锚定 / 空成员集一律拒绝，不静�
 """
 from __future__ import annotations
 
+import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+try:                                              # spec/ 治理声明解析依赖
+    import yaml
+except ImportError:                               # pragma: no cover - 部署缺依赖
+    yaml = None
+
+# ADR-001：kernel 装进 site-packages 时以 AOSKEEL_ROOT 指向模板根；未设则原锚点。
+ROOT = Path(os.environ.get("AOSKEEL_ROOT") or Path(__file__).resolve().parents[2])
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
 
 from kernel.errors import AosError  # noqa: E402
-from tools.codegen import _governance_positions  # noqa: E402  单一事实源（无门控）
+
+GOVERNANCE_DIR = ROOT / "spec" / "governance"
 
 
 class StewardshipViolation(AosError):
@@ -61,19 +71,53 @@ class NoVisibleRoles(StewardshipViolation):
     """声明推导下可见集为空 —— 无切面成员，fail-closed。"""
 
 
+class UndeclaredRole(StewardshipViolation):
+    """锚定角色不在治理面可见集内 —— 锚定只可收窄，不得造出域外成员。"""
+
+
 UNDECLARED_ROLE = "<undeclared>"  # 域外角色的占位标签：不进入可见结果
 
 
 # ---------------------------------------------------------------------------
-# 单一事实源推导：全部读 _governance_positions()，无第二份声明解析。
+# 单一事实源推导：内核侧只读投影，工具链（codegen）反过来委托这里。
 # ---------------------------------------------------------------------------
-def governance_view():
-    """治理面岗位投影（position → duties/org_units/authorizes）的只读快照。
+def governance_positions() -> dict[str, dict]:
+    """岗位 → 治理投影（duties/org_units/authorizes）的唯一推导入口。
 
-    每次调用重新推导，反映在册声明的最新状态；声明本身受摘要哈希保护，
-    绕过 GOV 通道手改会被 verify 第四道拒绝。
+    claims 的唯一语义来源：roles 只能取声明岗位，duties/org_units 由
+    `spec/governance/*.yaml` 的 `duties[]` 推导，不可自报（图1 → Token）。
+    每次调用重新读盘，反映在册声明的最新状态；声明本身受摘要哈希保护，
+    绕过 GOV 通道手改会被 verify 第四道拒绝。解析依赖缺失即 fail-closed。
     """
-    return _governance_positions()
+    if yaml is None:
+        raise StewardshipViolation(
+            "GOVERNANCE-YAML-UNAVAILABLE: 缺少 yaml 解析依赖，治理声明不可读"
+            "（fail-closed）")
+    out: dict[str, dict] = {}
+    for path in sorted(GOVERNANCE_DIR.glob("*.yaml")):
+        decl = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        for duty in decl.get("duties", []) or []:
+            pos = duty.get("position") or ""
+            if not pos:
+                continue
+            entry = out.setdefault(pos, {"duties": [], "org_units": set(),
+                                         "authorizes": []})
+            if duty.get("duty") and duty["duty"] not in entry["duties"]:
+                entry["duties"].append(duty["duty"])
+            if duty.get("org_unit"):
+                entry["org_units"].add(duty["org_unit"])
+            for action in duty.get("authorizes") or []:
+                if action not in entry["authorizes"]:
+                    entry["authorizes"].append(action)
+    for entry in out.values():
+        entry["org_units"] = sorted(entry["org_units"])
+        entry["authorizes"] = sorted(entry["authorizes"])
+    return out
+
+
+def governance_view():
+    """治理面岗位投影的只读快照（见 governance_positions）。"""
+    return governance_positions()
 
 
 def executor_roles(action_type: str, positions=None) -> tuple[str, ...]:
@@ -149,12 +193,40 @@ class StewardshipRegistry:
 
     identity_key 指定事件 payload 中定位实例的属性（示例域为 contract_id）；
     与投影 IDENTITIES 同口径，实例侧可按自身聚合根标识覆盖。
+
+    session  —— 可选的观察通道：给了就把显式锚定落账（kind=initiative.anchor），
+                重启用同一通道重放并**重新校验**（owner、角色在册），篡改即拒。
+    positions —— 可选治理面视图覆盖（默认读在册声明）；锚定与重放共用同一视图，
+                保证"进程内认定"与"重启后认定"同源。
     """
 
-    def __init__(self, store, identity_key: str = "contract_id"):
+    def __init__(self, store, identity_key: str = "contract_id", session=None,
+                 positions=None):
         self.store = store
         self.identity_key = identity_key
+        self.session = session
+        self.positions = positions
         self._domains: dict[tuple[str, str], ManagementDomain] = {}
+        if session is not None:
+            self._replay()
+
+    def _replay(self) -> None:
+        """重放显式锚定：重新走 owner 与在册角色校验，不信任落盘内容。
+
+        锚定记录不是权威事实（不参与投影重建），但恢复时必须可复核：
+        任何越权主体或域外角色都说明账本被篡改 —— 拒绝构造（fail-closed）。
+        """
+        for rec in self.session.read_all():
+            if rec.get("kind") != "initiative.anchor":
+                continue
+            stream_id, entity_id = rec.get("stream_id"), rec.get("entity_id")
+            principal, roles = rec.get("principal"), rec.get("roles")
+            if not stream_id or not entity_id or not principal or not isinstance(roles, list):
+                raise StewardshipViolation(
+                    "ANCHOR-REPLAY-INVALID: 观察通道中的锚定记录缺必需字段 —— "
+                    "账本不可信（fail-closed）")
+            domain = self._validated(stream_id, entity_id, principal, roles)
+            self._domains[(stream_id, entity_id)] = domain
 
     def owner_of(self, stream_id: str, entity_id: str) -> str:
         """从事件流重建创建者：按 event_id 序取该实例首事件的 principal。
@@ -173,11 +245,9 @@ class StewardshipRegistry:
                 f"创建者不可重建（fail-closed）")
         return matching[0].principal
 
-    def anchor(self, stream_id: str, entity_id: str, principal: str, roles) -> ManagementDomain:
-        """由创建者显式锚定可见角色集；非 owner / 空集即拒。
-
-        显式锚定是 owner 临时收窄可见范围的覆盖手段，优先级高于声明推导。
-        """
+    def _validated(self, stream_id: str, entity_id: str, principal: str, roles,
+                   positions=None) -> ManagementDomain:
+        """锚定的唯一校验路径（进程内锚定与重放共用）：owner / 非空 / 角色在册。"""
         owner = self.owner_of(stream_id, entity_id)
         if principal != owner:
             raise DomainOwnerMismatch(
@@ -187,7 +257,31 @@ class StewardshipRegistry:
         if not members:
             raise EmptyDomainRejected(
                 f"EMPTY-DOMAIN: {stream_id}/{entity_id} 空成员集 —— 无管理域（fail-closed）")
-        domain = ManagementDomain(stream_id, entity_id, owner, members)
+        view = self.positions if positions is None else positions
+        declared = set(visible_roles(None, view))
+        unknown = sorted(members - declared)
+        if unknown:
+            raise UndeclaredRole(
+                f"UNDECLARED-ROLE: {unknown} 不在治理面可见集 {sorted(declared)} 内 —— "
+                f"显式锚定只可收窄（{UNDECLARED_ROLE}），不得造出域外成员（fail-closed）")
+        return ManagementDomain(stream_id, entity_id, owner, members)
+
+    def anchor(self, stream_id: str, entity_id: str, principal: str, roles,
+               positions=None) -> ManagementDomain:
+        """由创建者显式锚定可见角色集；非 owner / 空集 / 域外角色即拒。
+
+        显式锚定是 owner 临时**收窄**可见范围的覆盖手段，优先级高于声明推导；
+        因此成员必须是治理面已声明的可见角色子集 —— 锚定不得凭空造出成员。
+        给了观察通道时先落盘、再进内存（落盘失败不留半条锚定）。
+        """
+        domain = self._validated(stream_id, entity_id, principal, roles, positions)
+        if self.session is not None:
+            self.session.append(principal, {
+                "kind": "initiative.anchor",
+                "stream_id": stream_id,
+                "entity_id": entity_id,
+                "roles": sorted(domain.members),
+            })
         self._domains[(stream_id, entity_id)] = domain
         return domain
 
@@ -201,7 +295,7 @@ class StewardshipRegistry:
         if domain is not None:
             return domain
         # 回落声明推导：可见成员默认在册（不再因未 anchor 而拒绝）
-        members = visible_roles(action_types)
+        members = visible_roles(action_types, self.positions)
         owner = self.owner_of(stream_id, entity_id)
         return ManagementDomain(stream_id, entity_id, owner, frozenset(members))
 

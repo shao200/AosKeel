@@ -24,3 +24,24 @@ def test_session_ref_resolvable():
     ch = SessionChannel()
     ev = ch.append("agent-1", {"text": "x"})
     assert ch.exists(ev["ts"]) and not ch.exists("sess-nope")
+
+
+def test_file_session_replays_after_restart(tmp_path):
+    """观察通道持久化：重启重放恢复同一日志，且仍不进入权威存储（KS-2.2）。"""
+    from kernel.session import FileSession
+    p = tmp_path / "session.jsonl"
+    rec = FileSession(p).append(
+        "agent-1", {"kind": "initiative.invitation", "entity": "C-1"})
+    again = FileSession(p)                                  # 重启：以文件为准重放
+    assert again.read_all() == [rec]
+    assert again.exists(rec["ts"])
+
+
+def test_file_session_persist_failure_leaves_no_half_record(tmp_path):
+    """落盘失败 → SessionPersistFailed 且内存不留半条（先落盘后入内存，fail-closed）。"""
+    from kernel.session import FileSession
+    from kernel.errors import SessionPersistFailed
+    ch = FileSession(tmp_path / "missing-dir" / "session.jsonl")   # 父目录不存在
+    with pytest.raises(SessionPersistFailed, match="SESSION-PERSIST-FAIL"):
+        ch.append("agent-1", {"kind": "initiative.invitation"})
+    assert ch.read_all() == [], "落盘失败不得留下内存半条观察记录"

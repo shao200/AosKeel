@@ -14,6 +14,14 @@ from kernel.pipeline import Kernel
 from agents.runtime import AgentRuntime
 from kernel.errors import PermissionDenied
 PARAMS = {"contract_id": "C-1", "status": "pending", "amount": 500000}
+# 测试注入的治理面视图：锚定只可收窄到在册角色，故"可见但无执行权"的切面角色
+# 必须先在视图里声明（执行权仍由 compiled 权限矩阵决定，V ≠ E）。
+_GOV_VIEW = {
+    "contract_steward": {"authorizes": ["RegisterContract", "ApproveContract", "VoidContract"],
+                         "org_units": ["org:contract"]},
+    "qc_inspector": {"authorizes": ["ApproveContract"], "org_units": ["org:contract"]},
+    "auditor": {"authorizes": ["ApproveContract"], "org_units": ["org:audit"]},
+}
 def _runtime(roles=("contract_steward",)):
     k = Kernel(EventStore(), SessionChannel(), compile_all())
     return k, AgentRuntime(k, "agent-1", roles)
@@ -31,6 +39,8 @@ def test_unauthorized_rejected_before_store():
 def test_authorized_uses_same_pipeline():
     """P-10：Agent 无特权通道 —— 与人类同一条提交管线（INV-1）。"""
     k, agent = _runtime()
+    k.submit("RegisterContract", {"contract_id": "C-1", "amount": 500000},
+             "creator-A", roles=("contract_steward",))   # 非创建型动作须先有权威投影
     ev = agent.act("ApproveContract", PARAMS)
     assert ev.action_id == "ApproveContract"
     assert ev.stream_id == "domain:ContractAggregate"
@@ -115,7 +125,7 @@ def test_scan_returns_only_in_domain_roles():
     """只有域内角色可被主动行为扫描到：scan = 候选 ∩ 域内，域外不可见。"""
     _, reg = _domain_kernel()
     reg.anchor("domain:ContractAggregate", "C-DOM", "creator-A",
-               ["contract_steward", "auditor"])
+               ["contract_steward", "auditor"], positions=_GOV_VIEW)
     visible = reg.scan("domain:ContractAggregate", "C-DOM",
                        ["contract_steward", "outsider", "auditor", "vendor"])
     assert visible == ("contract_steward", "auditor")   # 域外被过滤、顺序保持
@@ -214,6 +224,19 @@ def test_single_fact_source_agrees_with_generated_projection():
             p for p, v in view.items() if action in v["authorizes"]}
 
 
+def test_governance_derivation_lives_in_kernel_not_tools():
+    """依赖方向守卫：治理推导在内核，tools 反向委托；kernel 不得 import tools。"""
+    from kernel.stewardship import governance_positions
+    src = (ROOT / "src" / "kernel" / "stewardship.py").read_text(encoding="utf-8")
+    assert "from tools" not in src and "import tools" not in src, \
+        "内核不得反向依赖 tools 包（推导应下沉到 kernel）"
+    view = governance_positions()
+    assert "ApproveContract" in view["contract_steward"]["authorizes"]
+    cg_src = (ROOT / "tools" / "codegen.py").read_text(encoding="utf-8")
+    assert "from kernel.stewardship import governance_positions" in cg_src, \
+        "工具链必须委托内核单一事实源，不得持有第二份解析"
+
+
 def test_executor_agrees_with_kernel_submit_gate():
     """唯一执行判据（能力账簿）与 submit 门控同源；治理面 E 仅用于对账。"""
     from kernel.capability_ledger import CapabilityLedger
@@ -287,14 +310,15 @@ def test_initiative_writes_only_observation_not_eventstore():
 def test_initiative_classifies_visible_vs_executable():
     """V 扫描结果按 E 分类：授权角色=invitation，非授权切面=notice，域外不出现。
 
-    注意：在册治理声明只有 contract_steward 一个岗位，qc_inspector 不在声明里。
-    要测"可见但无执行权"，须由 owner 显式锚定把它纳入可见集 V——执行权 E 仍由
-    声明决定（qc_inspector 不在 E(ApproveContract)），于是它只被通知、不被邀请执行。
-    这同时验证：可见集（owner 可控）与执行集（治理声明决定）确实是两个独立维度。
+    注意：真实治理声明只有 contract_steward 一个岗位。要测"可见但无执行权"，
+    须由 owner 显式锚定把切面角色纳入可见集 V（测试注入的治理视图声明 qc_inspector
+    可授权 ApproveContract，但编译期权限矩阵不含它）；执行权 E 仍由声明决定，
+    于是它只被通知、不被邀请执行。这同时验证：可见集（owner 可控，只可收窄到
+    在册角色）与执行集（治理声明决定）确实是两个独立维度。
     """
     k, engine, trig = _initiative_setup()
     engine.registry.anchor("domain:ContractAggregate", "C-ACT", "creator-A",
-                           ["contract_steward", "qc_inspector"])
+                           ["contract_steward", "qc_inspector"], positions=_GOV_VIEW)
     recs = engine.run(projection_name="contract", stream_id="domain:ContractAggregate",
                       entity_id="C-ACT",
                       candidates=["contract_steward", "qc_inspector", "outsider"],
@@ -406,7 +430,7 @@ def test_seek_filters_by_capability_and_domain():
                     projection_name="contract", triggers=[trig])
     # 门2：有能力但不在该实体管理域 → 无 offer（静默，不报错）
     engine.registry.anchor("domain:ContractAggregate", "C-ACT", "creator-A",
-                           ["qc_inspector"])              # 域内锚定为切面角色，不含 steward
+                           ["qc_inspector"], positions=_GOV_VIEW)  # 域内锚定为切面角色
     offers = engine.seek(principal="agent-x", roles=["contract_steward"],
                          projection_name="contract", triggers=[trig],
                          stream_id="domain:ContractAggregate", entity_id="C-ACT")
@@ -612,12 +636,26 @@ def test_engine_policy_annotates_tier_and_keeps_write_path_closed():
     assert rec["immutable_gates"], "观察记录须携带宪法下限供审计"
 
 
+def test_assurance_tier_is_advisory_only():
+    """档位是建议复核强度（advisory）：记录显式标 enforced=False，且不构成写路径闸门。"""
+    k, engine, trig = _engine_with_policy(_policy())
+    rec = engine.run(projection_name="contract", stream_id="domain:ContractAggregate",
+                     entity_id="C-ACT", candidates=["contract_steward"],
+                     triggers=[trig], action_types=["ApproveContract"])[0]
+    assert rec["assurance_advisory"] is True
+    assert rec["assurance_enforced"] is False
+    assert rec["min_approvals"] == 2 and rec["requires_dry_run"] is True
+    ev = k.submit("ApproveContract", dict(PARAMS, contract_id="C-ACT"),
+                  "creator-A", roles=("contract_steward",))
+    assert ev.action_id == "ApproveContract", "未出示演练票据/双人复核仍不拦——档位不是闸门"
+
+
 def test_engine_policy_never_grants_auto_to_unauthorized_role():
     """自主 = 档位允许 ∧ 确有执行权：可见但无执行权的切面不得被判为自主。"""
     k, engine, trig = _engine_with_policy(
         _policy(actions={"ApproveContract": {"tier": "autonomous"}}))
     engine.registry.anchor("domain:ContractAggregate", "C-ACT", "creator-A",
-                           ["contract_steward", "qc_inspector"])
+                           ["contract_steward", "qc_inspector"], positions=_GOV_VIEW)
     recs = engine.run(projection_name="contract", stream_id="domain:ContractAggregate",
                       entity_id="C-ACT", candidates=["contract_steward", "qc_inspector"],
                       triggers=[trig], action_types=["ApproveContract"])
@@ -676,7 +714,7 @@ def test_selection_records_triad_and_routes_to_holder():
     triad = engine.selections.read_all()[0]
     assert (triad["principal"], triad["to_role"]) == ("creator-A", "contract_steward")
     assert triad["ts"] and triad["basis"]["transaction_time"]
-    assert engine.selections.resolve("C-ACT") == "creator-A"
+    assert engine.selections.resolve("C-ACT", "ApproveContract") == "creator-A"
 
 
 def test_selection_requires_principal_and_basis():
@@ -710,11 +748,75 @@ def test_selection_rejects_role_without_execute_right():
     from kernel.selection import SelectionNotOffered
     _, engine, trig = _initiative_setup()
     engine.registry.anchor("domain:ContractAggregate", "C-ACT", "creator-A",
-                           ["contract_steward", "qc_inspector"])
+                           ["contract_steward", "qc_inspector"], positions=_GOV_VIEW)
     _run_once(engine, trig, candidates=("contract_steward", "qc_inspector"))
     with pytest.raises(SelectionNotOffered):
         engine.select(principal="creator-A", entity_id="C-ACT",
                       action="ApproveContract", to_role="qc_inspector")
+
+
+def test_anchor_rejects_undeclared_role():
+    """锚定只可收窄：域外角色不得被造进可见集（fail-closed）。"""
+    from kernel.stewardship import UndeclaredRole, StewardshipRegistry
+    k, _, _ = _initiative_setup()
+    with pytest.raises(UndeclaredRole, match="UNDECLARED-ROLE"):
+        StewardshipRegistry(k.store).anchor(
+            "domain:ContractAggregate", "C-ACT", "creator-A", ["outsider"])
+
+
+def test_selection_rejects_non_initiator_principal():
+    """选择权只归上一轮发起人：任意调用方不得自称。"""
+    from kernel.selection import SelectionPrincipalMismatch
+    _, engine, trig = _initiative_setup()
+    _run_once(engine, trig)
+    with pytest.raises(SelectionPrincipalMismatch, match="SELECTION-PRINCIPAL-MISMATCH"):
+        engine.select(principal="mallory", entity_id="C-ACT",
+                      action="ApproveContract", to_role="contract_steward")
+    assert engine.selections.read_all() == []              # 拒绝不留半条账
+
+
+def test_resolve_is_action_scoped():
+    """同一实体不同动作的责任人可能不同：解析必须显式给动作。"""
+    from kernel.selection import SelectionLedger
+    led = SelectionLedger()
+    basis = {"projection": "contract", "transaction_time": "2026-01-01T00:00:00+00:00"}
+    led.record(principal="alice", entity="C-1", action="ApproveContract",
+               to_role="contract_steward", basis=basis)
+    led.record(principal="bob", entity="C-1", action="VoidContract",
+               to_role="contract_steward", basis=basis)
+    assert led.resolve("C-1", "ApproveContract") == "alice"
+    assert led.resolve("C-1", "VoidContract") == "bob"
+    assert led.resolve("C-1", "RegisterContract") is None
+
+
+def test_selection_is_idempotent_on_retry():
+    """同一决策重试（主体/岗位/依据/档位全同）返回原记录，不重复留账。"""
+    from kernel.selection import SelectionLedger
+    led = SelectionLedger()
+    basis = {"projection": "contract", "transaction_time": "2026-01-01T00:00:00+00:00"}
+    first = led.record(principal="alice", entity="C-1", action="ApproveContract",
+                       to_role="contract_steward", basis=basis)
+    again = led.record(principal="alice", entity="C-1", action="ApproveContract",
+                       to_role="contract_steward", basis=basis)
+    assert again == first and again["digest"] == first["digest"]
+    assert len(led.read_all()) == 1
+    # 承接岗位不同 = 新决策，仍要留账
+    led.record(principal="alice", entity="C-1", action="ApproveContract",
+               to_role="qc_inspector", basis=basis)
+    assert len(led.read_all()) == 2
+
+
+def test_select_retry_appends_single_assignment():
+    """引擎层幂等：重复 select 返回同一 assignment，观察通道只留一条。"""
+    _, engine = _assigned()
+    first = engine.select(principal="creator-A", entity_id="C-ACT",
+                          action="ApproveContract", to_role="contract_steward")
+    second = engine.select(principal="creator-A", entity_id="C-ACT",
+                           action="ApproveContract", to_role="contract_steward")
+    assert second == first
+    assert len(engine.selections.read_all()) == 1
+    kinds = [r["kind"] for r in engine.session.read_all()]
+    assert kinds.count("initiative.assignment") == 1
 
 
 def test_initiator_lands_in_event_metadata_without_touching_eight_fields():
@@ -874,6 +976,25 @@ def test_projection_requires_entity_key():
     assert strict.entity_head("C-NEW") == 1
 
 
+def test_timeline_matches_declared_entity_key_only():
+    """时间线归属只认投影声明的 entity_key，禁止 payload 任意值匹配。"""
+    from kernel.continuation import ContinuationView
+    from kernel.projection import Projection
+    from kernel.selection import SelectionLedger
+    from kernel.session import SessionChannel
+    from kernel.store import EventStore
+    store = EventStore()
+    store.commit("RegisterContract", "domain:ContractAggregate", 0,
+                 "ContractRegistered@1",
+                 {"contract_id": "C-NEW", "party_ref": "C-ACT",
+                  "valid_time": "2026-01-01T00:00:00+00:00"}, "holder-A")
+    proj = Projection(store, "strict", lambda s, e: s,
+                      streams=["domain:ContractAggregate"], entity_key="contract_id")
+    view = ContinuationView({"strict": proj}, SessionChannel(), SelectionLedger())
+    assert view.timeline("C-ACT") == [], "同值旁路字段不得把别的实体事件算进时间线"
+    assert [e["kind"] for e in view.timeline("C-NEW")] == ["event"]
+
+
 def test_continuation_timeline_merges_events_and_observations():
     """时间线同时给出权威事件与观察记录，且邀请早于责任传递。"""
     _, engine = _assigned()
@@ -899,3 +1020,84 @@ def test_continuation_is_read_only():
     view.timeline("C-ACT", "contract")
     view.summary()
     assert snapshot() == before
+
+
+# ---------- 观察链持久化：选择账本 / 管理域锚定随会话通道复原 ----------
+def test_selection_ledger_survives_restart(tmp_path):
+    """选择审计账本随观察通道落盘：重启重放后可复原 resolve / assigned_to。"""
+    from kernel.selection import SelectionLedger
+    from kernel.session import FileSession
+    p = tmp_path / "session.jsonl"
+    led = SelectionLedger(FileSession(p))
+    led.record(principal="creator-A", entity="C-ACT", action="ApproveContract",
+               to_role="contract_steward", tier="dual_review", sla_hours=24,
+               basis={"projection": "contract",
+                      "transaction_time": "2026-01-01T00:00:00+00:00"})
+    again = SelectionLedger(FileSession(p))                # 重启：重放观察记录
+    assert again.resolve("C-ACT", "ApproveContract") == "creator-A"
+    assert again.assigned_to("C-ACT", "ApproveContract") == "contract_steward"
+    assert [r["digest"] for r in again.read_all()] == [r["digest"] for r in led.read_all()]
+
+
+def test_selection_replay_rejects_incomplete_record(tmp_path):
+    """观察通道里的选择记录缺三元组成分 → 重放即拒（账本不可信，fail-closed）。"""
+    from kernel.selection import SelectionLedger, SelectionViolation
+    from kernel.session import FileSession
+    p = tmp_path / "session.jsonl"
+    FileSession(p).append("creator-A", {
+        "kind": "initiative.selection", "entity": "C-ACT",
+        "action": "ApproveContract", "to_role": "contract_steward"})   # 缺 basis/ts
+    with pytest.raises(SelectionViolation, match="SELECTION-REPLAY-INVALID"):
+        SelectionLedger(FileSession(p))
+
+
+def test_anchor_survives_restart_with_revalidation(tmp_path):
+    """显式锚定随观察通道持久化：重启重放恢复，并重新经过在册角色校验。"""
+    from kernel.session import FileSession
+    from kernel.stewardship import StewardshipRegistry
+    k, _, _ = _initiative_setup()
+    p = tmp_path / "session.jsonl"
+    StewardshipRegistry(k.store, session=FileSession(p),
+                        positions=_GOV_VIEW).anchor(
+        "domain:ContractAggregate", "C-ACT", "creator-A",
+        ["contract_steward", "qc_inspector"])
+    again = StewardshipRegistry(k.store, session=FileSession(p), positions=_GOV_VIEW)
+    assert again.domain_of("domain:ContractAggregate", "C-ACT").members == \
+        frozenset({"contract_steward", "qc_inspector"})
+
+
+def test_anchor_replay_rejects_tampered_record(tmp_path):
+    """篡改锚定记录（越权主体 / 域外角色）→ 重放拒绝，不静默接受。"""
+    from kernel.session import FileSession
+    from kernel.stewardship import (DomainOwnerMismatch, StewardshipRegistry,
+                                    UndeclaredRole)
+    k, _, _ = _initiative_setup()
+    p1 = tmp_path / "tamper-owner.jsonl"
+    FileSession(p1).append("mallory", {
+        "kind": "initiative.anchor", "stream_id": "domain:ContractAggregate",
+        "entity_id": "C-ACT", "roles": ["contract_steward"]})
+    with pytest.raises(DomainOwnerMismatch):
+        StewardshipRegistry(k.store, session=FileSession(p1))
+    p2 = tmp_path / "tamper-role.jsonl"
+    FileSession(p2).append("creator-A", {
+        "kind": "initiative.anchor", "stream_id": "domain:ContractAggregate",
+        "entity_id": "C-ACT", "roles": ["outsider"]})
+    with pytest.raises(UndeclaredRole, match="UNDECLARED-ROLE"):
+        StewardshipRegistry(k.store, session=FileSession(p2))
+
+
+def test_engine_selection_ledger_is_channel_backed(tmp_path):
+    """引擎的选择账本与观察通道共用同一存储：重启后仍能解析该动作的发起人。"""
+    from kernel.initiative import InitiativeEngine
+    from kernel.session import FileSession
+    k, engine, trig = _initiative_setup()
+    p = tmp_path / "session.jsonl"
+    durable = InitiativeEngine(engine.projections, FileSession(p), engine.registry,
+                               engine.ledger)
+    _run_once(durable, trig)
+    durable.select(principal="creator-A", entity_id="C-ACT",
+                   action="ApproveContract", to_role="contract_steward")
+    again = InitiativeEngine(engine.projections, FileSession(p), engine.registry,
+                             engine.ledger)
+    assert again.selections.resolve("C-ACT", "ApproveContract") == "creator-A"
+    assert again.selections.assigned_to("C-ACT", "ApproveContract") == "contract_steward"

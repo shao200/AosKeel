@@ -27,6 +27,7 @@ class CompiledAction:
     provenance: str
     dry_run: bool
     effects: dict = field(default_factory=dict)  # T24 副作用：内核书写进事件载荷的状态效果
+    creates: bool = False            # 创建型动作：唯一允许在实体未投影时以 params 作初始观测
 def _compile_structural(rules: list, action_type: str) -> tuple[Check, ...]:
     checks = []
     for rule in rules or []:

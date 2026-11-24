@@ -4,7 +4,8 @@
 评审裂缝修复的守卫：条件快照此前直接取调用方自报 params —— 同一实体二次提交
 谎报 status/amount 即可过条件。现每次评估在当轮版本视图上重放聚合流折叠权威
 投影（materialize）：改口 → SNAPSHOT-CONTRADICTION 拒绝；未 claim → 权威值回填；
-实体未投影 → params 作初始观测（首次观测无权威可对照）。
+实体未投影 → 仅创建型动作（域画像 actions.register）可按 params 作初始观测；
+非创建型动作在未注册实体上直接拒绝；声明了身份但未随附亦拒绝。
 状态基线迁移到 RegisterContract-first 正典形态：实体先经注册进入权威投影，
 approve 的条件输入全部来自物化投影，不再靠调用方携带初始状态。
 """
@@ -16,8 +17,8 @@ sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "src"))
 from kernel.registration import compile_all
 from kernel.store import EventStore
 from kernel.session import SessionChannel
-from kernel.pipeline import Kernel
-from kernel.errors import ConditionalRejected
+from kernel.pipeline import Kernel, materialize
+from kernel.errors import ConditionalRejected, SnapshotIdentityMissing, SnapshotEntityMissing
 STREAM = "domain:ContractAggregate"
 STEWARD = dict(principal="svc", roles=("contract_steward",))
 RPARAMS = {"contract_id": "C-R", "amount": 500000}
@@ -79,3 +80,30 @@ def test_race_reval_evaluates_authority_not_claims():
                    "other")                                # 抢先：权威 status=void
     with pytest.raises(ConditionalRejected, match="SNAPSHOT-CONTRADICTION"):
         k.submit("ApproveContract", dict(RPARAMS, status="pending"), **STEWARD)
+
+
+def test_materialize_rejects_identity_missing_from_params():
+    """声明了身份键但调用方未随附 → 拒绝，不得整体回退自报值。"""
+    act = compile_all()["ApproveContract"]
+    with pytest.raises(SnapshotIdentityMissing, match="SNAPSHOT-IDENTITY-MISSING"):
+        materialize(EventStore(), act, {"status": "pending", "amount": 1})
+
+
+def test_non_create_action_cannot_first_touch():
+    """非创建型动作在未投影实体上 fail-closed（禁止凭空审批），且留痕不追加。"""
+    k = _k()
+    with pytest.raises(SnapshotEntityMissing, match="SNAPSHOT-ENTITY-MISSING"):
+        k.submit("ApproveContract",
+                 {"contract_id": "C-GHOST", "status": "pending", "amount": 1}, **STEWARD)
+    assert STREAM not in k.store.streams                  # VER-2：不追加
+    assert k.interpreter_audit[-1]["result"] is False     # VER-11：拒绝照记评估
+
+
+def test_create_action_declared_by_domain_profile():
+    """唯一可首次观测的动作 = 域画像 actions.register 声明的创建型动作。"""
+    compiled = compile_all()
+    assert compiled["RegisterContract"].creates is True
+    assert compiled["ApproveContract"].creates is False
+    snap, contra = materialize(EventStore(), compiled["RegisterContract"],
+                               {"contract_id": "C-NEW", "amount": 7})
+    assert snap == {"amount": 7} and contra is None

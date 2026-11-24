@@ -15,7 +15,7 @@
 | 可见集 V（切面成员） | 治理声明（`spec/governance`） | `∪ executor_roles(项目全部 Action)` | 声明在册即一致 | **scan 的过滤集，推荐主路径** |
 | 执行集 E（按 Action） | **能力账簿**（`compiled` 权限矩阵，submit 门控同源） | `CapabilityLedger.demand/can_execute` | 编译产物即一致 | **唯一提交判据**；治理面 `executor_roles` 仅对账 |
 | 实际执行人 claim（未来） | 认领事件投影 | 具体 principal 认领该任务实例 | 可重放、最终一致 | 运行态，不进管理域 |
-| 显式覆盖层 | 进程内锚定 | owner 调 `anchor()` 显式给角色 | 仅本进程、重启即失 | 例外/演示兜底 |
+| 显式覆盖层 | 观察通道（可选持久化） | owner 在册角色子集内显式收窄（域外角色即拒） | 给 `FileSession` 则重启重放并重校验，否则仅本进程 | 例外/演示兜底 |
 
 一句话理由：**成员集是治理事实（谁被授权在这个域里行动），不是运行态数据。
 治理事实的真相源是声明，不是进程内存，也不是消息总线。**
@@ -185,8 +185,9 @@ duty + GOV 提案），不是当前缺陷；模型的容量已经留出。
 ## 8. 落地顺序与状态
 
 1. **P0（已落地）**：`stewardship.py` 的 owner 重建 + `scan` 交集 + 显式锚定 fail-closed。
-2. **P1（已落地，本轮收敛）**：成员事实源收敛到 `tools/codegen.py::_governance_positions()`
-   单一投影（**不**自行解析 yaml、**不**依赖 auth 门控生成物）。新增四个纯函数
+2. **P1（已落地，本轮收敛）**：成员事实源收敛到 `stewardship.governance_positions()`
+   单一投影（**不**自行解析第二份 yaml、**不**依赖 auth 门控生成物；推导已下沉内核，
+   `tools/codegen.py` 反向委托，消除 kernel → tools 依赖）。新增四个纯函数
    `governance_view / executor_roles / visible_roles / org_units_of`；`scan` 未锚定时
    回落可见集 V，`anchor()` 降为显式覆盖；`can_interact`（V 宽判据）与 `can_execute`
    （E 窄判据）分离。跨组织 + 切面成员 + 任务收窄在同一次投影的不同聚合层级兑现。
@@ -236,9 +237,11 @@ duty + GOV 提案），不是当前缺陷；模型的容量已经留出。
 | 只写观察通道 | 唯一写入是 `session.append(entity_id, ...)`；投影源级排除 session（KS-2.2） | `test_initiative_writes_only_observation_not_eventstore`（EventStore 零增长） |
 | 不自动提交 | 产出的是 Invitation/Notice 记录，人/Agent 认领后仍走原 submit 门控 | 引擎无 submit/commit/_append 能力（结构核对） |
 
-V/E 在此闭环里的分工得到实证：在册只声明 contract_steward 一岗，owner 显式锚定
-`qc_inspector` 入 V 后，它 `can_execute=False`、只收 notice——**可见 ≠ 可执行**落地为
-可观测的两种邀请类型。切线仍是：运行态"谁认领"属调度层，不进成员集。
+V/E 在此闭环里的分工得到实证：在册只声明 contract_steward 一岗；测试注入的治理视图
+另声明 `qc_inspector`（可授权 ApproveContract），owner 才能把它锚定进 V——它
+`can_execute=False`、只收 notice——**可见 ≠ 可执行**落地为可观测的两种邀请类型。
+锚定只可在册角色子集内收窄，域外角色直接 `UNDECLARED-ROLE` 拒绝。切线仍是：
+运行态"谁认领"属调度层，不进成员集。
 
 P1.8 之后同类约束又多了两条——**选择不落事件、续办不臆造期限**，与上表三条同性质，
 见 §8.6 的红线表。
@@ -284,8 +287,8 @@ P1.8 之后同类约束又多了两条——**选择不落事件、续办不臆�
   精简 profile 下会被摘除，硬依赖它会使模块崩溃。
 - **重复造轮子**：`Kernel.submit` 的 `required ∩ roles` 早就实现了执行集 E 的运行时门控。
 
-收敛动作：事实源唯一化为无门控的 `_governance_positions()`（与生成物同源同推导）；
-V/E 语义分离；明确模块只补 E 不覆盖的可见集与 owner，**不接写路径**。
+收敛动作：事实源唯一化为无门控的 `stewardship.governance_positions()`（与生成物同源同推导，
+工具链反向委托）；V/E 语义分离；明确模块只补 E 不覆盖的可见集与 owner，**不接写路径**。
 代价：模块仍是参考实现、无生产消费者——接写路径需模型变更授权，这是刻意保留的边界，
 不是遗漏。
 
@@ -302,12 +305,15 @@ V/E 语义分离；明确模块只补 E 不覆盖的可见集与 owner，**不�
 
 | 能力 | 落点 | 关键约束 |
 |---|---|---|
-| 校验强度分档 | `src/kernel/assurance.py` + `config/assurance-policy.yaml` | 四档 autonomous / single_review / dual_review / supervised；下限是常量 `IMMUTABLE_GATES`，声明里出现 `gates` 即拒绝加载；自主档必须带 dry_run；未声明 Action 无默认档 |
+| 校验强度分档 | `src/kernel/assurance.py` + `config/assurance-policy.yaml` | 四档 autonomous / single_review / dual_review / supervised；下限是常量 `IMMUTABLE_GATES`，声明里出现 `gates` 即拒绝加载；自主档必须带 dry_run；未声明 Action 无默认档。定位为**建议档位（advisory）**：档位进入邀请/指派观察记录并显式标 `assurance_enforced: false`，`Kernel.submit` 不消费、不构成闸门；强制化须另立审批证据与演练票据的持久化模型 |
 | 选择审计 | `src/kernel/selection.py` | who / when / basis 三元组成对落账；basis 取投影 `decision_ref()`（KS-2.5 双引用的一半），可用 `resolve_decision_ref` 机械复核 |
 | 责任传递入口 | `InitiativeEngine.select()` | 只能选本轮已给出且确有执行权的候选；写 `initiative.assignment`，**不写 EventStore** |
 | 陈旧判定 | `Projection.stamp(entity)` / `entity_head()` | 候选携带渲染水位；选择时与实体当前水位不一致即 `SELECTION-STALE-BASIS`，留账前拒绝 |
 | 续办视图 | `src/kernel/continuation.py` | 待办 / 陈旧 / 逾期；每次派生不缓存；无声明 SLA 则 `due_at=None` |
 | 发起人身份 | `Kernel.submit(initiator=…)` → store 审计记录 + FileStore 重放 | `Event` 仍为八字段（KS-1.2 未动），initiator 只进审计元数据 |
+| 观察链持久化 | `FileSession` + `SelectionLedger(session)` / `StewardshipRegistry(session=…)` | 先落盘成功再入内存（失败抛 `SESSION-PERSIST-FAIL` 不留半条）；重放重新校验三元组 / owner / 在册角色，篡改即拒；恢复的只是观察账，不参与投影重建 |
+| 时间线实体归属 | `ContinuationView.timeline` 只读投影声明的 `entity_key` | 不再匹配 payload 任意值：同值旁路字段不会把别的实体事件算进来 |
+| 选择幂等 | `SelectionLedger.record` 去重 + 引擎复用同 digest 的 assignment | 同一决策（主体/岗位/依据/档位全同）重试不重复留账、不重复分配；换岗位或依据仍是新决策 |
 | 实体归属 | `Projection.entity_key`（必填） | 归属由 `Contract.object.yaml` 的 identity 驱动；「payload 值匹配」的隐式口径已删除 |
 | 生成期守卫 | `tools/codegen.py::_assert_identities` | 聚合缺标识 → `AGGREGATE-IDENTITY-MISSING`；域画像 `entity_key` 与 identity 分叉 → `ENTITY-KEY-MISMATCH`；均在落盘前拒绝 |
 

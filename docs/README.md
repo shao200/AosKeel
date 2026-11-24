@@ -79,8 +79,8 @@ compiled input, not specification text. Do not describe `spec/` as the canonical
    `CLI 26 命令面（21 顶层 + 5 子命令）` and
    `75 条布线（可执行 75 / 缺失 0 / 〔强〕未布线 1）`, plus 43 INTEGRITY regression guards.
    `tests/conformance/test_doc_consistency.py` locks the strings that consume them.
-   Test-suite size is quoted as **75 test files / 461 `def test_` functions**; pytest
-   collects 475 cases after parametrisation. Both numbers are correct — different units,
+   Test-suite size is quoted as **75 test files / 482 `def test_` functions**; pytest
+   collects 496 cases after parametrisation. Both numbers are correct — different units,
    so do not "correct" one into the other.
 2. **Changing a fact changes both editions.** Any edit to §§1–9 of one README must be
    mirrored in the other in the same commit. This is now a machine check, not just a

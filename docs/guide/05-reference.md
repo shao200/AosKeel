@@ -64,7 +64,7 @@
 | `src/kernel/initiative.py` | 实体主动行为（run / seek；只写观察通道） |
 | `src/kernel/stewardship.py` | 管理域投影（可见集 V） |
 | `src/kernel/capability_ledger.py` | 能力账簿（Action × Role 双向，与 submit 门控同源） |
-| `src/kernel/assurance.py` | 校验档位求值（不可变闸门为常量，只可加严） |
+| `src/kernel/assurance.py` | 校验档位求值（不可变闸门为常量，只可加严；档位为建议标注，不接写路径） |
 | `src/kernel/selection.py` | 选择行为审计账本（append-only） |
 | `src/kernel/continuation.py` | 续办只读视图（不臆造期限） |
 | `src/interpreter/` | 受限解释器（布尔档 / 映射档 / 审计） |

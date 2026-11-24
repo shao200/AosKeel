@@ -14,9 +14,13 @@ class StreamRuleViolation(StoreRejection): ...        # KS-2.1 / INV-5 / VER-33
 class UnregisteredAction(AosError): ...               # INV-1（管线层）
 class StructuralRejected(AosError): ...               # KS-7.1 结构校验
 class ConditionalRejected(AosError): ...              # KS-7.1 条件校验
+class SnapshotUnavailable(ConditionalRejected): ...   # P-16 条件快照无法物化（条件阶段拒绝）
+class SnapshotIdentityMissing(SnapshotUnavailable): ...  # 声明了身份但调用方未提供
+class SnapshotEntityMissing(SnapshotUnavailable): ...    # 非创建型动作的目标实体无权威投影
 class InvariantViolated(AosError): ...                # KS-1.3 写时阻断
 class BudgetExceeded(AosError): ...                   # R8 fail-closed
 class PrincipalRequired(AosError): ...                # KS-2.3 / INV-8
+class SessionPersistFailed(AosError): ...             # 观察记录落盘失败（KS-2.2 fail-closed）
 class DecisionRefIncomplete(AosError): ...            # KS-2.5 / VER-7
 class InterpreterRejected(AosError): ...              # R1–R11 受限解释器
 class ForbiddenPath(AosError): ...                    # INV-13 forbidden 段

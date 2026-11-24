@@ -41,7 +41,11 @@ def test_dispatch_uses_same_pipeline():
     for banned in ("store.commit", "_append", "write_raw", "session_append"):
         assert banned not in src
     k = _kernel()
-    ev = mod = _load("command_api.py").dispatch(
+    api = _load("command_api.py")
+    api.dispatch(k, "RegisterContract", "contract_steward",
+                 roles=("contract_steward",), contract_id="C-1",
+                 amount=500000)                # 非创建型动作须先有权威投影
+    ev = api.dispatch(
         k, "ApproveContract", "contract_steward",
         roles=("contract_steward",), contract_id="C-1",
         status="pending", amount=500000)                     # 快照字段透传

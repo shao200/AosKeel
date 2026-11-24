@@ -18,6 +18,10 @@
        悬空的任务等于没有责任传递。
     4. 选择 ≠ 执行：本模块不写 EventStore（INV-1 唯一写路径），真正的状态变更
        仍须由持岗人以自己的 principal 走 submit 与全部闸门。
+
+持久化（可选）：构造时给 session（如 FileSession），记录先经观察通道落盘成功、
+再进内存；重启用同一 session 重放 kind=initiative.selection 恢复账本。恢复的只是
+审计账，不参与任何权威投影重建（KS-2.2），畸形记录即拒（fail-closed）。
 """
 from __future__ import annotations
 
@@ -57,6 +61,10 @@ class SelectionStaleBasis(SelectionViolation):
     """所选依据的快照在渲染后已推进 —— 必须重新渲染后再选（fail-closed）。"""
 
 
+class SelectionPrincipalMismatch(SelectionViolation):
+    """选择主体不是该实体的发起人 —— 责任传递只归上一轮发起人（fail-closed）。"""
+
+
 def _now() -> str:
     return dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
 
@@ -82,8 +90,32 @@ def _validate_basis(basis) -> dict:
 class SelectionLedger:
     """append-only 选择账本；无更新 / 删除路径（对齐 AX-3 / INV-6 口径）。"""
 
-    def __init__(self):
+    def __init__(self, session=None):
         self._log: list[dict] = []
+        self._session = session
+        if session is not None:
+            self._replay()
+
+    def _replay(self) -> None:
+        """从观察通道恢复选择记录：只认 kind=initiative.selection，畸形即拒。
+
+        重放不改"选择 ≠ 执行"的红线 —— 恢复的只是审计账，不是权威状态；
+        任何缺少三元组成分的记录都视为账本被篡改（fail-closed）。
+        """
+        keys = ("kind", "principal", "ts", "entity", "action", "to_role",
+                "basis", "tier", "sla_hours", "digest")
+        for rec in self._session.read_all():
+            if rec.get("kind") != "initiative.selection":
+                continue
+            entry = {k: rec.get(k) for k in keys}
+            if (not entry["principal"] or not entry["entity"] or not entry["action"]
+                    or not entry["to_role"] or not isinstance(entry["basis"], dict)
+                    or not entry["basis"].get("projection")
+                    or not entry["basis"].get("transaction_time")):
+                raise SelectionViolation(
+                    "SELECTION-REPLAY-INVALID: 观察通道中的选择记录缺三元组成分 "
+                    "（谁/何时/依据）—— 账本不可信（fail-closed）")
+            self._log.append(entry)
 
     def record(self, *, principal: str, entity: str, action: str, to_role: str,
                basis, tier: str | None = None,
@@ -100,6 +132,16 @@ class SelectionLedger:
             raise SelectionViolation("SELECTION-ENTITY-REQUIRED: 未指明责任传递的实体")
 
         ref = _validate_basis(basis)
+        # 幂等：同一 (实体, 动作) 的最近一次选择若主体/承接岗位/依据/档位全同，
+        # 视为同一决策的重放 —— 返回原记录，不重复留账（重试安全）。
+        for prev in reversed(self._log):
+            if (prev["entity"], prev["action"]) != (entity, action):
+                continue
+            if (prev["principal"] == principal and prev["to_role"] == to_role
+                    and prev["basis"] == ref and prev.get("tier") == tier
+                    and prev.get("sla_hours") == sla_hours):
+                return prev
+            break                                   # 只看该动作最近一次选择
         ts = _now()
         digest = hashlib.sha256(
             repr((principal, ts, entity, action, to_role,
@@ -110,20 +152,34 @@ class SelectionLedger:
                "entity": entity, "action": action, "to_role": to_role,
                "basis": ref, "tier": tier, "sla_hours": sla_hours,
                "digest": digest}
+        if self._session is not None:
+            # 先落盘成功、再进内存：落盘失败不留半条账（fail-closed）
+            payload = {k: v for k, v in rec.items() if k not in ("principal", "ts")}
+            payload["ts"] = ts
+            stored = self._session.append(principal, payload)
+            self._log.append(stored)
+            return stored
         self._log.append(rec)                      # append-only
         return rec
 
-    def resolve(self, entity: str) -> str | None:
-        """该实体最近一次选择的主体 —— 供下一次提交出示 initiator。"""
+    def resolve(self, entity: str, action: str) -> str | None:
+        """该实体**该动作**最近一次选择的主体 —— 供下一次提交出示 initiator。
+
+        动作维度必须显式给出：同一实体的不同动作可能由不同轮次、不同发起人选择，
+        只按实体匹配会把责任误归到别的动作上。
+        """
+        if not action:
+            raise SelectionViolation(
+                "SELECTION-ACTION-REQUIRED: 解析选择主体必须指明动作（禁止按实体跨动作匹配）")
         for rec in reversed(self._log):
-            if rec["entity"] == entity:
+            if rec["entity"] == entity and rec["action"] == action:
                 return rec["principal"]
         return None
 
-    def assigned_to(self, entity: str) -> str | None:
-        """该实体最近一次选择承接的岗位。"""
+    def assigned_to(self, entity: str, action: str | None = None) -> str | None:
+        """该实体最近一次选择承接的岗位；给出 action 时只匹配该动作。"""
         for rec in reversed(self._log):
-            if rec["entity"] == entity:
+            if rec["entity"] == entity and (action is None or rec["action"] == action):
                 return rec["to_role"]
         return None
 

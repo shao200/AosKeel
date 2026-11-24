@@ -25,12 +25,16 @@ def test_structural_before_conditional():
 def test_conditional_failure_appends_nothing():
     """VER-2：条件失败 → 不追加任何事件。"""
     k, store = _kernel()
+    k.submit("RegisterContract", {"contract_id": "C-1", "amount": 500000},
+             "contract_steward", roles=("contract_steward",))
     with pytest.raises(ConditionalRejected):
         k.submit("ApproveContract", dict(PARAMS, status="void"), "contract_steward", roles=("contract_steward",))
-    assert "domain:ContractAggregate" not in store.streams
+    assert len(store.streams["domain:ContractAggregate"]) == 1   # 仅注册事件，审批未追加
     assert k.interpreter_audit[-1]["result"] is False          # KS-3.3：评估留档
 def test_happy_path_appends_via_capability():
     k, store = _kernel()
+    k.submit("RegisterContract", {"contract_id": "C-1", "amount": 500000},
+             "contract_steward", roles=("contract_steward",))
     ev = k.submit("ApproveContract", PARAMS, "contract_steward", roles=("contract_steward",))
     assert ev.stream_id == "domain:ContractAggregate"
     assert ev.action_id == "ApproveContract"
@@ -49,6 +53,8 @@ def test_version_conflict_full_reeval():
 def test_stale_expected_version_rejected():
     """VER-3：绕过管线以陈旧版本直写 → 版本冲突必拒。"""
     k, store = _kernel()
+    k.submit("RegisterContract", {"contract_id": "C-1", "amount": 500000},
+             "contract_steward", roles=("contract_steward",))
     k.submit("ApproveContract", PARAMS, "contract_steward", roles=("contract_steward",))
     with pytest.raises(VersionConflict):
         store.commit("ApproveContract", "domain:ContractAggregate", 0, "ApproveContract@1",

@@ -13,7 +13,10 @@ from kernel.pipeline import Kernel
 from kernel.dryrun import dryrun
 PARAMS = {"contract_id": "C-1", "status": "pending", "amount": 500000}
 def _kernel():
-    return Kernel(EventStore(), SessionChannel(), compile_all())
+    k = Kernel(EventStore(), SessionChannel(), compile_all())
+    k.submit("RegisterContract", {"contract_id": "C-1", "amount": 500000},
+             "contract_steward", roles=("contract_steward",))
+    return k
 def test_report_repeatable():
     k = _kernel()
     r1 = dryrun(k, "ApproveContract", PARAMS, "contract_steward", roles=("contract_steward",))

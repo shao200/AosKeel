@@ -17,6 +17,7 @@
 治理 Action 生效后重跑（GOV-4）。
 """
 import sys
+from dataclasses import replace
 from pathlib import Path
 try:
     import yaml
@@ -69,12 +70,32 @@ def _load_yaml(path: Path) -> dict:
         raise RegistrationFailed("DEPENDENCY: spec/ 声明解析需要 pyyaml（pip install pyyaml）")
     return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
 # ---------- 步骤 2：SC 编译（KS-7.1 / VER-18） ----------
+def _creation_actions() -> dict[str, str]:
+    """实例域画像声明的创建型动作（actions.register / actions.create）。
+
+    这是"哪个 Action 可以在实体未投影时建立初始观测"的唯一声明源：
+    缺失即没有创建型动作（fail-closed —— 任何首次观测都会被拒绝）。
+    """
+    ddir = SPEC_DIR / "competence" / "domains"
+    out: dict[str, str] = {}
+    for p in sorted(ddir.glob("*.domain.yaml")) if ddir.exists() else []:
+        doc = _load_yaml(p)
+        agg = (doc.get("aggregate") or {}).get("name")
+        acts = doc.get("actions") or {}
+        create = acts.get("register") or acts.get("create")
+        if agg and create:
+            out[str(agg)] = str(create)
+    return out
 def _load_actions() -> dict[str, CompiledAction]:
     actions = {}
+    creates = _creation_actions()
     adir = SPEC_DIR / "ontology" / "actions"
     for p in sorted(adir.glob("*.yaml")) if adir.exists() else []:
         decl = _load_yaml(p)
-        actions[decl["action_type"]] = compile_action(decl, decl.get("provenance", "genesis"))
+        act = compile_action(decl, decl.get("provenance", "genesis"))
+        if creates.get(act.aggregate) == act.action_type:
+            act = replace(act, creates=True)
+        actions[decl["action_type"]] = act
     return actions
 def compile_all() -> dict[str, CompiledAction]:
     """对外编译入口（内核启动与管线消费）。"""

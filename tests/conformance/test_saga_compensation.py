@@ -33,6 +33,8 @@ def test_unknown_process_rejected():
 def test_step_failure_triggers_compensation():
     """步失败 → 已完成步逆序补偿（补偿本身是 Action）→ 原异常继续抛出。"""
     k = Kernel(EventStore(), SessionChannel(), compile_all())
+    k.submit("RegisterContract", {"contract_id": "C-1", "amount": 500000},
+             "contract_steward", roles=("contract_steward",))   # 实体须先进入权威投影
     saga = SagaRunner(k, {"TwoStep": {
         "steps": [{"action": "ApproveContract"}, {"action": "ApproveContract"}],
         "compensations": [{"for": "ApproveContract", "action": "VoidContract",
@@ -48,7 +50,7 @@ def test_step_failure_triggers_compensation():
     with pytest.raises(StructuralRejected):
         saga.run("TwoStep", PARAMS, "contract_steward", roles=("contract_steward",))
     assert [c["action"] for c in saga.compensation_log] == ["VoidContract"]  # 补偿已执行
-    assert k.store.streams["domain:ContractAggregate"][1].action_id == "VoidContract"
+    assert k.store.streams["domain:ContractAggregate"][-1].action_id == "VoidContract"
 def test_compensation_is_registered_action():
     """补偿本身是 Action：VoidContract 走同一管线（INV-1），带幂等声明（P-9）。"""
     k, _ = _saga()
