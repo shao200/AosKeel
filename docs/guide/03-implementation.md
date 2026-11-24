@@ -35,7 +35,7 @@ AOS 的实现是一条**机械链**，每一步都有可计算的判据与明确
 Submission Criteria 由两部分构成，**编译期就分道**：
 
 - **structural（结构校验）**：声明式子语言——`exists <field>`、`max_len <field> N`、`required`、类型、基数、引用存在性。编译成 Check AST，**不进解释器**。
-- **conditional（条件校验）**：受限布尔表达式，编译成 `BooleanFunctionRef`——注册期只保存引用，**运行时**由布尔档解释器求值，快照按 `snapshot_inputs` 枚举一次捕获（R2）。捕获来源是**物化投影**（`materialize()`，P-16）：每次评估在当轮版本视图上重放聚合流折叠权威状态；实体已投影时，调用方自报字段与权威值矛盾 → `SNAPSHOT-CONTRADICTION` 拒绝，未随附的字段以权威值回填；实体未投影（首次观测）才回退 params。
+- **conditional（条件校验）**：受限布尔表达式，编译成 `BooleanFunctionRef`——注册期只保存引用，**运行时**由布尔档解释器求值，快照按 `snapshot_inputs` 枚举一次捕获（R2）。捕获来源是**物化投影**（`materialize()`，P-16）：每次评估在当轮版本视图上重放聚合流折叠权威状态；实体已投影时，调用方自报字段与权威值矛盾 → `SNAPSHOT-CONTRADICTION` 拒绝，未随附的字段以权威值回填；实体未投影时，只有域画像声明为创建型的动作（`actions.register`）可按 params 作初始观测，其余动作以 `SNAPSHOT-ENTITY-MISSING` 拒绝；未提供聚合标识 → `SNAPSHOT-IDENTITY-MISSING`；仅当聚合无 reducer / 无 identity 时才整体回退 params。
 
 以 `spec/ontology/actions/ApproveContract.action.yaml` 为例：
 

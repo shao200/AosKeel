@@ -160,12 +160,13 @@
 | 类别 | 异常 | 触发条款 |
 |---|---|---|
 | 存储拒绝 | `DirectWriteForbidden` / `VersionConflict` / `ValidTimeViolation` / `UnknownAction` / `StreamRuleViolation` | INV-1·VER-28 / KS-1.4 / KS-6.1 / INV-13 / KS-2.1 |
-| 管线拒绝 | `UnregisteredAction` / `StructuralRejected` / `ConditionalRejected` / `InvariantViolated` / `BudgetExceeded` | INV-1 / KS-7.1 / KS-7.1 / KS-1.3 / R8 |
+| 管线拒绝 | `UnregisteredAction` / `StructuralRejected` / `ConditionalRejected`（含 `SnapshotUnavailable`：`SNAPSHOT-IDENTITY-MISSING` / `SNAPSHOT-ENTITY-MISSING`）/ `InvariantViolated` / `BudgetExceeded` | INV-1 / KS-7.1 / KS-7.1·P-16 / KS-1.3 / R8 |
 | 主体与引用 | `PrincipalRequired` / `DecisionRefIncomplete` | KS-2.3·INV-8 / KS-2.5·VER-7 |
 | 解释器与路径 | `InterpreterRejected` / `ForbiddenPath` / `RegistrationFailed` | R1–R11 / INV-13 / KS-7.2 |
 | 创世状态 | `GenesisFrozen` / `GenesisExtinguished` / `ReauthorizeAfterExtinguish` | KS-8.5 / KS-8.2 / 基座周界完整 |
 | 投影与演化 | `ProjectionViolation` / `ProjectionNotMaterialized` / `UpcastingFailed` | P-16 / P-16 / KS-5.2 |
 | 能力面与编排 | `PermissionDenied` / `SagaInvalid` | P-10 / P-9 |
+| 观察链（参考实现） | `SessionPersistFailed` | KS-2.2 |
 
 异常类型即条款的运行时形态（模块 docstring）；每个异常可回溯条款号，不允许"无兑现的宣称"（GOV-6）。
 
