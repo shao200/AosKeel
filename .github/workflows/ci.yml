@@ -27,6 +27,8 @@ jobs:
       # 只按 pyproject 声明安装：CI 曾手工补装 pytest，掩盖了运行时依赖声明缺失，
       # 使纯净 venv 里 aos test / python -m pytest 失败而 CI 仍全绿。
       - run: pip install -e .
+      - name: 派生文档同步（版本号/测试规模与真源一致）
+        run: python -m tools.doc_sync --check
       - name: 模板验收（一致性 + forbidden 双射 + 解释器负向集）
         run: python -m pytest -q tests
       - name: 三关（结构指纹 → 密码学哈希 → declared==registered）

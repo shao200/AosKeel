@@ -12,6 +12,11 @@ requires-python = ">=3.11"
 # 原先只有 CI 手工安装，纯净 pip install -e . 的 venv 会直接 No module named pytest。
 dependencies = ["pyyaml>=6.0", "pytest>=8.0"]
 
+[project.optional-dependencies]
+# 发布清单的真实性层（Ed25519 签名/验签）是可选能力：不装也能发布，
+# 只是清单标记为 unsigned-integrity-only（完整性 ≠ 真实性）。
+sign = ["cryptography>=42"]
+
 [project.scripts]
 aos = "src.cli.main:main"
 

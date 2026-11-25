@@ -82,8 +82,20 @@ def run_gate(out_dir: Path | None = None, run_tests=None) -> dict:
         "spec_ref": m.group(1) if m else "UNKNOWN",
         "digest": f"sha256:{canonical_digest()}",
         "registry_entry": (_entries()[-1].split("|")[1].strip() if _entries() else "NONE"),
+        "authenticity": "unsigned-integrity-only",
+        "signature": None,
         "steps": steps,
     }
+    if ok:
+        key_path = os.environ.get("AOS_SIGNING_KEY")
+        if key_path:
+            # 显式要求真实性：签名失败即不出制品（不静默降级回 unsigned）
+            from tools import manifest_sign
+            try:
+                manifest = manifest_sign.sign_manifest(manifest, key_path)
+            except Exception as e:
+                steps.append({"step": "authenticity", "ok": False, "detail": str(e)})
+                ok = False
     if not ok:
         return {"ok": False, "manifest": None, "steps": steps}
     out_dir.mkdir(exist_ok=True)

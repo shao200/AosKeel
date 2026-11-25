@@ -256,6 +256,12 @@ def test_spec_version_consumers_follow_registry():
         assert f"`{current}`" in (ROOT / rel).read_text(encoding="utf-8"), rel
 
 
+def test_derived_docs_have_no_manifest_drift():
+    """派生文档与真源零漂移：CI 第一步跑同一检查（tools.doc_sync --check）。"""
+    from tools import doc_sync
+    assert doc_sync.check() == []
+
+
 def test_appendix_errata_content_is_accurate():
     """勘误内容守卫：文献归属谱系正确、4D 立场实质认领、S 语义与实现对齐。"""
     spec = (ROOT / "docs/aos-spec.md").read_text(encoding="utf-8")

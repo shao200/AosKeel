@@ -27,6 +27,7 @@
 | [WHITEPAPER.md](WHITEPAPER.md) | 简体中文 | technical whitepaper (five-layer model, ten disciplines) | no | summarised in both README §8 |
 | [POSITIONING.md](POSITIONING.md) | 简体中文 | methodology / factory / ontology gap map | no | summarised in both README headers |
 | [RUNBOOK.md](RUNBOOK.md) | 简体中文 | BOOT-2/3 workflow scaffold, GOV-3 channels | no | none |
+| [DESIGN-production-storage.md](DESIGN-production-storage.md) | 简体中文 | instance-side production storage/authenticity blueprint (not implemented by the template) | no | none |
 | [REVIEW-ontology-peer-review.md](REVIEW-ontology-peer-review.md) | 简体中文 | historical peer-review record (author-local, not copied into instances) | no | none |
 | [adr/ADR-001-dual-distribution.md](adr/ADR-001-dual-distribution.md) | 简体中文 | Accepted architecture decision (kernel wheel + template sdist) | no | none |
 | [adr/ADR-002-canonical-appendices-rs.md](adr/ADR-002-canonical-appendices-rs.md) | 简体中文 | Accepted GOV-3 decision (canonical informative appendices R/S, v2.1.0) | no | none |
@@ -79,8 +80,8 @@ compiled input, not specification text. Do not describe `spec/` as the canonical
    `CLI 26 命令面（21 顶层 + 5 子命令）` and
    `75 条布线（可执行 75 / 缺失 0 / 〔强〕未布线 1）`, plus 43 INTEGRITY regression guards.
    `tests/conformance/test_doc_consistency.py` locks the strings that consume them.
-   Test-suite size is quoted as **75 test files / 499 `def test_` functions**; pytest
-   collects 513 cases after parametrisation. Both numbers are correct — different units,
+   Test-suite size is quoted as **75 test files / 503 `def test_` functions**; pytest
+   collects 517 cases after parametrisation. Both numbers are correct — different units,
    so do not "correct" one into the other.
 2. **Changing a fact changes both editions.** Any edit to §§1–9 of one README must be
    mirrored in the other in the same commit. This is now a machine check, not just a
