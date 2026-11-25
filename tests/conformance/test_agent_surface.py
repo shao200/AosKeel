@@ -1101,3 +1101,163 @@ def test_engine_selection_ledger_is_channel_backed(tmp_path):
                              engine.ledger)
     assert again.selections.resolve("C-ACT", "ApproveContract") == "creator-A"
     assert again.selections.assigned_to("C-ACT", "ApproveContract") == "contract_steward"
+
+
+# ---------- 零新事实收件箱：路由只读、超期是缺席的投影、幂等含依据维度 ----------
+def test_continuation_due_at_anchors_on_authoritative_fact_time():
+    """到期起点取权威事实时间（basis.transaction_time），不是观察层选择时刻。
+
+    这是"超期可由权威日志证明"的前提：观察记录可丢弃重建，若以选择时刻计时，
+    超期结论就无法从事件流复核。行上 sla_anchor 显式标注所用口径。
+    """
+    import datetime as dt
+    _, engine = _assigned(policy=_policy())
+    row = engine.continuation.assignments()[0]
+    assert row["sla_anchor"] == "authority"
+    basis_tx = engine.selections.read_all()[0]["basis"]["transaction_time"]
+    assert dt.datetime.fromisoformat(row["due_at"]) == (
+        dt.datetime.fromisoformat(basis_tx) + dt.timedelta(hours=row["sla_hours"]))
+
+
+def test_continuation_overdue_is_derived_from_absence_not_an_event():
+    """"没人办"= 权威事实已落地足够久且无后续事件；不需要 expired 事件。
+
+    构造：把 SLA 压到 1 小时，权威事实时间回填到 2 小时前 → 读时即判超期，
+    且 EventStore 与观察通道均零增长（纯读派生）。
+    """
+    import datetime as dt
+    k, engine = _assigned(policy=_policy())
+    sel = engine.selections.read_all()[0]
+    old = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=2)).isoformat(
+        timespec="seconds")
+    sel["basis"]["transaction_time"] = old        # 只改内存中的依据时间，不写任何流
+    sel["sla_hours"] = 1
+    before_events = sum(len(s) for s in k.store.streams.values())
+    before_obs = len(k.session.read_all())
+    row = engine.continuation.assignments()[0]
+    assert row["overdue"] is True and row["status"] == "open"
+    assert row["sla_anchor"] == "authority"
+    assert sum(len(s) for s in k.store.streams.values()) == before_events
+    assert len(k.session.read_all()) == before_obs, "超期判定不得产生任何写入"
+    assert engine.continuation.summary()["overdue"] == 1
+
+
+def test_continuation_falls_back_to_selection_anchor_without_authority_time():
+    """缺权威时间的旧记录：回退选择时刻并标注 selection，不静默假装权威。"""
+    _, engine = _assigned(policy=_policy())
+    sel = engine.selections.read_all()[0]
+    sel["basis"].pop("transaction_time")
+    row = engine.continuation.assignments()[0]
+    assert row["sla_anchor"] == "selection"
+    assert row["due_at"] is not None
+
+
+def test_routing_is_read_only_and_reuses_gate_ledger():
+    """路由推导零写入，且执行权判定与 submit 门控同源（不造第二张皮）。"""
+    k, engine, trig = _initiative_setup()
+    before = sum(len(s) for s in k.store.streams.values())
+    recs = _run_once(engine, trig)
+    assert recs and recs[0]["can_execute"] is True
+    assert sum(len(s) for s in k.store.streams.values()) == before
+    # 同源核对：邀请的可执行结论 == 能力账簿判定 == 权限矩阵声明
+    role = recs[0]["to_role"]
+    assert engine.ledger.can_execute("ApproveContract", [role]) is True
+    assert role in k.compiled["ApproveContract"].permissions["roles"]
+
+
+def test_repeated_dispatch_same_basis_is_idempotent():
+    """同一依据的重复派发只留一条 assignment（投影重放安全）。"""
+    k, engine, trig = _initiative_setup()
+    _run_once(engine, trig)
+    first = engine.select(principal="creator-A", entity_id="C-ACT",
+                          action="ApproveContract", to_role="contract_steward")
+    _run_once(engine, trig)                      # 同水位重跑（模拟重放）
+    second = engine.select(principal="creator-A", entity_id="C-ACT",
+                           action="ApproveContract", to_role="contract_steward")
+    assert first["selection_digest"] == second["selection_digest"]
+    assert len(engine.continuation.assignments()) == 1
+
+
+def test_stale_notice_submission_is_rejected_by_condition_gate():
+    """旧通知不携带授权：状态已迁移后按原通知提交 → 条件门拒绝，无事件追加。"""
+    from kernel.errors import ConditionalRejected
+    k, engine = _assigned()
+    k.submit("ApproveContract",
+             {"contract_id": "C-ACT", "status": "pending", "amount": 500000},
+             "holder-B", roles=("contract_steward",))
+    before = sum(len(s) for s in k.store.streams.values())
+    with pytest.raises(ConditionalRejected):
+        k.submit("ApproveContract",
+                 {"contract_id": "C-ACT", "status": "pending", "amount": 500000},
+                 "holder-B", roles=("contract_steward",))
+    assert sum(len(s) for s in k.store.streams.values()) == before
+
+
+def test_missing_appointment_yields_no_capability_not_a_pass():
+    """任命缺失（角色无声明）→ 能力账簿无匹配，绝不放行（fail-closed）。"""
+    from kernel.initiative import NoCapability
+    _, engine, trig = _initiative_setup()
+    assert engine.ledger.can_execute("ApproveContract", ["viewer"]) is False
+    with pytest.raises(NoCapability):
+        engine.seek(principal="nobody", roles=["viewer"], projection_name="contract",
+                    triggers=[trig], stream_id="domain:ContractAggregate",
+                    entity_id="C-ACT")
+
+
+# ---------- T0：只读收件箱（enabled_actions） ----------
+# 三问漏斗的落地：路由只读派生；"该办未办"由缺席证明，不新增任何事件。
+def test_inbox_is_read_only_and_mirrors_permission_gate():
+    """收件箱零写入，且权限判定与 submit 同源（无执行权即不出现）。"""
+    from kernel.initiative import enabled_actions
+    k, _, _ = _initiative_setup()
+    before = (sum(len(s) for s in k.store.streams.values()), len(k.store.audit),
+              len(k.session.read_all()), len(k.interpreter_audit))
+    args = dict(stream_id="domain:ContractAggregate", entity_id="C-ACT",
+                principal="steward-A")
+    assert enabled_actions(k.store, k.compiled, roles=("contract_steward",),
+                           action_types=("ApproveContract",), **args) == ("ApproveContract",)
+    assert enabled_actions(k.store, k.compiled, roles=("viewer",),
+                           action_types=("ApproveContract",), **args) == ()
+    after = (sum(len(s) for s in k.store.streams.values()), len(k.store.audit),
+             len(k.session.read_all()), len(k.interpreter_audit))
+    assert after == before, "收件箱是纯读派生：事件、审计、会话、求值审计均零增长"
+
+
+def test_inbox_disappears_once_business_fact_lands():
+    """业务事实落地后条件不再成立 → 动作移出收件箱（通知过期由门禁兜底）。"""
+    from kernel.initiative import enabled_actions
+    k, _, _ = _initiative_setup()
+    args = dict(stream_id="domain:ContractAggregate", entity_id="C-ACT",
+                principal="steward-A", roles=("contract_steward",),
+                action_types=("ApproveContract",))
+    assert enabled_actions(k.store, k.compiled, **args) == ("ApproveContract",)
+    k.submit("ApproveContract", {"contract_id": "C-ACT"},
+             "holder-B", roles=("contract_steward",))
+    assert enabled_actions(k.store, k.compiled, **args) == ()
+
+
+def test_inbox_unknown_entity_is_empty_not_an_invitation():
+    """无权威投影的实体 → 依赖条件的动作不进入收件箱（不发无法兑现的邀请）。
+
+    只筛无条件的 VoidContract 不在断言内：它没有条件段，内核同样允许提交 ——
+    收件箱忠实反映"可提交"，不替声明补业务语义。要挡住它，应在声明里加条件。
+    """
+    from kernel.initiative import enabled_actions
+    k, _, _ = _initiative_setup()
+    assert enabled_actions(k.store, k.compiled, stream_id="domain:ContractAggregate",
+                           entity_id="C-NONE", principal="steward-A",
+                           roles=("contract_steward",),
+                           action_types=("ApproveContract",)) == ()
+
+
+def test_inbox_reuses_the_same_evaluator_and_principal_env():
+    """结构守卫：收件箱复用 submit 的物化、受限解释器与主体环境，不另造语义。"""
+    import kernel.initiative as ini
+    import kernel.pipeline as pipe
+    from interpreter.boolean_profile import eval_boolean
+    assert ini.materialize is pipe.materialize
+    assert ini.eval_boolean is pipe.eval_boolean is eval_boolean
+    assert ini.principal_env is pipe.principal_env
+    # 多角色语义必须与 _evaluate 一致：单角色退化为字符串，多角色为元组
+    assert ini.principal_env("p", ("a",))["role"] == "a"
+    assert ini.principal_env("p", ("a", "b"))["role"] == ("a", "b")

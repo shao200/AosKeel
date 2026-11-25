@@ -36,7 +36,13 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
 
-from kernel.errors import AosError  # noqa: E402
+from kernel.errors import AosError, SnapshotUnavailable  # noqa: E402
+from kernel.pipeline import (  # noqa: E402  条件快照、主体环境与受限求值（与 submit 同源）
+    eval_boolean,
+    identity_key,
+    materialize,
+    principal_env,
+)
 from kernel.stewardship import (  # noqa: E402  可见集 V（治理面，切面/跨组织）
     StewardshipRegistry,
 )
@@ -113,6 +119,57 @@ class Invitation:
     trigger: str
     can_execute: bool    # 能力账簿 E(action) 确认可提交；否则只被通知（见证切面）
     rule_hash: str       # 触发规则的稳定指纹（声明溯源，可审计）
+
+
+def enabled_actions(store, compiled, *, stream_id: str, entity_id: str,
+                    principal: str, roles: tuple[str, ...] = (),
+                    contexts: tuple[str, ...] = (),
+                    action_types=None) -> tuple[str, ...]:
+    """只读收件箱：当前权威水位上，该主体"可提交"的动作（零写入）。
+
+    与 submit 的判定同源，但只覆盖**权限 + 条件**两段：
+      * 权限：声明了角色的动作要求 `required ∩ roles` 非空（同 submit 门控）；
+      * 条件：在当轮权威投影上物化快照，由同一个受限解释器求值（P-16 / R10）；
+      * 结构段依赖真实提交载荷，收件箱不预判 —— 提交时仍会完整重验（KS-7.1）。
+    因此本函数回答的是"现在允许办什么"，不是"提交一定成功"。
+
+    fail-closed 与零写入：
+      * 实体无权威投影 / 快照不可物化 / 条件不可求值 → 该动作不进入结果
+        （宁可少发，不可错发；提交路径仍 fail-visible 地报错）；
+      * 只读 `store.streams`，不 append、不写审计、不调用 submit；
+      * `action_types` 是路由画像的筛减项，不授予任何权限。
+
+    注意：条件为真的动作都可能出现（例如已存在实体上的创建型动作），
+    "此刻是否还有业务意义"应由声明条件表达，收件箱不替声明做语义判断。
+    """
+    wanted = set(action_types) if action_types is not None else None
+    out: list[str] = []
+    for act in compiled.values():
+        if act.stream != stream_id:
+            continue
+        if wanted is not None and act.action_type not in wanted:
+            continue
+        required = set(act.permissions.get("roles", []))
+        if required and not (required & set(roles)):
+            continue
+        if not act.conditional:
+            out.append(act.action_type)
+            continue
+        ident = identity_key(act)
+        params = {ident: entity_id} if ident else {}
+        try:
+            snap, _ = materialize(store, act, params)
+        except SnapshotUnavailable:
+            continue
+        p_env = principal_env(principal, roles, contexts)
+        env = {"snapshot": {**snap, "principal": p_env}, "principal": p_env}
+        try:
+            ok = eval_boolean(act.conditional, env)
+        except Exception:                              # noqa: BLE001  读侧不可判定即不展示
+            continue                                   # 提交路径仍会显式拒绝（fail-visible）
+        if ok:
+            out.append(act.action_type)
+    return tuple(sorted(out))
 
 
 class InitiativeEngine:

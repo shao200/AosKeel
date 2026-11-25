@@ -324,6 +324,7 @@ P1.8 之后同类约束又多了两条——**选择不落事件、续办不臆�
 | 选择 ≠ 执行 | `select()` 只写选择账本与观察通道，EventStore 零增长；提交仍由持岗人发起 | `test_selection_records_triad_and_routes_to_holder` |
 | 陈旧即拒 | 依据携带实体水位，与当前 `entity_head()` 不一致则在留账前拒绝 | `test_selection_rejects_stale_basis` |
 | 续办只读 | 每次派生不缓存；不臆造期限；调用前后事件流、账本、水位零变化 | `test_continuation_is_read_only` / `test_continuation_lists_open_assignment_without_fake_deadline` |
+| 收件箱只读 | `initiative.enabled_actions` 复用 `materialize` / `principal_env` / `eval_boolean`（与 submit 同源），不 append、不写审计；不可物化或不可求值即不展示 | `test_inbox_is_read_only_and_mirrors_permission_gate` / `test_inbox_reuses_the_same_evaluator_and_principal_env` |
 | 档位不可破底 | 闸门清单为常量，声明无法缩减；自主档仍需 dry_run 取证 | `test_policy_rejects_gate_removal_declaration` / `test_policy_rejects_autonomous_without_dry_run` |
 
 **证据**：全量 430 → 461 测试函数 / 446 → 475 用例；verify 三关、release 五关通过；

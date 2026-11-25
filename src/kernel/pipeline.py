@@ -25,6 +25,28 @@ from interpreter.audit import record_evaluation
 MAX_REEVAL = 3
 def _now() -> str:
     return dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
+def _generated():
+    """生成物模块（精简 profile 下 reducers 可能不存在）。"""
+    try:
+        from generated import reducers as _g
+    except ImportError:
+        return None
+    return _g
+def identity_key(act) -> str | None:
+    """聚合实体标识键（与 materialize 同源）：读侧探针复用，不复制生成物查找。"""
+    g = _generated()
+    return (getattr(g, "IDENTITIES", {}) or {}).get(act.aggregate) if g else None
+def principal_env(principal: str, roles: tuple[str, ...],
+                  contexts: tuple[str, ...] = ()) -> dict:
+    """主体环境（平台 authN 出示）。读侧探针必须复用本函数：
+    单角色时 `principal.role` 退化为字符串、多角色时为元组 —— 与 _evaluate 同语义，
+    否则收件箱与提交门控会在 `principal.role` 表达式上分叉。"""
+    return {
+        "name": principal,
+        "roles": tuple(roles),
+        "role": roles[0] if len(roles) == 1 else tuple(roles),
+        "contexts": tuple(contexts),
+    }
 def materialize(store, act, params: dict) -> tuple[dict, dict | None]:
     """条件快照的物化投影半边（P-16 / KS-1.4）：每次评估在当轮版本视图上
     重放聚合流折叠权威状态，改口（谎报）在此拦截而非带入解释器。
@@ -34,12 +56,9 @@ def materialize(store, act, params: dict) -> tuple[dict, dict | None]:
     - 实体未投影 → 仅创建型动作（act.creates）可按 params 作初始观测，
       其余动作 SNAPSHOT-ENTITY-MISSING（禁止在未注册实体上直接审批/流转）；
     - 实体已投影：k∈ent 且 k∈claims 且不等 → contradiction；k∈ent 未 claim → 权威值。"""
-    try:
-        from generated import reducers as _g
-    except ImportError:
-        _g = None
-    reduce = getattr(_g, "REDUCERS", {}).get(act.aggregate) if _g else None
-    ident = getattr(_g, "IDENTITIES", {}).get(act.aggregate) if _g else None
+    g = _generated()
+    reduce = (getattr(g, "REDUCERS", {}) or {}).get(act.aggregate) if g else None
+    ident = identity_key(act)
     if reduce is None or not ident:
         return {k: params.get(k) for k in act.snapshot_keys}, None
     if ident not in params:
@@ -139,14 +158,8 @@ class Kernel:
                     f"SNAPSHOT-CONTRADICTION: {contra['key']} 自报 {contra['claim']} ≠ "
                     f"权威投影 {contra['authority']} —— 条件对物化投影求值，"
                     f"改口无效（P-16 / KS-1.4）；不追加（VER-2）")
-            principal_env = {
-                "name": principal,
-                "roles": tuple(roles),
-                "role": roles[0] if len(roles) == 1 else tuple(roles),
-                "contexts": tuple(contexts),
-            }
-            env = {"snapshot": {**snap, "principal": principal_env},
-                   "principal": principal_env}
+            p_env = principal_env(principal, roles, contexts)
+            env = {"snapshot": {**snap, "principal": p_env}, "principal": p_env}
             try:
                 ok = eval_boolean(act.conditional, env)
             except Exception as e:                     # 求值失败也是评估 —— 照记审计（KS-3.3）
