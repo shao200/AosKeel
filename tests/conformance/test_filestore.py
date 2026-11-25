@@ -84,3 +84,42 @@ def test_persist_failure_rolls_back_memory_and_audit(tmp_path):
               and e.payload.get("contract_id") == "C-2"]
     assert reg_c2 and reg_c2[0].event_id == next_id, "重试不得出现事件号空洞"
     assert FileStore(p)._next_id == k.store._next_id, "文件与内存必须重新一致"
+
+
+def test_replay_repairs_trailing_partial_record(tmp_path):
+    """崩溃窗口：write 与 fsync 之间被杀 → 文件尾半行可修复，前序事件完整保留。"""
+    p = tmp_path / "events.jsonl"
+    k = _kernel(FileStore(p))
+    _submit(k)
+    good = p.read_text(encoding="utf-8")
+    p.write_text(good + '{"event_id": 99, "stream_id": "dom', encoding="utf-8")
+    rebuilt = FileStore(p)                     # 新进程：重放时修复尾部半行
+    assert len(rebuilt.streams["domain:ContractAggregate"]) == 2
+    assert p.read_text(encoding="utf-8") == good            # 半行已截断
+    _submit(_kernel(rebuilt), "C-2")                        # 修复后可继续追加
+    assert p.read_text(encoding="utf-8").endswith("\n")
+
+
+def test_replay_refuses_mid_file_corruption(tmp_path):
+    """中段损坏不是崩溃窗口 → fail-closed 拒绝加载，绝不跳过坏行继续跑。"""
+    p = tmp_path / "events.jsonl"
+    k = _kernel(FileStore(p))
+    _submit(k)
+    lines = p.read_text(encoding="utf-8").splitlines()
+    p.write_text(lines[0] + "\n{broken}\n" + lines[1] + "\n", encoding="utf-8")
+    with pytest.raises(StoreRejection, match="EVENT-LOG-CORRUPT"):
+        FileStore(p)
+
+
+def test_second_process_is_refused_by_store_lock(tmp_path):
+    """单写进程模型是运行时事实：第二个进程打开同一日志即拒绝（STORE-LOCKED）。"""
+    import subprocess
+    p = tmp_path / "events.jsonl"
+    holder = FileStore(p)
+    code = ("import sys;"
+            f"sys.path.insert(0, r'{ROOT}');sys.path.insert(0, r'{ROOT / 'src'}');"
+            "from kernel.filestore import FileStore;"
+            f"FileStore(r'{p}')")
+    r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+    assert r.returncode != 0 and "STORE-LOCKED" in (r.stderr or "")
+    holder.close()

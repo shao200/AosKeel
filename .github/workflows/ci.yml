@@ -5,14 +5,25 @@ on:
   push:
     branches: [main]
   pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: aos-gate-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   gate:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
+          cache: pip
       # 只按 pyproject 声明安装：CI 曾手工补装 pytest，掩盖了运行时依赖声明缺失，
       # 使纯净 venv 里 aos test / python -m pytest 失败而 CI 仍全绿。
       - run: pip install -e .
@@ -23,6 +34,7 @@ jobs:
       - name: 发布闸门（全绿才出制品；RELEASE-MANIFEST 落 dist/）
         run: python -m src.cli.main release
       - uses: actions/upload-artifact@v4
+        if: matrix.python-version == '3.12'
         with:
           name: release-manifest
           path: dist/RELEASE-MANIFEST.json

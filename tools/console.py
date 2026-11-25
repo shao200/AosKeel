@@ -70,11 +70,34 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(raw)
     def do_GET(self):
+        if not self._local_request():
+            self._send(403, json.dumps({"error": "仅接受本机 Host"}))
+            return
         opts = "".join(f'<option>{c}</option>' for c in sorted(ALLOWED))
         self._send(200, PAGE % opts, "text/html; charset=utf-8")
+    def _local_request(self) -> bool:
+        """本机约束：Host 须为回环地址；带 Origin 时亦须为回环来源。
+
+        防 DNS rebinding（Host 伪造）与跨站触发（浏览器携带外部 Origin）——
+        壳无认证层，来源校验是它唯一能自带的边界。
+        """
+        host = (self.headers.get("Host") or "").lower()
+        if not (host.startswith("127.0.0.1") or host.startswith("localhost")
+                or host.startswith("[::1]")):
+            return False
+        origin = (self.headers.get("Origin") or "").lower()
+        return not origin or origin.startswith(("http://127.0.0.1", "http://localhost",
+                                                "http://[::1]"))
     def do_POST(self):
         if self.path != "/api/run":
             self._send(404, json.dumps({"error": "no such endpoint"}))
+            return
+        if not self._local_request():
+            self._send(403, json.dumps({"error": "仅接受本机回环来源"}))
+            return
+        ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+        if ctype != "application/json":               # 拒绝 text/plain 等简单请求跨站触发
+            self._send(415, json.dumps({"error": "Content-Type 须为 application/json"}))
             return
         try:
             req = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))

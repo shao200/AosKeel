@@ -14,6 +14,11 @@
 
 正典规范：《AOS：基于本体论的 Agent 系统开发规范》v2.2.0（[docs/aos-spec.md](aos-spec.md)，登记条目见 [docs/ARTIFACT-REGISTRY.md](ARTIFACT-REGISTRY.md)）。
 
+[![CI](https://github.com/shao200/AosKeel/actions/workflows/ci.yml/badge.svg)](https://github.com/shao200/AosKeel/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+
+**状态：这是模板，不是生产事件存储。** 默认 `EventStore` 在内存中；`FileStore` 是单写进程参考实现（JSONL 追加 + 重放、进程锁、末尾半行修复），不提供多进程并发或数据库事务保证。采用前请先读 [§9](README.md#9-诚实边界采用前必读)。
+
 ---
 
 ## 1. 为什么 LLM 需要本体
@@ -287,8 +292,8 @@ python tools/console.py                # 8. WEB 控制台壳（白名单，fail-
 - **不给合规证明。** `mandatory` 条款须人工在运行系统上执行并留档（evidence + judge + signer）；模板永不代你打勾。
 - **不制造正当性。** steward 与创制任命是世界事件，模板只记录、不合成（GOV-1）；BOOT-2/3 模板层未实装，命令返回拒绝。
 - **以源码树交付。** wheel 不含 `docs/spec/config`，启动自检拒绝它（机器验证 INTEGRITY-20）——见下方工程边界表。
-- **事件存储是内存态。** `EventStore` 为 dict，进程退出即失；`kernel/filestore.py` 提供 FileStore **持久化参考实现**（JSONL 追加 + 重放，单写进程模型），持久化的多进程存储属实例侧职责，须实现同一协议。落盘失败（权限/磁盘/IO）会回滚内存追加、事件号与 `appended` 审计，并留一条 `PERSIST-FAIL` 拒绝审计后抛出 `StoreRejection` —— 进程内视图不与文件分叉，修复存储后可安全重试。
-- **观察链默认内存态，可选持久化。** `SessionChannel` 与事件日志物理分离；给路径即 `FileSession`（JSONL 追加 + 重放，先落盘成功再入内存，失败抛 `SESSION-PERSIST-FAIL` 且内存不留半条记录）。选择审计账本与管理域显式锚定随同一通道重放恢复，恢复时**重新校验**主体、owner 归属与在册角色，篡改记录即拒绝构造；恢复的只是观察账，不参与任何权威投影重建（KS-2.2）。
+- **事件存储是内存态。** `EventStore` 为 dict，进程退出即失；`kernel/filestore.py` 提供 FileStore **持久化参考实现**（JSONL 追加 + 重放，单写进程模型）。单写进程是运行时事实：进程级文件锁拒绝第二个写入者；崩溃窗口留下的文件尾半行在重放时截断修复，中段损坏则拒绝加载（`EVENT-LOG-CORRUPT`）。持久化的多进程存储属实例侧职责，须实现同一协议。落盘失败（权限/磁盘/IO）会回滚内存追加、事件号与 `appended` 审计，并留一条 `PERSIST-FAIL` 拒绝审计后抛出 `StoreRejection` —— 进程内视图不与文件分叉，修复存储后可安全重试。
+- **观察链默认内存态，可选持久化。** `SessionChannel` 与事件日志物理分离；给路径即 `FileSession`（JSONL 追加 + 重放，先落盘成功再入内存，失败抛 `SESSION-PERSIST-FAIL` 且内存不留半条记录）。它与 FileStore 共用同一套尾部半行修复与进程锁（`SESSION-LOCKED` / `SESSION-REPLAY-CORRUPT`）。选择审计账本与管理域显式锚定随同一通道重放恢复，恢复时**重新校验**主体、owner 归属与在册角色，篡改记录即拒绝构造；恢复的只是观察账，不参与任何权威投影重建（KS-2.2）。
 - **wheel 是构建产物，不是交付物。** `pip wheel .` 可构建 `aos_keel-*.whl`（含 src/ + tools/ 与 `aos` console script），但不含 docs/spec/config；脱离源码树运行输出明确 `REFUSED`（INTEGRITY-20）。唯一受支持的运行形态是源码树 + `pip install -e .`，让正典声明与代码同版本管理。
 - **控制台是壳，且离线的那个。** `tools/console.py` 经 subprocess 驱动 CLI，命令白名单 fail-closed，治理签署类命令（release/register/bootstrap）刻意不提供；`aos shadow` 是离线对账，在线双跑流量比对属部署阶段职责。控制台默认仅绑 127.0.0.1 且**无认证层**（N11 披露：白名单只限命令面，不承担身份鉴别——生产部署须在前置反向代理/网关层补认证）。
 - **结构指纹刻意弱校验。** 只核对条数与首尾锚点；强保证来自密码学全文哈希层。
@@ -310,7 +315,7 @@ python tools/console.py                # 8. WEB 控制台壳（白名单，fail-
 | 边界 | 事实 | 代价 / 实例侧职责 |
 |---|---|---|
 | 交付形态 | 模板以**源码树**交付：`pip install -e .`（之后用 `aos ...`）或 `python -m src.cli.main`。**wheel 是构建产物非交付物**（已机器验证 INTEGRITY-20） | 生产 wheel 交付须重构正典数据打包与 ROOT 解析（有意保持源码树交付：正典声明与代码同版本管理） |
-| 事件存储 | `EventStore` 为**纯内存** dict；`kernel/filestore.py` 提供 FileStore 持久化参考实现（JSONL 追加 + 启动重放，单写进程模型） | 生产多进程部署须以数据库实现同一协议（streams 只读 · `commit` 唯一写面 · audit 只增），并自行证明 append-only 与审计持久性 |
+| 事件存储 | `EventStore` 为**纯内存** dict；`kernel/filestore.py` 提供 FileStore 持久化参考实现（JSONL 追加 + 启动重放，单写进程模型由进程锁强制，尾部半行重放修复） | 生产多进程部署须以数据库实现同一协议（streams 只读 · `commit` 唯一写面 · audit 只增），并自行证明 append-only 与审计持久性 |
 | 探针与 LLM 在实例侧 | 在线影子流量的拦流探针与 LLM 服务绑定都是实例侧职责；内核只提供对账协议与提取契约 | 按部署环境实现探针组件；LLM 调用写进自己的适配器——内核零部署环境依赖、零 LLM 依赖 |
 | 结构层指纹 | 核对"条数 + 首锚 + 末锚"，**不校验中间条款内容**；强保证来自密码学层全文哈希（GOV-2.3） | 中间条款被改而首尾不变 → 结构层 PASS，靠哈希层拦截；这是附录 F 清单定义的取舍 |
 | 声明字段消费者 | `invariant.expression` 为文档视图；`dry_run` 为演练标志；`invariants: {gate: false}` | 实例侧注册 detector callable 并开闸；提交前自行调用 `kernel.dryrun.dryrun()` |
@@ -361,7 +366,8 @@ src/kernel/profile.py          能力画像解析（依赖图展开、Kahn 拓�
 src/kernel/sc_compiler.py      SC 两段式编译器（KS-7.1 / VER-18）
 src/kernel/pipeline.py         内核提交管线（结构→条件→追加，事件载荷携带声明式 T24 副作用；冲突完整重求值）
 src/kernel/store.py            本体事件日志（append-only；INV-1 写路径闭环）
-src/kernel/filestore.py        FileStore：持久化参考实现（JSONL 追加 + 重放；单写进程模型）
+src/kernel/filestore.py        FileStore：持久化参考实现（JSONL 追加 + 重放；单写进程锁 + 尾部半行修复）
+src/kernel/jsonl.py            JSONL 辅助：崩溃尾部修复（中段损坏拒绝）与进程级单写锁
 src/kernel/session.py          会话事件流（KS-2.2 物理分离存储 / VER-4；FileSession 可选持久化 + 重放）
 src/kernel/genesis.py          创世窗口状态机（KS-8；熄灭不可逆）
 src/kernel/projection.py       投影与决策输入（P-16；可重建 / 会话禁入）

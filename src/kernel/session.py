@@ -5,8 +5,10 @@
 提供 exists() 供决策双引用（KS-2.5）解析；read_all 仅限审计用途。
 
 持久化（可选）：给 path 即成为 FileSession（JSONL 追加 + 重放），追加顺序是
-"先落盘成功、再进内存"，因此落盘失败不会留下半条观察记录；重放只恢复观测
-日志本身，不改变"会话流不参与权威投影重建"的红线（KS-2.2）。
+"先落盘成功、再进内存"，因此落盘失败不会留下半条观察记录；进程级锁强制单写
+（SESSION-LOCKED），重放只修复文件尾半行（崩溃窗口），中段损坏拒绝加载
+（SESSION-REPLAY-CORRUPT）。重放只恢复观测日志本身，不改变"会话流不参与权威
+投影重建"的红线（KS-2.2）。
 """
 from __future__ import annotations
 import datetime as dt
@@ -17,6 +19,7 @@ from pathlib import Path
 ROOT = Path(os.environ.get("AOSKEEL_ROOT") or Path(__file__).resolve().parents[2])
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "src"))
 from kernel.errors import PrincipalRequired, SessionPersistFailed
+from kernel.jsonl import process_lock_or_defer, read_records      # 尾部修复 + 单写进程锁
 def _now() -> str:
     return dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
 class SessionChannel:
@@ -26,19 +29,27 @@ class SessionChannel:
         self._principal_required = "SessionAppend" in text   # 能力清单声明（KS-2.3）
         self._log: list[dict] = []          # 独立存储；与 EventStore.streams 无共享
         self.path = Path(path) if path is not None else None
+        self._lock = None
         if self.path is not None:
+            self._lock = process_lock_or_defer(self.path, SessionPersistFailed,
+                                               "SESSION-LOCKED")
             self._replay()
+
+    def close(self) -> None:
+        """释放单写进程锁（内存通道无锁，调用为空操作）。"""
+        if self._lock is not None:
+            self._lock.release()
 
     def _replay(self) -> None:
         """只重放观察记录；与权威事件流物理分离（KS-2.2 / INV-8）。"""
-        if not self.path.exists():
-            return
-        for line in self.path.read_text(encoding="utf-8").splitlines():
-            if line.strip():
-                self._log.append(json.loads(line))
+        self._log.extend(read_records(self.path, SessionPersistFailed,
+                                      "SESSION-REPLAY-CORRUPT"))
 
     def _persist(self, rec: dict) -> None:
         """先落盘成功、再进内存：失败即不产生内存半条记录（fail-closed）。"""
+        if self._lock is None:                  # 构造时目录不存在：写入前补取锁
+            self._lock = process_lock_or_defer(self.path, SessionPersistFailed,
+                                               "SESSION-LOCKED")
         try:
             offset = self.path.stat().st_size
         except OSError:

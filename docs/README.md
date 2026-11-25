@@ -79,8 +79,8 @@ compiled input, not specification text. Do not describe `spec/` as the canonical
    `CLI 26 命令面（21 顶层 + 5 子命令）` and
    `75 条布线（可执行 75 / 缺失 0 / 〔强〕未布线 1）`, plus 43 INTEGRITY regression guards.
    `tests/conformance/test_doc_consistency.py` locks the strings that consume them.
-   Test-suite size is quoted as **75 test files / 493 `def test_` functions**; pytest
-   collects 507 cases after parametrisation. Both numbers are correct — different units,
+   Test-suite size is quoted as **75 test files / 499 `def test_` functions**; pytest
+   collects 513 cases after parametrisation. Both numbers are correct — different units,
    so do not "correct" one into the other.
 2. **Changing a fact changes both editions.** Any edit to §§1–9 of one README must be
    mirrored in the other in the same commit. This is now a machine check, not just a
@@ -94,5 +94,5 @@ compiled input, not specification text. Do not describe `spec/` as the canonical
    and `aos verify`. Editing any document outside `aos-spec.md` / `SPEC-FINGERPRINT.md`
    does not change the canonical hash; changing either of those requires the GOV-3
    version channel and a proposal reference.
-4. **Version numbers**: software `0.3.0` · canonical spec `v2.1.1` (informative appendices R/S; semantic delta zero) · whitepaper/strategy
+4. **Version numbers**: software `0.3.0` · canonical spec `v2.2.0` (informative appendices R/S; semantic delta zero) · whitepaper/strategy
    documents `v1.0`. Do not conflate them.

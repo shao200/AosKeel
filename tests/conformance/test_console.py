@@ -30,6 +30,29 @@ def _post(url: str, payload: dict) -> tuple[int, dict]:
             return r.status, json.loads(r.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         return e.code, json.loads(e.read().decode("utf-8"))
+def test_shell_rejects_non_json_and_foreign_origin(server):
+    """壳的来源边界：非 JSON 简单请求、外部 Origin、伪造 Host 一律拒绝。
+
+    壳无认证层，Content-Type + 回环 Host/Origin 是它能自带的全部边界：
+    前者挡住跨站 text/plain 触发，后者挡住 DNS rebinding 与外部页面调用。
+    """
+    def code(headers: dict) -> int:
+        req = urllib.request.Request(server + "/api/run",
+                                     data=json.dumps({"cmd": "verify", "args": []}).encode(),
+                                     headers=headers)
+        try:
+            with urllib.request.urlopen(req) as r:
+                return r.status
+        except urllib.error.HTTPError as e:
+            return e.code
+    assert code({"Content-Type": "text/plain"}) == 415
+    assert code({"Content-Type": "application/json",
+                 "Origin": "https://evil.example"}) == 403
+    assert code({"Content-Type": "application/json",
+                 "Host": "evil.example"}) == 403
+    assert code({"Content-Type": "application/json", "Origin": server}) == 200
+
+
 def test_shell_not_kernel_subprocess_only():
     """壳纪律：console.py 不 import 任何 kernel 模块（只 subprocess 调 CLI）。"""
     src = (ROOT / "tools" / "console.py").read_text(encoding="utf-8")

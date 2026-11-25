@@ -1206,6 +1206,19 @@ def test_missing_appointment_yields_no_capability_not_a_pass():
 
 # ---------- T0：只读收件箱（enabled_actions） ----------
 # 三问漏斗的落地：路由只读派生；"该办未办"由缺席证明，不新增任何事件。
+def test_file_session_repairs_trailing_half_record(tmp_path):
+    """观察通道同样只修复尾部半行：崩溃后重启不丢已确认记录。"""
+    from kernel.session import FileSession
+    p = tmp_path / "session.jsonl"
+    s = FileSession(p)
+    s.append("creator-A", {"kind": "initiative.notice", "entity": "C-1"})
+    good = p.read_text(encoding="utf-8")
+    p.write_text(good + '{"kind": "initiative.', encoding="utf-8")
+    again = FileSession(p)
+    assert len(again.read_all()) == 1
+    assert p.read_text(encoding="utf-8") == good
+
+
 def test_inbox_is_read_only_and_mirrors_permission_gate():
     """收件箱零写入，且权限判定与 submit 同源（无执行权即不出现）。"""
     from kernel.initiative import enabled_actions

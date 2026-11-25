@@ -234,6 +234,28 @@ def test_canonical_v220_errata_and_references():
     assert "[06][07] → R.2" in spec
 
 
+def test_spec_version_consumers_follow_registry():
+    """规范版本只有一个权威源（登记表现行条目）：文档与包元数据必须与之一致。
+
+    评审发现的漂移：docs/README.md 曾写 v2.1.1、pyproject 描述曾写 v2.0.0，
+    而正典与登记表是 v2.2.0。计数有守卫、版本号没有，于是漂了三轮 —— 本测试
+    把"版本号"也变成派生量：先取登记表最后一条 AOS-ART-*，再要求各消费端一致。
+    """
+    reg = (ROOT / "docs/ARTIFACT-REGISTRY.md").read_text(encoding="utf-8")
+    rows = [l for l in reg.splitlines()
+            if re.match(r"\|\s*AOS-ART-\d+\s*\|\s*v[\d.]+\s*\|", l)]
+    assert rows, "登记表缺少 AOS-ART 条目"
+    current = rows[-1].split("|")[2].strip()          # 现行条目 = 最后登记
+    spec = (ROOT / "docs/aos-spec.md").read_text(encoding="utf-8")
+    assert f"{current} · Frozen" in spec              # 正典头部即权威版本
+    py = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert f"对应规范 {current}" in py
+    index = (ROOT / "docs/README.md").read_text(encoding="utf-8")
+    assert f"canonical spec `{current}`" in index
+    for rel in ("README.md", "docs/README.zh-CN.md"):
+        assert f"`{current}`" in (ROOT / rel).read_text(encoding="utf-8"), rel
+
+
 def test_appendix_errata_content_is_accurate():
     """勘误内容守卫：文献归属谱系正确、4D 立场实质认领、S 语义与实现对齐。"""
     spec = (ROOT / "docs/aos-spec.md").read_text(encoding="utf-8")
