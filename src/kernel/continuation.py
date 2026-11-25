@@ -15,6 +15,11 @@
 续办口径：一条 assignment 的 `basis.watermark` 等于源流当前水位 → `open`（仍然有效）；
 被新事实推进 → `stale`（依据已陈旧，必须重新渲染候选后再选）。这与
 SELECTION-STALE-BASIS 守卫同源，避免"视图说待办、守卫说陈旧"的两套口径。
+
+到期口径：SLA 起点取 `basis.transaction_time`（权威事实时间）而非选择时刻，
+行上 `sla_anchor` 标注实际所用口径（authority / selection）。超期因此是
+"权威事实落地后多久仍无对应业务事件"的读时派生，不依赖观察层时间戳，
+也不需要任何 `expired` 事件（缺席本身可由权威日志证明）。
 """
 from __future__ import annotations
 
@@ -36,15 +41,27 @@ class ContinuationViolation(AosError):
 _KIND_PREFIX = "initiative."
 
 
-def _due_at(assigned_at: str, sla_hours) -> str | None:
-    """到期时刻 = 选择时刻 + 档位 SLA；未声明 SLA 则无到期（不臆造期限）。"""
+def _due_at(assigned_at: str, sla_hours, basis=None) -> str | None:
+    """到期时刻 = SLA 起点 + 档位 SLA；未声明 SLA 则无到期（不臆造期限）。
+
+    起点优先取权威事实时间（basis.transaction_time，KS-2.5 双引用的投影半边）：
+    "该办而未办"的时长应从业务事实落地起算，而不是从观察层的选择时刻起算——
+    观察记录可丢弃重建，据其计时的超期结论无法从权威日志复核。缺该字段时回退
+    选择时刻（兼容旧记录），并在行上以 sla_anchor 显式标注所用口径。
+    """
     if not sla_hours:
         return None
+    start_raw = (basis or {}).get("transaction_time") or assigned_at
     try:
-        start = dt.datetime.fromisoformat(str(assigned_at))
+        start = dt.datetime.fromisoformat(str(start_raw))
     except (TypeError, ValueError):
         return None
     return (start + dt.timedelta(hours=int(sla_hours))).isoformat(timespec="seconds")
+
+
+def _sla_anchor(basis) -> str:
+    """本行到期所用的起点口径：authority=权威事实时间，selection=观察层选择时刻。"""
+    return "authority" if (basis or {}).get("transaction_time") else "selection"
 
 
 def _overdue(due_at: str | None, now: dt.datetime) -> bool:
@@ -87,7 +104,8 @@ class ContinuationView:
                 "projection": projection_name,
                 "tier": sel.get("tier"),
                 "sla_hours": sel.get("sla_hours"),
-                "due_at": _due_at(sel.get("ts"), sel.get("sla_hours")),
+                "due_at": _due_at(sel.get("ts"), sel.get("sla_hours"), basis),
+                "sla_anchor": _sla_anchor(basis),
                 "status": "open" if watermark is not None and watermark == head else "stale",
                 "watermark": watermark,
                 "head": head,

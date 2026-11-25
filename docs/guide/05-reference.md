@@ -61,7 +61,7 @@
 | `src/kernel/session.py` | 会话事件流（物理分离） |
 | `src/kernel/projection.py` | 只读投影与重放 |
 | `src/kernel/{detector,upcasting,merge,saga,dryrun,governance,genesis,errors}.py` | 探测器 / 读时升级 / 归并史 / 编排 / 演练 / 治理 / 创世窗口 / 类型化异常 |
-| `src/kernel/initiative.py` | 实体主动行为（run / seek；只写观察通道） |
+| `src/kernel/initiative.py` | 实体主动行为（run / seek / 只读收件箱 enabled_actions；只写观察通道） |
 | `src/kernel/stewardship.py` | 管理域投影（可见集 V） |
 | `src/kernel/capability_ledger.py` | 能力账簿（Action × Role 双向，与 submit 门控同源） |
 | `src/kernel/assurance.py` | 校验档位求值（不可变闸门为常量，只可加严；档位为建议标注，不接写路径） |
